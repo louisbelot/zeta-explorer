@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>zeta-explorer</title>
+<meta name="description" content="The Riemann zeta function computed from scratch in the browser: phase portrait of the critical strip, the Riemann-Siegel Z function with its zeros and Gram points, primes rebuilt from zeros, and zero statistics near the 10^12th zero.">
+<link rel="stylesheet" href="style.css">
+<script type="module" src="js/main.js"></script>
+</head>
+<body>
+<main>
+<header>
+  <h1>zeta-explorer</h1>
+  <p class="lede">
+    The Riemann zeta function, computed in your browser from the formulas: Euler-Maclaurin
+    summation and the functional equation for ζ(s), and the Riemann-Siegel formula with four
+    correction terms for Z(t). Drag a plot to pan it. To zoom, pinch, or click the plot and
+    then scroll.
+  </p>
+</header>
+
+<section id="strip">
+  <h2>The critical strip</h2>
+  <p>
+    Hue is the argument of ζ(σ + it), and the shading restarts each time |ζ| doubles. Zeros are
+    the points where every colour meets, and all of them sit on the dashed line σ = 1/2. The
+    trivial zeros at −2, −4, −6 are on the real axis, and the pole at s = 1 is the spot where
+    the colours go round the other way.
+  </p>
+  <div class="plot domain">
+    <canvas id="domain-img"></canvas>
+    <canvas id="domain-overlay"></canvas>
+  </div>
+  <div class="controls">
+    <span id="domain-readout" class="readout">&nbsp;</span>
+    <button type="button" id="domain-reset">reset view</button>
+  </div>
+</section>
+
+<section id="zeros">
+  <h2>Zeros on the critical line</h2>
+  <p>
+    On σ = 1/2, ζ(1/2 + it) = e<sup>−iθ(t)</sup> Z(t) with Z real, so every zero is a sign
+    change of Z. Below t = 9878 the dots come from a table of the first 10,000 zeros; above it
+    they are found live by bisection. Ticks mark Gram points g<sub>n</sub>, where θ(g<sub>n</sub>) = nπ.
+    Gram's law says (−1)<sup>n</sup>Z(g<sub>n</sub>) &gt; 0; the orange ticks are where it fails.
+  </p>
+  <div class="plot"><canvas id="z-plot"></canvas></div>
+  <div class="controls">
+    <label>t = <input id="z-go" type="number" min="0" max="1e9" step="any" value="14"></label>
+    <button type="button" data-t="0" data-w="60">first zeros</button>
+    <button type="button" data-t="270" data-w="25">Gram's law fails</button>
+    <button type="button" data-t="7000" data-w="10">Lehmer pair</button>
+    <button type="button" data-t="1000000" data-w="12">t = 10⁶</button>
+    <button type="button" data-t="1000000000" data-w="5">t = 10⁹</button>
+    <span id="z-readout" class="readout">&nbsp;</span>
+  </div>
+</section>
+
+<section id="primes">
+  <h2>Primes from zeros</h2>
+  <p>
+    Riemann's explicit formula writes the prime-power counting function ψ(x) = Σ<sub>p<sup>k</sup>≤x</sub> log p
+    as a smooth term minus one wave per zero:
+    ψ(x) = x − Σ<sub>ρ</sub> x<sup>ρ</sup>/ρ − log 2π − ½ log(1 − x<sup>−2</sup>).
+    Each pair of zeros ρ = 1/2 ± iγ adds an oscillation of frequency γ in log x and amplitude
+    √x/|ρ|. Add them one by one and the steps appear at the prime powers.
+  </p>
+  <div class="plot"><canvas id="psi-plot"></canvas></div>
+  <div class="controls">
+    <button type="button" id="psi-play">play</button>
+    <label>zeros <input id="psi-k" type="range" min="0" max="1000" value="0"></label>
+    <span id="psi-count" class="readout"></span>
+    <label>x up to
+      <select id="psi-x">
+        <option value="30">30</option>
+        <option value="100" selected>100</option>
+        <option value="400">400</option>
+      </select>
+    </label>
+  </div>
+</section>
+
+<section id="stats">
+  <h2>Zeros near the 10<sup>12</sup>th</h2>
+  <p id="stats-intro">
+    Montgomery conjectured, and Odlyzko's computations confirmed, that high zeros space out like
+    the eigenvalues of a large random Hermitian matrix (GUE).
+  </p>
+  <div class="pair">
+    <figure>
+      <div class="plot small"><canvas id="spacing-plot"></canvas></div>
+      <figcaption>Nearest-neighbour spacings (unfolded to mean 1). <span class="key series">GUE</span>
+        <span class="key dashed">Wigner surmise</span> <span class="key dotted">Poisson</span></figcaption>
+    </figure>
+    <figure>
+      <div class="plot small"><canvas id="pair-plot"></canvas></div>
+      <figcaption>Pair correlation against Montgomery's 1 − (sin πu / πu)².</figcaption>
+    </figure>
+  </div>
+</section>
+
+<footer>
+  <p>
+    Every value on this page is computed by the JavaScript in
+    <a href="https://github.com/louisbelot/zeta-explorer/tree/main/web/js">web/js</a>, which is
+    tested against mpmath. The zero table and the statistics at height 10<sup>12</sup> come from
+    the Python package in the same repo (a simplified Odlyzko-Schönhage evaluator).
+    <a href="https://github.com/louisbelot/zeta-explorer">github.com/louisbelot/zeta-explorer</a>
+  </p>
+</footer>
+</main>
+</body>
+</html>

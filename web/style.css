@@ -1,0 +1,226 @@
+:root {
+  --surface: #fcfcfb;
+  --panel: #f3f2ee;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --grid: #e4e3df;
+  --series: #2a78d6;
+  --series-soft: #86b6ef;
+  --accent: #eb6834;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: #121211;
+    --panel: #1c1c1a;
+    --ink: #ecebe7;
+    --ink-2: #a3a29d;
+    --grid: #2c2c29;
+    --series: #5598e7;
+    --series-soft: #2f5f99;
+    --accent: #f08254;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --surface: #121211;
+  --panel: #1c1c1a;
+  --ink: #ecebe7;
+  --ink-2: #a3a29d;
+  --grid: #2c2c29;
+  --series: #5598e7;
+  --series-soft: #2f5f99;
+  --accent: #f08254;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font: 17px/1.6 var(--serif);
+}
+
+main {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 40px 16px 64px;
+}
+
+h1 {
+  font: 600 2.1rem/1.2 var(--serif);
+  margin: 0 0 12px;
+}
+
+h2 {
+  font: 600 1.35rem/1.3 var(--serif);
+  margin: 0 0 8px;
+}
+
+section {
+  margin-top: 48px;
+}
+
+p {
+  max-width: 68ch;
+  margin: 0 0 14px;
+}
+
+.lede {
+  color: var(--ink-2);
+}
+
+a {
+  color: var(--series);
+}
+
+.plot {
+  position: relative;
+  width: 100%;
+  height: 360px;
+  background: var(--panel);
+  border-radius: 6px;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+}
+
+.plot:active {
+  cursor: grabbing;
+}
+
+.plot.domain {
+  height: auto;
+  aspect-ratio: 2 / 1;
+  min-height: 220px;
+}
+
+.plot.small {
+  height: 260px;
+  cursor: default;
+}
+
+.plot canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 10px;
+  font: 14px/1.4 var(--sans);
+  color: var(--ink-2);
+}
+
+.readout {
+  font: 13px/1.4 var(--mono);
+  margin-left: auto;
+  white-space: pre;
+}
+
+button,
+select,
+input {
+  font: 14px var(--sans);
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--grid);
+  border-radius: 4px;
+  padding: 4px 10px;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--ink-2);
+}
+
+input[type="number"] {
+  width: 9em;
+}
+
+input[type="range"] {
+  vertical-align: middle;
+  width: 220px;
+  max-width: 50vw;
+  padding: 0;
+  border: 0;
+  background: none;
+  accent-color: var(--series);
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+figure {
+  margin: 0;
+}
+
+figcaption {
+  font: 13px/1.5 var(--sans);
+  color: var(--ink-2);
+  margin-top: 8px;
+}
+
+.key::before {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  margin: 0 4px 3px 8px;
+  vertical-align: middle;
+  border-top: 2px solid var(--series);
+}
+
+.key.dashed::before {
+  border-top: 2px dashed var(--ink-2);
+}
+
+.key.dotted::before {
+  border-top: 2px dotted var(--ink-2);
+}
+
+footer {
+  margin-top: 64px;
+  padding-top: 16px;
+  border-top: 1px solid var(--grid);
+  font: 14px/1.6 var(--sans);
+  color: var(--ink-2);
+}
+
+@media (max-width: 700px) {
+  body {
+    font-size: 16px;
+  }
+
+  .pair {
+    grid-template-columns: 1fr;
+  }
+
+  .plot {
+    height: 300px;
+  }
+
+  .readout {
+    margin-left: 0;
+    width: 100%;
+  }
+}
