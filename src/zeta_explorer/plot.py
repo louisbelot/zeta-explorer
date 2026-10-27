@@ -5,9 +5,12 @@ from typing import TYPE_CHECKING
 import numpy as np
 from numpy.typing import ArrayLike
 
+from zeta_explorer.characters import conrey, primitive_characters
 from zeta_explorer.continuation import dirichlet_sums, em_sums, eta_sums
 from zeta_explorer.explicit import chebyshev_psi, pi_from_zeros, prime_pi, psi_from_zeros, riemann_r
 from zeta_explorer.gram import good_gram, z_values
+from zeta_explorer.lfunction import l_z, l_zeros
+from zeta_explorer.lowlying import OneLevel, w_symplectic, w_unitary
 from zeta_explorer.multieval import ZWindow
 from zeta_explorer.riemann_siegel import theta, z_exact, z_rs
 from zeta_explorer.spacing import (
@@ -373,6 +376,119 @@ def plot_log_z(sample: np.ndarray, T: float, N: int, bins: int = 120) -> Figure:
     ax.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="upper left")
     ax.set_title(f"Value distribution near t = {T:.3g} against random unitary matrices",
                  color=INK, fontsize=12, loc="left")
+    fig.tight_layout()
+    return fig
+
+
+def plot_l_z(
+    labels: tuple[tuple[int, int], ...] = ((4, 3), (5, 2), (7, 3)), t_min: float = -30.0,
+    t_max: float = 30.0, samples: int = 2000,
+) -> Figure:
+    import matplotlib.pyplot as plt
+
+    t = np.linspace(t_min, t_max, samples)
+    fig, axes = plt.subplots(len(labels), 1, figsize=(10, 2.3 * len(labels) + 0.6), sharex=True,
+                             facecolor=SURFACE)
+    for ax, (q, n) in zip(np.atleast_1d(axes), labels, strict=True):
+        chi = conrey(q, n)
+        zeros = l_zeros(chi, t_min, t_max)
+        ax.set_facecolor(SURFACE)
+        ax.axhline(0, color=INK_SECONDARY, linewidth=0.8)
+        ax.plot(t, l_z(t, chi), color=SERIES, linewidth=1.6)
+        ax.plot(zeros, np.zeros_like(zeros), "o", color=SERIES, markersize=6,
+                markeredgecolor=SURFACE, markeredgewidth=1.5)
+        _style(ax)
+        kind = "real" if chi.is_real else f"order {chi.order}"
+        parity = "even" if chi.parity == 0 else "odd"
+        ax.set_title(f"χ_{q}({n}, ·): {kind}, {parity}, ε = {_fmt_unit(chi.root_number())}",
+                     color=INK, fontsize=10, loc="left")
+        ax.set_ylabel(f"Z(t, χ_{q}({n},·))", color=INK, fontsize=9)
+    ax.set_xlim(t_min, t_max)
+    ax.set_xlabel("t", color=INK)
+    fig.suptitle("Hardy Z functions of Dirichlet L-functions: zeros of L(1/2 + it, χ)",
+                 color=INK, fontsize=12, x=0.01, ha="left")
+    fig.tight_layout()
+    return fig
+
+
+def _fmt_unit(z: complex) -> str:
+    if abs(z.imag) < 1e-12:
+        return f"{z.real:+.0f}"
+    return f"e^({np.angle(z) / (2 * np.pi):.4f}·2πi)"
+
+
+def plot_l_zeros(q: int = 31, T: float = 20.0) -> Figure:
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(11, 5.4), facecolor=SURFACE)
+    ax.set_facecolor(SURFACE)
+    chars = dict(primitive_characters(q))
+    order = []
+    for n in chars:
+        if n not in order:
+            order += [n] if pow(n, -1, q) == n else [n, pow(n, -1, q)]
+    seen = set()
+    for i, n in enumerate(order):
+        chi = chars[n]
+        zeros = l_zeros(chi, -T, T)
+        if chi.is_real:
+            color, label = ACCENT, "real character"
+        elif chi.parity == 0:
+            color, label = ORDINAL[1], "even, complex"
+        else:
+            color, label = ORDINAL[4], "odd, complex"
+        ax.plot(np.full_like(zeros, i), zeros, "_", color=color, markersize=9, markeredgewidth=2,
+                label=None if label in seen else label)
+        seen.add(label)
+    ax.axhline(0, color=INK_SECONDARY, linewidth=0.8)
+    _style(ax)
+    ax.set_xlim(-1, len(order))
+    ax.set_ylim(-T, T)
+    ax.set_xticks(range(len(order)), [str(n) for n in order], fontsize=8)
+    ax.set_xlabel(f"Conrey label n of χ_{q}(n, ·), next to its conjugate n⁻¹ mod {q}", color=INK)
+    ax.set_ylabel("γ, where L(1/2 + iγ, χ) = 0", color=INK)
+    ax.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="upper left",
+              bbox_to_anchor=(1.0, 1.0))
+    ax.set_title(f"Zeros of the primitive L-functions mod {q}: χ and its conjugate mirror each "
+                 "other, real characters are symmetric", color=INK, fontsize=11, loc="left")
+    fig.tight_layout()
+    return fig
+
+
+def plot_low_lying(
+    symplectic: OneLevel, unitary: OneLevel, labels: tuple[str, str], bins: int = 30,
+    x_max: float = 3.0,
+) -> Figure:
+    import matplotlib.pyplot as plt
+
+    fig, (left, right) = plt.subplots(1, 2, figsize=(12, 4.8), facecolor=SURFACE)
+    x = np.linspace(0, x_max, 400)
+    for fam, label, color in ((unitary, labels[1], ORDINAL[0]), (symplectic, labels[0], SERIES)):
+        c, d = fam.density(bins, x_max)
+        left.step(c, d, where="mid", color=color, linewidth=1.8, label=label)
+    left.plot(x, w_symplectic(x), color=INK, linewidth=1.4, label="USp: 1 − sin 2πx / 2πx")
+    left.plot(x, w_unitary(x), color=INK_SECONDARY, linewidth=1.2, linestyle=":", label="U: 1")
+    left.set_xlim(0, x_max)
+    left.set_ylim(0, 1.6)
+    left.set_xlabel("x (zero height in units of the mean spacing)", color=INK)
+    left.set_ylabel("zeros per L-function per unit x", color=INK)
+    left.set_title("One-level density near s = 1/2", color=INK, fontsize=11, loc="left")
+
+    for fam, label, color in ((unitary, labels[1], ORDINAL[0]), (symplectic, labels[0], SERIES)):
+        right.hist(fam.first(), bins=bins, range=(0, x_max / 2), density=True, histtype="step",
+                   color=color, linewidth=1.8, label=label)
+    right.set_xlim(0, x_max / 2)
+    right.set_xlabel("x of the lowest zero", color=INK)
+    right.set_ylabel("density", color=INK)
+    right.set_title("Where the first zero sits", color=INK, fontsize=11, loc="left")
+
+    for ax in (left, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    left.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="upper right")
+    right.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="upper right")
+    fig.suptitle("Low-lying zeros of Dirichlet L-functions against Katz-Sarnak",
+                 color=INK, fontsize=12, x=0.01, ha="left")
     fig.tight_layout()
     return fig
 

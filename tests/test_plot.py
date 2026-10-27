@@ -5,15 +5,19 @@ import numpy as np
 from matplotlib.animation import PillowWriter
 from PIL import Image
 
+from zeta_explorer.lowlying import OneLevel
 from zeta_explorer.plot import (
     phase_colors,
     plot_continuation,
     plot_domain,
     plot_explicit,
     plot_gram,
+    plot_l_z,
+    plot_l_zeros,
     plot_landscape,
     plot_lehmer,
     plot_log_z,
+    plot_low_lying,
     plot_multieval,
     plot_rs_error,
     plot_spacing,
@@ -119,3 +123,23 @@ def test_plot_multieval_window_beats_direct_sum():
     direct, window = (line.get_ydata() for line in left.lines)
     assert np.all(window < 1e-11)
     assert direct[-1] > 1e-9
+
+
+def test_plot_l_z_marks_lmfdb_zeros():
+    fig = plot_l_z(labels=((4, 3),), t_min=0, t_max=13, samples=200)
+    zeros = fig.axes[0].lines[-1].get_xdata()
+    assert np.allclose(zeros, [6.020948904697597, 10.243770304166555, 12.988098012312423])
+
+
+def test_plot_l_zeros_puts_conjugates_side_by_side():
+    fig = plot_l_zeros(q=7, T=10)
+    labels = [t.get_text() for t in fig.axes[0].get_xticklabels()]
+    assert labels == ["2", "4", "3", "5", "6"]
+
+
+def test_plot_low_lying(tmp_path):
+    a = OneLevel([np.array([0.6, 1.4]), np.array([0.9])])
+    b = OneLevel([np.array([0.1, 1.2]), np.array([0.4, 2.2])])
+    fig = plot_low_lying(a, b, ("quadratic", "mod p"), bins=6)
+    fig.savefig(tmp_path / "low.png")
+    assert len(fig.axes) == 2
