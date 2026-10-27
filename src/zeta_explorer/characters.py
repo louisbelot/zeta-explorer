@@ -182,3 +182,97 @@ def primitive_characters(q: int) -> list[tuple[int, Character]]:
         if math.gcd(n, q) == 1 and (chi := conrey(q, n)).is_primitive:
             out.append((n, chi))
     return out
+
+
+def kronecker(a: int, n: int) -> int:
+    if n < 0:
+        raise ValueError("n must be >= 0")
+    if n == 0:
+        return 1 if abs(a) == 1 else 0
+    out = 1
+    while n % 2 == 0:
+        n //= 2
+        if a % 2 == 0:
+            return 0
+        if a % 8 in (3, 5):
+            out = -out
+    a %= n
+    while a:
+        while a % 2 == 0:
+            a //= 2
+            if n % 8 in (3, 5):
+                out = -out
+        a, n = n, a
+        if a % 4 == 3 and n % 4 == 3:
+            out = -out
+        a %= n
+    return out if n == 1 else 0
+
+
+def is_fundamental(d: int) -> bool:
+    if d in (0, 1):
+        return False
+    if d % 4 == 1:
+        return _squarefree(abs(d))
+    if d % 4 == 0:
+        m = d // 4
+        return m % 4 in (2, 3) and _squarefree(abs(m))
+    return False
+
+
+def _squarefree(n: int) -> bool:
+    return all(e == 1 for _, e in factor(n))
+
+
+def quadratic(d: int) -> Character:
+    if not is_fundamental(d):
+        raise ValueError(f"{d} is not a fundamental discriminant")
+    q = abs(d)
+    num = np.array([{1: 0, -1: 1, 0: -1}[kronecker(d, m)] for m in range(q)], dtype=np.int64)
+    return Character(q, num, 2)
+
+
+def class_number(d: int) -> int:
+    if d >= 0 or d % 4 not in (0, 1):
+        raise ValueError("class_number counts forms of negative discriminant")
+    h = 0
+    a = 1
+    while 3 * a * a <= -d:
+        for b in range(-a + 1, a + 1):
+            if (b * b - d) % (4 * a):
+                continue
+            c = (b * b - d) // (4 * a)
+            if c < a or (c == a and b < 0) or math.gcd(math.gcd(a, b), c) != 1:
+                continue
+            h += 1
+        a += 1
+    return h
+
+
+def unit_count(d: int) -> int:
+    return {-3: 6, -4: 4}.get(d, 2)
+
+
+def fundamental_unit(d: int) -> tuple[int, int]:
+    if d <= 1 or not is_fundamental(d):
+        raise ValueError("need a positive fundamental discriminant")
+    if d % 4 == 1:
+        P, Q, D = 1, 2, d
+    else:
+        P, Q, D = 0, 1, d // 4
+    root = math.isqrt(D)
+    h0, h1, k0, k1 = 0, 1, 1, 0
+    while True:
+        a = (P + root) // Q
+        h0, h1 = h1, a * h1 + h0
+        k0, k1 = k1, a * k1 + k0
+        if abs(_norm(h1, -k1, d)) == 1:
+            return (2 * h1 - k1, k1) if d % 4 == 1 else (2 * h1, k1)
+        P = a * Q - P
+        Q = (D - P * P) // Q
+
+
+def _norm(x: int, y: int, d: int) -> int:
+    if d % 4 == 1:
+        return x * x + x * y - y * y * (d - 1) // 4
+    return x * x - y * y * (d // 4)

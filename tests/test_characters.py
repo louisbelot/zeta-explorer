@@ -5,10 +5,15 @@ import pytest
 
 from zeta_explorer.characters import (
     characters,
+    class_number,
     conrey,
     conrey_generator,
     factor,
+    fundamental_unit,
+    is_fundamental,
+    kronecker,
     primitive_characters,
+    quadratic,
     totient,
 )
 
@@ -103,3 +108,54 @@ def test_root_number_matches_lmfdb():
 def test_root_number_needs_primitive():
     with pytest.raises(ValueError):
         conrey(12, 5).root_number()
+
+
+@pytest.mark.parametrize("p", [3, 5, 7, 11, 13, 101, 997])
+def test_kronecker_is_legendre_for_odd_primes(p):
+    for a in range(-30, 30):
+        euler = pow(a % p, (p - 1) // 2, p)
+        assert kronecker(a, p) == (-1 if euler == p - 1 else euler)
+
+
+def test_kronecker_is_multiplicative_in_n():
+    for a in (-23, -4, 5, 12, 13):
+        for m in range(1, 40):
+            for n in range(1, 40):
+                assert kronecker(a, m * n) == kronecker(a, m) * kronecker(a, n)
+
+
+def test_fundamental_discriminants():
+    neg = [d for d in range(-1, -30, -1) if is_fundamental(d)]
+    pos = [d for d in range(30) if is_fundamental(d)]
+    assert neg == [-3, -4, -7, -8, -11, -15, -19, -20, -23, -24]
+    assert pos == [5, 8, 12, 13, 17, 21, 24, 28, 29]
+
+
+@pytest.mark.parametrize("d", [-3, -4, -8, -23, 5, 8, 12, 229, -163])
+def test_quadratic_character(d):
+    chi = quadratic(d)
+    assert chi.is_primitive and chi.is_real and chi.order == 2
+    assert chi.parity == (d < 0)
+    assert chi.root_number() == pytest.approx(1)
+
+
+@pytest.mark.parametrize(
+    "d, h", [(-3, 1), (-4, 1), (-23, 3), (-47, 5), (-56, 4), (-71, 7), (-163, 1), (-260, 8)]
+)
+def test_class_numbers(d, h):
+    assert class_number(d) == h
+
+
+def test_class_number_one_discriminants():
+    heegner = [d for d in range(-3, -200, -1) if is_fundamental(d) and class_number(d) == 1]
+    assert heegner == [-3, -4, -7, -8, -11, -19, -43, -67, -163]
+
+
+@pytest.mark.parametrize(
+    "d, unit", [(5, (1, 1)), (8, (2, 1)), (13, (3, 1)), (229, (15, 1)), (316, (160, 9)),
+                (376, (4286590, 221064))],
+)
+def test_fundamental_units(d, unit):
+    x, y = fundamental_unit(d)
+    assert (x, y) == unit
+    assert abs(x * x - d * y * y) == 4
