@@ -19,6 +19,12 @@ simplified Odlyzko-Schönhage evaluator (one nonuniform FFT per window, then
 band-limited interpolation) makes Z cost 2.6 μs per point at any height and
 reproduces Odlyzko's published zeros near the 10¹²th zero to 3e-9.
 
+The same machinery extends to Dirichlet L-functions: characters with LMFDB's
+Conrey labels, L(s, χ) anywhere in the plane, zeros checked against LMFDB and
+verified complete with the argument principle, the class number formula, and the
+low-lying zeros of quadratic characters against the symplectic prediction of Katz
+and Sarnak.
+
 The same numerics also run in the browser at
 [louisbelot.github.io/zeta-explorer](https://louisbelot.github.io/zeta-explorer/):
 a phase portrait you can pan and zoom, a Z(t) explorer that marks zeros and Gram
@@ -76,6 +82,15 @@ pairs[0]   # LehmerPair(n=34, gamma=111.0295..., delta=0.8451..., gap=0.3868...,
 from zeta_explorer.plot import plot_z, plot_domain, plot_spiral, plot_spacing
 plot_z(0, 60).savefig("z.png")
 plot_domain().savefig("domain.png")
+
+from zeta_explorer.characters import conrey, quadratic, class_number
+from zeta_explorer.lfunction import dirichlet_l, l_zeros, verify_zeros
+chi = conrey(5, 2)   # LMFDB label 5.2: order 4, odd, conductor 5
+chi.root_number()    # (0.85065080835204+0.5257311121191335j)
+dirichlet_l(0.5 + 10j, chi)   # (2.1249968234507937+2.163859185370417j)
+l_zeros(chi, 0, 13)  # [6.1835782, 8.45722917, 12.67494642]
+dirichlet_l(1, quadratic(-23)), class_number(-23)   # 1.9652 = 3π/√23, 3
+verify_zeros(conrey(101, 2), 50).ok   # 90 zeros on the line, 90 in the box
 ```
 
 ## The math
@@ -556,6 +571,118 @@ like the arithmetic correction from small primes that the hybrid model of Gonek,
 Hughes and Keating puts on top of CUE, but I haven't computed that constant. The
 fourth cumulant (5.5 to 6.7, against 6.3 for CUE) is too noisy at this sample
 size to say more.
+
+### Dirichlet L-functions
+
+![Hardy Z functions for three characters](docs/l_z.png)
+
+A Dirichlet character mod q is a homomorphism (Z/qZ)* → C*, extended by 0 to the
+integers that share a factor with q. `conrey(q, n)` builds χ_q(n, ·) with the
+Conrey labels LMFDB uses: for an odd prime p the generator g_p is the least
+primitive root mod p², and with n ≡ g^a, m ≡ g^b mod p^e,
+χ(m) = exp(2πi·ab/φ(p^e)). Powers of 2 use ±5^a instead, and a general q
+multiplies the prime-power pieces via CRT. Values are stored as exact numerators
+over the order, so χ² = 1 is an integer statement and real characters come out
+exactly real. The conductor is the smallest d | q for which χ is trivial on
+m ≡ 1 mod d, and `primitive()` builds the character mod d that induces χ.
+
+For σ ≥ 0 the series is split by residue class, L(s, χ) = q^(−s) Σ_a χ(a)·ζ(s, a/q),
+and each Hurwitz zeta gets the same Euler-Maclaurin tail as ζ itself, starting at
+the term N = 10 + |t|/π so that about q·N terms are summed directly. The tail has
+an integral term (N + a/q)^(1−s)/(s − 1), and since Σχ(a) = 0 the 1/(s − 1) parts
+cancel. Writing that term as ((N + a/q)^(1−s) − 1)/(s − 1) with `expm1` removes
+the cancellation before it happens, so L(1, χ) and its neighborhood come out to full
+precision with no special case.
+
+For σ < 0 the code uses the functional equation of the primitive character,
+
+```
+L(s, χ) = ε(χ)·2^s·π^(s−1)·q^(1/2−s)·Γ(1 − s)·sin(π(s + κ)/2)·L(1 − s, χ̄)
+ε(χ) = τ(χ) / (i^κ·√q),   τ(χ) = Σ_a χ(a)·e^(2πia/q)
+```
+
+where κ = 0 for even and 1 for odd characters. Trivial zeros at s = −κ − 2m come out
+as exact zeros. An imprimitive χ is its primitive character times the Euler factors
+(1 − χ*(p)p^(−s)) for the primes that divide q but not the conductor.
+
+On the critical line, θ(t, χ) = (t/2)·log(q/π) + arg Γ((1/2 + κ + it)/2) − arg(ε)/2
+makes Z(t, χ) = e^(iθ)·L(1/2 + it, χ) real, the analogue of Riemann-Siegel Z. For a
+complex χ the zeros are not symmetric about t = 0; the zeros of χ below the axis are
+the zeros of χ̄ above it:
+
+![Zeros of all primitive L-functions mod 31](docs/l_zeros.png)
+
+Sign changes of Z only find zeros on the line. `count_zeros_box` counts every zero
+in −1/2 ≤ σ ≤ 2, |t| ≤ T with the argument principle: it follows arg L around the
+rectangle, bisecting any step where the argument jumps by more than 0.5 rad, and
+subtracts the trivial zeros inside the box. `verify_zeros` finds zeros on the line
+and checks that both counts agree, which shows (up to floating-point error, not with
+interval arithmetic) that every zero in the box is on the critical line and simple.
+When the counts disagree it doubles the sampling density and tries again. That
+happened for real: χ₅₉(9, ·) has two zeros at t = 14.636869 and 14.662140, 0.025
+apart, with |Z| no bigger than 0.0011 between them, and the default grid stepped
+over both. mpmath's `dirichlet` confirms the sign pattern.
+
+Checks:
+
+- L(s, χ) against mpmath's `dirichlet` at random points with −15 < σ < 15 and
+  |t| < 80, for ten characters up to q = 40: relative error below 1e-12, worst
+  5e-14.
+- The first three zeros of χ₃(2, ·), χ₄(3, ·) and χ₅(2, ·) against LMFDB: within
+  2e-15. The root number of χ₅(2, ·) matches LMFDB's root angle 0.0881040955873917.
+- L(1 − k, χ) = −B_(k,χ)/k with generalized Bernoulli numbers computed from exact
+  Bernoulli polynomials, k = 1 to 7 for seven characters.
+- The class number formula L(1, χ_d) = 2πh/(w√|d|) for every fundamental d with
+  −2000 < d < 0, with h counted from reduced binary quadratic forms: max error in h
+  2e-14. For real fields L(1, χ_d)·√d/(2 log ε_d) with the fundamental unit from
+  the continued fraction of (1 + √d)/2 or √(d/4) lands within 4e-15 of an integer
+  for every fundamental d < 2000, and on the known class numbers 2, 2, 3, 3, 4 for
+  d = 40, 60, 229, 316, 328.
+- Orthogonality of the character table, the count of primitive characters
+  Σ μ(q/d)φ(d), χ_q(m, ·)χ_q(n, ·) = χ_q(mn, ·), the symmetry χ_q(m, n) = χ_q(n, m),
+  |τ(χ)| = √q, and ε = 1 for the quadratic characters tested (Gauss's sign of the
+  quadratic Gauss sum).
+- `verify_zeros` with T = 30 on every primitive character of conductor 3 to 100:
+  1,815 L-functions, 80,838 zeros, all on the critical line (342 s).
+
+### Low-lying zeros
+
+![One-level density of quadratic characters and of all characters mod 2003](docs/low_lying.png)
+
+Katz and Sarnak predict that the zeros of a family of L-functions close to s = 1/2
+follow the eigenvalues of a random matrix group, and that the group depends on the
+family's symmetry. All characters mod a prime p form a unitary family: nothing
+special happens at the central point, and the density of zeros there is flat. The
+real quadratic characters χ_d form a symplectic family, and their zeros are pushed
+away from s = 1/2 with density
+
+```
+W_USp(x) = 1 − sin(2πx) / (2πx)
+```
+
+`low_zeros` unfolds each zero with the L-function's own smooth count,
+x = (θ(γ, χ) − θ(0, χ))/π, so every family has mean density 1 regardless of its
+conductor. That needs θ to increase from t = 0, which holds when
+log(q/π) + ψ((1/2 + κ)/2) > 0, i.e. q ≥ 10 for odd and q ≥ 216 for even characters.
+Below that the code refuses. Only zeros with γ > 0 count; for a complex χ the zeros
+below the axis belong to χ̄, which is in the family too.
+
+The chart uses the 2,433 fundamental discriminants with 2000 ≤ |d| ≤ 6000 (both
+signs) and the 2,001 nontrivial characters mod 2003, 13,347 zeros in all. The run
+takes 8 minutes. Results:
+
+- Unitary: flat. Every bin of width 0.1 on [0, 3] is within 0.14 of 1.
+- Symplectic: 0.029 zeros per L-function per unit x in [0, 0.1], where W_USp
+  averages 0.022, and 0.37 in [0.1, 0.2], where it averages 0.15. Only 4.0% of the quadratic L-functions have a
+  zero below x = 0.2, against 19.7% mod 2003.
+- The quadratic density also oscillates with period 1 and peaks near x = 1/2, 3/2
+  and 5/2, well beyond the oscillation in W_USp. This is Gram's law for L-functions.
+  A real primitive χ has ε = 1, so θ(0) = 0 and the n = 1 term of
+  Z(t) = Re(e^(iθ)·Σ χ(n)n^(−1/2−it)) is cos θ(t), which vanishes exactly at
+  half-integer x. For complex characters x is measured from θ(0) = −arg(ε)/2, a
+  phase spread around the circle, so the bias averages out. The higher terms only
+  win slowly as log q grows. Stopple's experiment with about a million quadratic
+  characters at |d| > 10¹² found that lower-order terms still matter at that size.
 
 ### In the browser
 
