@@ -469,7 +469,7 @@ def plot_low_lying(
     left.plot(x, w_symplectic(x), color=INK, linewidth=1.4, label="USp: 1 − sin 2πx / 2πx")
     left.plot(x, w_unitary(x), color=INK_SECONDARY, linewidth=1.2, linestyle=":", label="U: 1")
     left.set_xlim(0, x_max)
-    left.set_ylim(0, 1.6)
+    left.set_ylim(0, 2.0)
     left.set_xlabel("x (zero height in units of the mean spacing)", color=INK)
     left.set_ylabel("zeros per L-function per unit x", color=INK)
     left.set_title("One-level density near s = 1/2", color=INK, fontsize=11, loc="left")
@@ -478,6 +478,7 @@ def plot_low_lying(
         right.hist(fam.first(), bins=bins, range=(0, x_max / 2), density=True, histtype="step",
                    color=color, linewidth=1.8, label=label)
     right.set_xlim(0, x_max / 2)
+    right.set_ylim(0, 2.0)
     right.set_xlabel("x of the lowest zero", color=INK)
     right.set_ylabel("density", color=INK)
     right.set_title("Where the first zero sits", color=INK, fontsize=11, loc="left")
@@ -485,7 +486,7 @@ def plot_low_lying(
     for ax in (left, right):
         ax.set_facecolor(SURFACE)
         _style(ax)
-    left.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="upper right")
+    left.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="upper center", ncol=2)
     right.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="upper right")
     fig.suptitle("Low-lying zeros of Dirichlet L-functions against Katz-Sarnak",
                  color=INK, fontsize=12, x=0.01, ha="left")
