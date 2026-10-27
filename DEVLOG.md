@@ -303,3 +303,62 @@ Design notes:
 Next: a static web page with precomputed data, then ζ in the browser with a
 canvas domain coloring. Shrinking the remainder polynomials (degree 90 is far
 more than doubles need) would speed up zeros_fast.
+
+## 2026-10-26: the browser version
+
+Built:
+
+- `site.py`: writes `web/data/` (the C0 to C4 polynomials trimmed for |z| ≤ 1/2,
+  the first 10,000 zeros, and spacing and pair-correlation histograms for 40,000
+  zeros from n = 10¹²) with `python -m zeta_explorer.site`. 13 s.
+- `web/js/zeta.js`: ζ(s) by Euler-Maclaurin plus reflection, log Γ, θ, Z by
+  Euler-Maclaurin below t = 200 and Riemann-Siegel above, Gram points, Illinois,
+  and a sign-change zero finder. `explicit.js`: sieve, ψ(x), and the explicit
+  formula as a running sum over zeros.
+- The page: a phase portrait rendered in bands by module workers (coarse pass,
+  then full resolution), a Z(t) explorer with table and live zeros and Gram points
+  colored by Gram's law, the explicit formula with a slider and a play button,
+  and the spacing and pair-correlation charts at height 10¹². Light and dark
+  themes, pan and pinch on touch.
+- CI: a node job runs `npm test` in `web/`, and a Pages workflow deploys
+  `index.html`, `style.css`, `js/` and `data/`.
+
+Checks:
+
+- 24 node tests. ζ against mpmath at 18 points from σ = −10 to 4 and |t| ≤ 100
+  (1e-12 relative), Z at 13 heights up to 10⁶ (1e-12 below 200, 1e-8 above), θ and
+  Gram points to 1e-12 relative, the first 29 zeros and zeros 1990 to 2000 to
+  1e-10 and 1e-9, the table against the live finder near t = 9800, and ψ from 100
+  zeros against the Python function to 1e-9.
+- Python: the trimmed coefficients differ from the full degree-90 polynomials by
+  less than 1e-16 on [−1/2, 1/2]; the committed data match the generator.
+- Looked at the page in light and dark mode at desktop width and at 375 px.
+
+Bug found on the way: the JS zero finder disagreed with the Python table by 2e-9
+near t = 9800, and mpmath sided with the JS. `zeros_between` stops when the
+Illinois step drops under rtol·t, which is 1e-8 at that height, and sometimes the
+error at that point is still a few 1e-9. 635 of the first 10,000 table zeros were
+off by more than 5e-10 (worst 4.5e-9). `first_zeros` now asks for 1e-15 relative,
+and a sample of 28 zeros matches `zetazero` to 3e-11. The JS Illinois uses an
+absolute tolerance plus a few ulps for the same reason. A regression test uses
+three of the zeros that used to be wrong.
+
+Design notes:
+
+- Workers instead of WebGL. A float32 shader would get ζ at t = 50 to about four
+  digits (t·log n is already 160 radians there), and doubles in workers are fast
+  enough: 2.2 μs per pixel, about 150 ms for a 948×474 frame on 8 workers. Each
+  worker gets one band at a time from a queue, and a new view replaces the queue,
+  so dragging never piles up stale work.
+- Scroll zoom only kicks in after the plot has been clicked (or with a pinch,
+  which browsers send as ctrl+wheel). Otherwise scrolling down the page got stuck
+  on the first canvas.
+- The log n and n^(−1/2) tables in the Riemann-Siegel sum are cached and grown on
+  demand. At t = 10⁹ Z is still 0.37 ms, so the explorer budgets 4·10⁶ terms per
+  frame and samples less often up there.
+- The JS keeps Riemann-Siegel from t = 200 like the Python side. Its error there is
+  3e-9, which shows up as a 1.5e-9 shift in zero 81; moving the switch up to 1000
+  would cut that to about 1e-10 for a few hundred extra terms per point.
+
+Next: math notes for the page (how each piece is computed, with the formulas), a
+GIF of the explicit-formula animation for the README, then a PyPI release.
