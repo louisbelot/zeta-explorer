@@ -168,6 +168,15 @@ def test_verify_zeros(q, n, T):
     assert v.in_box == len(v.zeros) > 0
 
 
+def test_verify_zeros_refines_until_it_finds_a_close_pair():
+    chi = conrey(59, 9)
+    assert len(l_zeros(chi, -30, 30)) == 42
+    v = verify_zeros(chi, 30.0)
+    assert v.ok and v.in_box == 44
+    pair = v.zeros[(v.zeros > 14.6) & (v.zeros < 14.7)]
+    assert np.allclose(pair, [14.636869362285, 14.662139771160], atol=1e-9)
+
+
 def test_box_count_sees_zeros_off_the_line_too():
     chi = conrey(7, 3)
     assert count_zeros_box(chi, 20.0, sigma=(0.6, 2.0)) == 0

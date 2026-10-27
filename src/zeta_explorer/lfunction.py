@@ -168,6 +168,11 @@ class LVerification:
         return self.on_line == self.in_box
 
 
-def verify_zeros(chi: Character, T: float) -> LVerification:
-    zeros = l_zeros(chi, -T, T)
-    return LVerification(T, len(zeros), count_zeros_box(chi, T), zeros)
+def verify_zeros(chi: Character, T: float, max_per_gap: int = 256) -> LVerification:
+    in_box = count_zeros_box(chi, T)
+    per_gap = 8
+    zeros = l_zeros(chi, -T, T, per_gap)
+    while len(zeros) < in_box and per_gap < max_per_gap:
+        per_gap *= 2
+        zeros = l_zeros(chi, -T, T, per_gap)
+    return LVerification(T, len(zeros), in_box, zeros)
