@@ -362,3 +362,81 @@ Design notes:
 
 Next: math notes for the page (how each piece is computed, with the formulas), a
 GIF of the explicit-formula animation for the README, then a PyPI release.
+
+## 2026-10-27: Dirichlet L-functions and low-lying zeros
+
+Built:
+
+- `characters.py`: Dirichlet characters with LMFDB's Conrey labels. Odd primes use
+  the least primitive root mod p² (10 for p = 40487, where 5 fails mod p²), powers
+  of 2 use ±5^a. Values are stored as integer numerators over the order, so real
+  characters are exactly real and products are exact. Conductor, inducing primitive
+  character, parity, Gauss sum, root number. Also the Kronecker symbol, fundamental
+  discriminants, quadratic characters, class numbers of imaginary quadratic fields
+  from reduced forms, and fundamental units of real quadratic fields from the
+  continued fraction of (1 + √d)/2 or √(d/4).
+- `lfunction.py`: L(s, χ) anywhere, by Euler-Maclaurin per residue class for σ ≥ 0
+  and the asymmetric functional equation for σ < 0; imprimitive characters as the
+  primitive one times Euler factors. θ(t, χ) and the Hardy Z function, zeros by sign
+  changes plus Illinois, and `count_zeros_box`, an argument-principle count over
+  −1/2 ≤ σ ≤ 2, |t| ≤ T. `verify_zeros` compares the two counts and refines the grid
+  when they disagree.
+- `lowlying.py`: zeros unfolded by θ(t, χ), one-level densities for quadratic
+  characters and for all characters mod a prime, and W_USp.
+- Plots: Z(t, χ) for three characters, the zeros of all primitive L-functions mod
+  31 with conjugate pairs side by side, and the one-level density and first-zero
+  histograms. All three rendered and checked by eye; the density chart needed its
+  legend moved off the peaks.
+
+Checks:
+
+- Against mpmath's `dirichlet`: ten characters up to q = 40, random points with
+  −15 < σ < 15 and |t| < 80, worst relative error 5e-14. At t = 2000 within 1e-10.
+- Against LMFDB (queried live once, values hardcoded in the tests): first three
+  zeros of 3.2, 4.3 and 5.2 within 2e-15, and the root angle of 5.2.
+- Generalized Bernoulli numbers L(1 − k, χ) = −B_(k,χ)/k, exact trivial zeros, the
+  functional equation with mpmath's log Γ, χ_q(m, ·)χ_q(n, ·) = χ_q(mn, ·) and the
+  symmetry χ_q(m, n) = χ_q(n, m), character orthogonality, the primitive count
+  Σ μ(q/d)φ(d), and Euler's criterion for the Kronecker symbol.
+- Class number formula: imaginary fields for every fundamental −2000 < d < 0 (max
+  error in h 2e-14), real fields land within 4e-15 of an integer for every
+  fundamental d < 2000.
+- `verify_zeros(χ, 30)` for all 1,815 primitive characters of conductor 3 to 100:
+  80,838 zeros, every box count matched, 342 s.
+
+Bug found on the way: the first run of that sweep reported four mismatches, two
+conjugate pairs mod 59 and mod 67, with two more zeros in the box than on the line.
+χ₅₉(9, ·) has zeros at 14.636869 and 14.662140, 0.025 apart, and |Z| reaches only
+0.0011 between them; the grid at 1/8 of the mean spacing (0.11) stepped over both.
+mpmath agrees on the signs. `verify_zeros` now doubles the density until the counts
+match, and a test pins that pair.
+
+Design notes:
+
+- The integral term of each Hurwitz tail is (N + a/q)^(1−s)/(s − 1). The 1/(s − 1)
+  parts cancel over a because Σχ(a) = 0, so the code writes the term as
+  −log(w)·expm1(z)/z with z = (1 − s)·log w and never forms them. L(1, χ) needs no
+  limit, and the finite difference of L at 1 ± 1e-9 matches mpmath's derivative to
+  1e-6.
+- I first assumed the inducing character of χ_q(n, ·) has label n mod f. That holds
+  for conductors p but not for higher prime powers or powers of 2: with n = g^a and
+  a = p^(e−f)·a', the inducing label is g^(a') mod p^f. χ₂₇(8, ·), (10), (17), (19)
+  are counterexamples. The test now checks the defining property instead.
+- Unfolding by θ only works when θ increases from 0. θ'(0) has the sign of
+  log(q/π) + ψ((1/2 + κ)/2), and ψ(1/4) = −γ − π/2 − 3 log 2 ≈ −4.23, so even
+  characters need q ≥ 216. `low_zeros` checks this up front.
+- The cost is about q·(10 + |t|/π) terms per value, fine for q in the thousands at
+  small t (0.07 s per character mod 2003, 0.13 s per quadratic character) but the wrong shape for
+  large conductors.
+
+Low-lying zeros (2,433 quadratic characters with 2000 ≤ |d| ≤ 6000, 2,001 characters
+mod 2003, 8 minutes): the mod-2003 family is flat to within 0.14 in every bin, and
+the quadratic family has 0.029 zeros per unit x in [0, 0.1] against 0.022 for W_USp.
+4.0% of quadratic L-functions have a zero below x = 0.2, 19.7% mod 2003. The
+quadratic density also oscillates with period 1, peaking near half-integers. That is
+Gram's law for real characters: ε = 1 puts the zeros of the n = 1 term, cos θ, at
+half-integer x, and complex characters average it out through their root numbers.
+
+Next: an approximate functional equation so L costs O(√(q·t)), which would let the
+family runs reach conductors near 10⁵, and the ratios-conjecture lower-order terms
+drawn on the quadratic chart.
