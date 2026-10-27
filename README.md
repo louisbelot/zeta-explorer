@@ -19,7 +19,10 @@ simplified Odlyzko-Schönhage evaluator (one nonuniform FFT per window, then
 band-limited interpolation) makes Z cost 2.6 μs per point at any height and
 reproduces Odlyzko's published zeros near the 10¹²th zero to 3e-9.
 
-A browser version comes next.
+The same numerics also run in the browser at
+[louisbelot.github.io/zeta-explorer](https://louisbelot.github.io/zeta-explorer/):
+a phase portrait you can pan and zoom, a Z(t) explorer that marks zeros and Gram
+points up to t = 10⁹, and the explicit formula building ψ(x) one zero at a time.
 
 ## Install
 
@@ -554,12 +557,58 @@ Hughes and Keating puts on top of CUE, but I haven't computed that constant. The
 fourth cumulant (5.5 to 6.7, against 6.3 for CUE) is too noisy at this sample
 size to say more.
 
+### In the browser
+
+`web/` is a static page with no build step and no dependencies. `web/js/zeta.js`
+is a port of the Python numerics: Euler-Maclaurin with Backlund's stopping rule,
+the reflection formula through log χ, Stirling's log Γ, θ, Gram points, and the
+Riemann-Siegel formula with C0 to C4. The Bernoulli numbers are exact BigInt
+fractions. The C_k polynomials come precomputed in `web/data/rs.json`, trimmed to
+the terms that still matter at |z| ≤ 1/2 (39 to 45 coefficients instead of 90; the
+dropped tail changes nothing above 1e-16). Z uses Euler-Maclaurin below t = 200
+and Riemann-Siegel above, same as the Python side.
+
+The phase portrait is drawn by up to eight module workers, each rendering a band
+of rows, first in 8×8 blocks and then at full resolution. A 948×474 frame of the
+default view takes about 1 s on one core (2.2 μs per pixel), so it arrives in
+roughly 150 ms. While the new frame renders, the old one is stretched to the new
+view so panning stays smooth. The Z explorer samples Z once per pixel, takes zeros
+from a table of the first 10,000 and finds the rest by sign changes and Illinois
+refinement, and colors a Gram point orange when (−1)ⁿZ(g_n) < 0. At t = 10⁹ each Z
+costs about 0.37 ms (12,615 terms), so the sample count is capped by a budget of
+4·10⁶ terms per frame. Above 10⁸ or so the phases t·log n lose about 1e-6 radians
+in doubles; the windowed evaluator would fix that, but the curve is fine for
+looking at. The explicit formula keeps a running sum per x, so moving the slider
+up only adds the new zeros.
+
+`python -m zeta_explorer.site` writes the three data files: the trimmed
+Riemann-Siegel coefficients, the first 10,000 zeros, and the spacing histogram and
+pair correlation of 40,000 zeros from n = 10¹² (computed with `zeros_fast`, 13 s
+for all three). A test checks that the committed coefficients and the first 200
+zeros still match what the code produces.
+
+The JavaScript has its own tests under `web/test`, run with `node --test`. They
+compare ζ at 18 points across the plane, Z at 13 heights, θ, Gram points and the
+first 29 zeros with mpmath values stored in `reference.json` (written by
+`reference.py`), check that the live zero finder agrees with the table, and check
+the explicit formula against the Python version and against ψ(x) itself.
+
+Those tests caught a real bug in the Python zero table. `zeros_between` stopped
+the Illinois iteration once a step fell below 1e-12 relative, which is 1e-8 in
+absolute terms at t = 10⁴. The stopping step is usually much larger than the
+remaining error, but not always: 635 of the first 10,000 zeros were off by more
+than 5e-10, the worst by 4.5e-9. `first_zeros` now refines to 1e-15 relative and
+28 zeros sampled across the table agree with mpmath's `zetazero` to 3e-11. Just above t = 200 the
+Riemann-Siegel truncation error (3e-9 in Z) still limits zeros to about 1.5e-9.
+
 ## Development
 
 ```bash
 pip install -e ".[dev]"
 pytest
 ruff check .
+cd web && npm test
+python -m http.server -d web 8000
 ```
 
 ## License
