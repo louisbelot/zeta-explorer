@@ -170,3 +170,9 @@ def test_first_zeros_cross_the_mpmath_seam():
     reference = [float(mpmath.zetazero(k).imag) for k in (1, 80, 81, 300)]
     assert [z[0], z[79], z[80], z[299]] == pytest.approx(reference, abs=1e-8)
     assert np.array_equal(first_zeros(40), z[:40])
+
+
+def test_first_zeros_converge_fully_at_height():
+    z = first_zeros(1200)
+    reference = [float(mpmath.zetazero(k).imag) for k in (932, 976, 1104)]
+    assert [z[931], z[975], z[1103]] == pytest.approx(reference, abs=1e-10)

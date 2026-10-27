@@ -92,7 +92,7 @@ def first_zeros(n: int) -> np.ndarray:
     if n <= len(low):
         return low[:n].copy()
     hi = n + 8
-    while len(high := zeros_between(m, hi)) < n - len(low):
+    while len(high := zeros_between(m, hi, rtol=1e-15)) < n - len(low):
         hi += 16
     return np.concatenate((low, high))[:n]
 
