@@ -15,10 +15,12 @@ from zeta_explorer.characters import (
     unit_count,
 )
 from zeta_explorer.lfunction import (
+    count_zeros_box,
     dirichlet_l,
     l_theta,
     l_z,
     l_zeros,
+    verify_zeros,
 )
 from zeta_explorer.zeta import bernoulli, zeta
 
@@ -157,3 +159,27 @@ def test_conjugate_character_has_mirrored_zeros():
 def test_real_character_zeros_are_symmetric():
     zeros = l_zeros(quadratic(-23), -30, 30)
     assert np.allclose(zeros, -zeros[::-1], atol=1e-12)
+
+
+@pytest.mark.parametrize("q, n, T", [(4, 3, 40.0), (7, 3, 40.0), (12, 11, 30.0), (101, 2, 25.0)])
+def test_verify_zeros(q, n, T):
+    v = verify_zeros(conrey(q, n), T)
+    assert v.ok
+    assert v.in_box == len(v.zeros) > 0
+
+
+def test_box_count_sees_zeros_off_the_line_too():
+    chi = conrey(7, 3)
+    assert count_zeros_box(chi, 20.0, sigma=(0.6, 2.0)) == 0
+    assert count_zeros_box(chi, 20.0) == len(l_zeros(chi, -20, 20))
+
+
+@pytest.mark.parametrize("q, n", [(4, 3), (5, 4)])
+def test_box_count_skips_trivial_zeros(q, n):
+    chi = conrey(q, n)
+    assert count_zeros_box(chi, 15.0, sigma=(-4.5, 2.0)) == count_zeros_box(chi, 15.0)
+
+
+def test_box_count_rejects_zeta():
+    with pytest.raises(ValueError):
+        count_zeros_box(conrey(9, 1), 10.0)

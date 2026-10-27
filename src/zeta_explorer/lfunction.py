@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import cmath
 import math
+from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -123,3 +124,50 @@ def l_zeros(
     roots = illinois_many(lambda x: l_z(x, prim), ts[i], ts[i + 1], z[i], z[i + 1], rtol,
                           atol=1e-15)
     return np.sort(np.concatenate([roots, exact]))
+
+
+def count_zeros_box(chi: Character, T: float, sigma: tuple[float, float] = (-0.5, 2.0)) -> int:
+    prim = chi.primitive()
+    if prim.is_principal:
+        raise ValueError("use turing.verify_zeros for zeta")
+    lo, hi = sigma
+    corners = [lo - 1j * T, hi - 1j * T, hi + 1j * T, lo + 1j * T, lo - 1j * T]
+    winding = 0.0
+    for a, b in zip(corners[:-1], corners[1:], strict=True):
+        winding += _arg_change(prim, a, b)
+    n = winding / (2 * math.pi)
+    if abs(n - round(n)) > 0.05:
+        raise RuntimeError(f"winding number {n:.3f} is not close to an integer")
+    trivial = len(range(-prim.parity, math.floor(lo), -2))
+    return round(n) - trivial
+
+
+def _arg_change(chi: Character, a: complex, b: complex, max_step: float = 0.5) -> float:
+    u = np.linspace(0.0, 1.0, max(9, math.ceil(abs(b - a) / 0.05)))
+    vals = dirichlet_l(a + (b - a) * u, chi)
+    for _ in range(30):
+        d = np.angle(vals[1:] / vals[:-1])
+        bad = np.flatnonzero(np.abs(d) > max_step)
+        if len(bad) == 0:
+            return float(d.sum())
+        mid = (u[bad] + u[bad + 1]) / 2
+        u = np.insert(u, bad + 1, mid)
+        vals = np.insert(vals, bad + 1, dirichlet_l(a + (b - a) * mid, chi))
+    raise RuntimeError("argument did not settle, L may vanish on the contour")
+
+
+@dataclass(frozen=True)
+class LVerification:
+    T: float
+    on_line: int
+    in_box: int
+    zeros: np.ndarray
+
+    @property
+    def ok(self) -> bool:
+        return self.on_line == self.in_box
+
+
+def verify_zeros(chi: Character, T: float) -> LVerification:
+    zeros = l_zeros(chi, -T, T)
+    return LVerification(T, len(zeros), count_zeros_box(chi, T), zeros)
