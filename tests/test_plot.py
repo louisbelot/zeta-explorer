@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib.animation import PillowWriter
 from PIL import Image
 
-from zeta_explorer.lowlying import OneLevel
+from zeta_explorer.lowlying import OneLevel, w_symplectic
 from zeta_explorer.plot import (
     phase_colors,
     plot_afe,
@@ -19,6 +19,7 @@ from zeta_explorer.plot import (
     plot_lehmer,
     plot_log_z,
     plot_low_lying,
+    plot_low_lying_scales,
     plot_multieval,
     plot_rs_error,
     plot_spacing,
@@ -152,3 +153,13 @@ def test_plot_low_lying(tmp_path):
     fig = plot_low_lying(a, b, ("quadratic", "mod p"), bins=6)
     fig.savefig(tmp_path / "low.png")
     assert len(fig.axes) == 2
+
+
+def test_plot_low_lying_scales_fits_through_origin():
+    fams = {1e3: OneLevel([np.array([0.1, 0.5])] * 4), 1e5: OneLevel([np.array([0.2, 0.9])] * 4)}
+    fig = plot_low_lying_scales(fams, window=(0.0, 0.3), bins=6)
+    excess = 1 / 0.3 - np.mean(w_symplectic(np.linspace(0, 0.3, 2001)))
+    u = 1 / np.log([1e3, 1e5])
+    slope = excess * u.sum() / np.square(u).sum()
+    assert fig.axes[1].get_legend().get_texts()[0].get_text() == f"{slope:.2f} / log |d|"
+    assert len(fig.axes[0].lines) == 3

@@ -496,6 +496,67 @@ def plot_low_lying(
 
 
 
+def plot_low_lying_scales(
+    families: dict[float, OneLevel], window: tuple[float, float] = (0.0, 0.3), bins: int = 30,
+    x_max: float = 3.0,
+) -> Figure:
+    import matplotlib.pyplot as plt
+
+    fig, (left, right) = plt.subplots(1, 2, figsize=(12, 4.6), facecolor=SURFACE,
+                                      gridspec_kw={"width_ratios": [1.6, 1]})
+    x = np.linspace(0, x_max, 400)
+    colors = ORDINAL[::2] if len(families) <= 3 else ORDINAL
+    lo, hi = window
+    expected = np.mean(w_symplectic(np.linspace(lo, hi, 2001)))
+    size, excess, err = [], [], []
+    for (d, fam), color in zip(sorted(families.items()), colors[: len(families)], strict=True):
+        c, dens = fam.density(bins, x_max)
+        left.step(c, dens, where="mid", color=color, linewidth=1.8,
+                  label=f"|d| ≈ {_fmt_power(d)}, {len(fam.zeros):,} characters")
+        k = np.count_nonzero((fam.x > lo) & (fam.x <= hi))
+        scale = len(fam.zeros) * (hi - lo)
+        size.append(d)
+        excess.append(k / scale - expected)
+        err.append(np.sqrt(k) / scale)
+        right.errorbar(1 / np.log(d), excess[-1], yerr=err[-1], fmt="o", color=color,
+                       markersize=7, capsize=3, linewidth=1.6)
+    left.plot(x, w_symplectic(x), color=INK, linewidth=1.4, label="USp: 1 − sin 2πx / 2πx")
+    left.set_xlim(0, x_max)
+    left.set_ylim(0, 2.2)
+    left.set_xlabel("x (zero height in units of the mean spacing)", color=INK)
+    left.set_ylabel("zeros per L-function per unit x", color=INK)
+    left.set_title(f"Quadratic characters at {len(families)} conductor sizes", color=INK,
+                   fontsize=11, loc="left")
+    left.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="upper center", ncol=2)
+
+    u = 1 / np.log(size)
+    wts = 1 / np.square(err)
+    slope = np.sum(wts * u * np.asarray(excess)) / np.sum(wts * u * u)
+    grid = np.linspace(0, u.max() * 1.15, 50)
+    right.plot(grid, slope * grid, color=INK_SECONDARY, linewidth=1.2, linestyle="--",
+               label=f"{slope:.2f} / log |d|")
+    right.axhline(0, color=INK_SECONDARY, linewidth=1, linestyle=":")
+    right.set_xlim(0, grid[-1])
+    right.set_ylim(min(0, min(e - s for e, s in zip(excess, err, strict=True)) * 1.2),
+                   max(e + s for e, s in zip(excess, err, strict=True)) * 1.25)
+    right.set_xlabel("1 / log |d|", color=INK)
+    right.set_ylabel(f"density − W_USp on ({lo:g}, {hi:g}]", color=INK)
+    right.set_title("Excess near the central point", color=INK, fontsize=11, loc="left")
+    right.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="upper left")
+    for ax in (left, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig
+
+
+def _fmt_power(x: float) -> str:
+    e = int(np.floor(np.log10(x)))
+    m = x / 10**e
+    sup = str(e).translate(str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹"))
+    return f"10{sup}" if round(m, 1) == 1 else f"{m:.1f}·10{sup}"
+
+
 def plot_landscape(
     t_min: float = 0.0, t_max: float = 40.0, sigma_min: float = -0.5, sigma_max: float = 2.0,
     floor: float = -1.5, ceiling: float = 1.0, width: int = 600,
