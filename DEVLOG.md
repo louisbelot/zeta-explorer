@@ -440,3 +440,76 @@ half-integer x, and complex characters average it out through their root numbers
 Next: an approximate functional equation so L costs O(√(q·t)), which would let the
 family runs reach conductors near 10⁵, and the ratios-conjecture lower-order terms
 drawn on the quadratic chart.
+
+## 2026-10-29: Smoothed approximate functional equation
+
+Built:
+
+- `afe.py`: L(s, χ) for primitive χ inside the critical strip from the rotated
+  theta integral, two sums of incomplete gamma terms with N ≈ √(43q|t|/6π) terms
+  each. `gammaincc(z, w)` is the regularized upper incomplete gamma for complex z
+  and w: power series below |w| = |z| + 1, Legendre's continued fraction (modified
+  Lentz) above, with converged entries dropped from the working set.
+- `dirichlet_l` now chooses per point between Euler-Maclaurin and the AFE with a
+  cost model, and `method="em"` forces the old path. The Gauss sum is cached on the
+  character, since θ(t, χ), Z and the AFE all need ε and it costs O(q).
+- Plots: cost per value against q and t for both methods, and the quadratic
+  one-level density at |d| ≈ 4·10³, 2·10⁴ and 10⁵ with the excess near the origin
+  against 1/log|d|. Both rendered and checked by eye. The first version of the scale
+  chart silently drew two of the three families (a two-color palette zipped with
+  `strict=False`); the zip is strict now.
+
+Checks:
+
+- `gammaincc` against mpmath at 80 random points, |Im z| ≤ 300, |w| from 1e-4 to
+  1e3: within 1e-11. Q(1, w) = e^(−w) and the recurrence in z.
+- L against mpmath's `dirichlet` at random strip points, |t| < 200, nine characters
+  up to q = 97: below 1e-12 relative. A wider run with 110 points had a worst error
+  of 2e-13.
+- Rotation independence: allowing 1.5, 3 or 6 e-folds of loss at q = 1009 changes L
+  by less than 2e-12 at t up to 400. This is the check I trust most, because a
+  sign or normalization mistake in the formula would make the answer depend on φ.
+- AFE against Euler-Maclaurin at q = 2003 (1e-11), zeros of χ₁₀₀₀₇(2, ·) both ways
+  (1e-10), and 7e-14 at q = 100003, t = 10.
+- Rerunning the old 2000 ≤ |d| ≤ 6000 family through the new dispatch reproduces
+  the previous numbers exactly: 0.029 and 0.37 zeros per unit x in the first two
+  bins, 4.0% with a zero below x = 0.2.
+
+Benchmarks (one value of L(1/2 + it, χ), 8 points averaged, this machine):
+
+| | Euler-Maclaurin | AFE |
+|---|---|---|
+| q = 101, t = 10 | 0.11 ms | 1.08 ms |
+| q = 1009, t = 10 | 0.61 ms | 1.21 ms |
+| q = 10007, t = 10 | 5.45 ms | 1.45 ms |
+| q = 100003, t = 10 | 57.3 ms | 1.99 ms |
+| q = 10007, t = 1000 | 98.3 ms | 11.5 ms |
+
+The AFE has a floor of about 1 ms from Python overhead per point (two kernels, two
+log Γ), which is why small q stays on Euler-Maclaurin.
+
+Design notes:
+
+- The rotation angle comes from how much growth is allowed: |t|θ/2 = 3, so terms
+  are at most e³ times the answer. Doubling the allowance would cut N by √2 and
+  cost another 1.3 digits; 3 kept every check below 1e-12.
+- n^(−s)·w_n^z = n^κ·(π/q)^z·e^(izφ). Writing the smooth part this way means no
+  term ever computes the t·log n phase, which is the largest rounding error in the
+  Euler-Maclaurin path.
+- The two normalizations e^(−log Γ(z)) and the e^(−φ Im z) inside each sum are huge
+  and tiny at large t (e^(±7800) at t = 10⁴), so they are combined in one exponent
+  before calling exp.
+- The AFE is only used for 0 < σ < 1. Near s = 0 and s = 1 log Γ of z or z' goes
+  to a pole and the series part cancels; the strip edges were checked against mpmath
+  (3e-15 near s = 0, 3e-13 near s = 1) but Euler-Maclaurin is better there anyway.
+- LMFDB's API answered with a reCAPTCHA page today, so the large-conductor checks
+  lean on mpmath, rotation independence and the cross-check between methods.
+
+Low-lying zeros at larger conductors: 2,133 quadratic characters with
+100000 ≤ |d| ≤ 103500 in 60 s and 2,000 characters mod 100003 in 42 s, both on 16
+processes. The density on (0, 0.3] minus W_USp goes 0.199, 0.177, 0.143 (±0.023)
+at |d| ≈ 4·10³, 2·10⁴, 10⁵, which a single 1.68/log|d| fits. The mod-p family is
+flat to 0.17 in every bin.
+
+Next: the ratios-conjecture lower-order terms for the quadratic family, drawn on
+top of the scale chart, to see whether they account for the 1.68/log|d| excess.
