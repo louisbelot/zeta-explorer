@@ -111,6 +111,10 @@ class Character:
         return Character(self.q, np.where(self.num >= 0, num % den, -1), den)
 
     def gauss_sum(self) -> complex:
+        return self._tau
+
+    @cached_property
+    def _tau(self) -> complex:
         a = np.arange(self.q)
         return complex(np.sum(self.values * root_of_unity(a, self.q)))
 
