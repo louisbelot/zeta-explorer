@@ -8,6 +8,7 @@ from PIL import Image
 from zeta_explorer.lowlying import OneLevel
 from zeta_explorer.plot import (
     phase_colors,
+    plot_afe,
     plot_continuation,
     plot_domain,
     plot_explicit,
@@ -123,6 +124,14 @@ def test_plot_multieval_window_beats_direct_sum():
     direct, window = (line.get_ydata() for line in left.lines)
     assert np.all(window < 1e-11)
     assert direct[-1] > 1e-9
+
+
+def test_plot_afe_labels_term_counts():
+    fig = plot_afe(conductors=(101, 10007), heights=(1, 100), points=2)
+    left, right = fig.axes
+    assert [t.get_text() for t in left.texts] == ["100 terms", "986 terms"]
+    em, smooth = (line.get_ydata() for line in right.lines)
+    assert smooth[-1] < em[-1]
 
 
 def test_plot_l_z_marks_lmfdb_zeros():

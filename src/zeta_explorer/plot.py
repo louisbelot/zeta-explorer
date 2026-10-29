@@ -5,11 +5,12 @@ from typing import TYPE_CHECKING
 import numpy as np
 from numpy.typing import ArrayLike
 
+from zeta_explorer.afe import afe_length, l_afe
 from zeta_explorer.characters import conrey, primitive_characters
 from zeta_explorer.continuation import dirichlet_sums, em_sums, eta_sums
 from zeta_explorer.explicit import chebyshev_psi, pi_from_zeros, prime_pi, psi_from_zeros, riemann_r
 from zeta_explorer.gram import good_gram, z_values
-from zeta_explorer.lfunction import l_z, l_zeros
+from zeta_explorer.lfunction import dirichlet_l, l_z, l_zeros
 from zeta_explorer.lowlying import OneLevel, w_symplectic, w_unitary
 from zeta_explorer.multieval import ZWindow
 from zeta_explorer.riemann_siegel import theta, z_exact, z_rs
@@ -494,6 +495,7 @@ def plot_low_lying(
     return fig
 
 
+
 def plot_landscape(
     t_min: float = 0.0, t_max: float = 40.0, sigma_min: float = -0.5, sigma_max: float = 2.0,
     floor: float = -1.5, ceiling: float = 1.0, width: int = 600,
@@ -623,6 +625,50 @@ def plot_multieval(heights: ArrayLike = (1e4, 1e6, 1e8, 1e10, 1e12), points: int
         ax.set_ylabel(label, color=INK)
     left.set_title("Accuracy against mpmath", color=INK, fontsize=11, loc="left")
     right.set_title("Cost per evaluation after the window is built", color=INK, fontsize=11,
+                    loc="left")
+    left.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="upper left")
+    fig.tight_layout()
+    return fig
+
+
+
+def plot_afe(
+    conductors: ArrayLike = (101, 1009, 10007, 100003), heights: ArrayLike = (1, 10, 100, 1000),
+    q_fixed: int = 10007, t_fixed: float = 10.0, points: int = 8,
+) -> Figure:
+    import time
+
+    import matplotlib.pyplot as plt
+
+    def ms(f, s):
+        start = time.perf_counter()
+        f(s)
+        return (time.perf_counter() - start) / len(s) * 1e3
+
+    fig, (left, right) = plt.subplots(1, 2, figsize=(11, 4.4), facecolor=SURFACE)
+    for ax, x, pairs, label in (
+        (left, conductors, [(q, t_fixed) for q in conductors], "conductor q"),
+        (right, heights, [(q_fixed, t) for t in heights], "t"),
+    ):
+        em, smooth = [], []
+        for q, t in pairs:
+            chi = conrey(q, 2)
+            chi.root_number()
+            s = 0.5 + 1j * np.linspace(t, t + 1, points)
+            em.append(ms(lambda s, chi=chi: dirichlet_l(s, chi, method="em"), s))
+            smooth.append(ms(lambda s, chi=chi: l_afe(s, chi), s))
+        ax.set_facecolor(SURFACE)
+        ax.loglog(x, em, "o-", color=ORDINAL[1], linewidth=2, label="Euler-Maclaurin")
+        ax.loglog(x, smooth, "o-", color=ACCENT, linewidth=2, label="smoothed AFE")
+        for xi, yi, (q, t) in zip(x, smooth, pairs, strict=True):
+            ax.annotate(f"{2 * afe_length(q, t)} terms", (xi, yi), textcoords="offset points",
+                        xytext=(0, 8), ha="center", fontsize=8, color=INK_SECONDARY)
+        _style(ax)
+        ax.set_xlabel(label, color=INK)
+        ax.set_ylabel("ms per value of L(1/2 + it, χ)", color=INK)
+    left.set_title(f"Cost against the conductor at t = {t_fixed:g}", color=INK, fontsize=11,
+                   loc="left")
+    right.set_title(f"Cost against the height for q = {q_fixed}", color=INK, fontsize=11,
                     loc="left")
     left.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="upper left")
     fig.tight_layout()
