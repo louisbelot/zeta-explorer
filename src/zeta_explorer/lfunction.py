@@ -3,10 +3,12 @@ from __future__ import annotations
 import cmath
 import math
 from dataclasses import dataclass
+from typing import Literal
 
 import numpy as np
 from numpy.typing import ArrayLike
 
+from zeta_explorer.afe import afe_length, l_afe
 from zeta_explorer.characters import Character, factor
 from zeta_explorer.zeros import illinois_many
 from zeta_explorer.zeta import _B_OVER_FACT, _M_MAX, _log_sin, _out, loggamma, zeta
@@ -14,24 +16,30 @@ from zeta_explorer.zeta import _B_OVER_FACT, _M_MAX, _log_sin, _out, loggamma, z
 _CHUNK = 1 << 20
 
 
-def dirichlet_l(s: ArrayLike, chi: Character, tol: float = 1e-16) -> complex | np.ndarray:
+def dirichlet_l(
+    s: ArrayLike, chi: Character, tol: float = 1e-16, method: Literal["auto", "em"] = "auto"
+) -> complex | np.ndarray:
+    if method not in ("auto", "em"):
+        raise ValueError("method is 'auto' or 'em'")
     z = np.array(s, dtype=complex, ndmin=1).ravel()
     if chi.is_principal:
         out = zeta(z, tol) * np.prod([1 - p ** (-z) for p, _ in factor(chi.q)], axis=0)
         return _out(np.reshape(out, np.shape(s)), s)
     prim = chi.primitive()
-    out = _primitive_l(z, prim, tol)
+    out = _primitive_l(z, prim, tol, method == "auto")
     for p, _ in factor(chi.q):
         out *= 1 - prim(p) * p ** (-z)
     return _out(out.reshape(np.shape(s)), s)
 
 
-def _primitive_l(s: np.ndarray, chi: Character, tol: float) -> np.ndarray:
+def _primitive_l(s: np.ndarray, chi: Character, tol: float, auto: bool) -> np.ndarray:
     out = np.zeros_like(s)
     left = s.real < 0
     k = chi.parity
     trivial = left & (s.imag == 0) & ((s.real + k) % 2 == 0)
-    right = ~left
+    afe = _use_afe(s, chi.q) & auto
+    right = ~left & ~afe
+    out[afe] = l_afe(s[afe], chi)
     out[right] = _l_right(s[right], chi, tol)
     reflect = left & ~trivial
     if np.any(reflect):
@@ -45,6 +53,12 @@ def _primitive_l(s: np.ndarray, chi: Character, tol: float) -> np.ndarray:
     if chi.is_real:
         out = np.where(s.imag == 0, out.real, out)
     return out
+
+
+def _use_afe(s: np.ndarray, q: int) -> np.ndarray:
+    strip = (s.real > 0) & (s.real < 1)
+    cost = np.array([25_000 + 100 * afe_length(q, t) for t in s.imag])
+    return strip & (q * (10 + np.abs(s.imag) / math.pi) > cost)
 
 
 def _l_right(s: np.ndarray, chi: Character, tol: float) -> np.ndarray:

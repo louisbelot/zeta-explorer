@@ -5,9 +5,10 @@ import mpmath
 import numpy as np
 import pytest
 
-from zeta_explorer import afe
+from zeta_explorer import afe, lfunction
 from zeta_explorer.afe import afe_length, gammaincc, l_afe
 from zeta_explorer.characters import conrey, quadratic
+from zeta_explorer.lfunction import dirichlet_l, l_zeros
 
 
 def test_gammaincc_matches_mpmath():
@@ -60,9 +61,30 @@ def test_afe_independent_of_rotation(monkeypatch, t):
     assert max(abs(v - values[0]) for v in values) <= 2e-12 * abs(values[0])
 
 
+def test_afe_agrees_with_euler_maclaurin():
+    chi = quadratic(-2003)
+    s = np.array([0.5 + 0.1j, 0.5 + 25j, 0.2 - 90j, 0.9 + 300j])
+    assert np.allclose(l_afe(s, chi), dirichlet_l(s, chi, method="em"), rtol=1e-11, atol=0)
+
+
 def test_real_character_is_real_on_the_axis():
     assert l_afe(0.5, quadratic(-1003)).imag == pytest.approx(0, abs=1e-14)
     assert l_afe(0.5, quadratic(1005)).imag == pytest.approx(0, abs=1e-14)
+
+
+def test_dispatch_picks_afe_for_large_conductor():
+    s = np.array([0.5 + 1j, 0.5 + 50j, 1.5 + 50j])
+    assert lfunction._use_afe(s, 10007).tolist() == [True, True, False]
+    assert not lfunction._use_afe(s, 13).any()
+
+
+def test_zeros_large_conductor(monkeypatch):
+    chi = conrey(10007, 2)
+    fast = l_zeros(chi, 0.0, 6.0)
+    monkeypatch.setattr(lfunction, "_use_afe", lambda s, q: np.zeros(len(s), dtype=bool))
+    slow = l_zeros(chi, 0.0, 6.0)
+    assert len(fast) == len(slow) >= 4
+    assert np.abs(fast - slow).max() < 1e-10
 
 
 def test_length_grows_like_sqrt_qt():
@@ -78,3 +100,5 @@ def test_afe_rejects_bad_input():
         l_afe(0.5, conrey(21, 4))
     with pytest.raises(ValueError):
         l_afe(1.2 + 3j, conrey(7, 3))
+    with pytest.raises(ValueError):
+        dirichlet_l(0.5, conrey(7, 3), method="afe")
