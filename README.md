@@ -21,9 +21,10 @@ reproduces Odlyzko's published zeros near the 10¹²th zero to 3e-9.
 
 The same machinery extends to Dirichlet L-functions: characters with LMFDB's
 Conrey labels, L(s, χ) anywhere in the plane, zeros checked against LMFDB and
-verified complete with the argument principle, the class number formula, and the
-low-lying zeros of quadratic characters against the symplectic prediction of Katz
-and Sarnak.
+verified complete with the argument principle, the class number formula, a
+smoothed approximate functional equation that needs O(√(q|t|)) terms instead of
+O(q|t|), and the low-lying zeros of quadratic characters up to conductor 10⁵
+against the symplectic prediction of Katz and Sarnak.
 
 The same numerics also run in the browser at
 [louisbelot.github.io/zeta-explorer](https://louisbelot.github.io/zeta-explorer/):
@@ -91,6 +92,11 @@ dirichlet_l(0.5 + 10j, chi)   # (2.1249968234507937+2.163859185370417j)
 l_zeros(chi, 0, 13)  # [6.1835782, 8.45722917, 12.67494642]
 dirichlet_l(1, quadratic(-23)), class_number(-23)   # 1.9652 = 3π/√23, 3
 verify_zeros(conrey(101, 2), 50).ok   # 90 zeros on the line, 90 in the box
+
+from zeta_explorer.afe import l_afe
+big = conrey(100003, 2)
+l_afe(0.5 + 10j, big)   # (3.9151561336603864-8.036122558438148j), 1557 terms per sum
+l_zeros(big, 0, 1.5)    # [0.60517956, 1.49288041]
 ```
 
 ## The math
@@ -645,6 +651,72 @@ Checks:
 - `verify_zeros` with T = 30 on every primitive character of conductor 3 to 100:
   1,815 L-functions, 80,838 zeros, all on the critical line (342 s).
 
+### Large conductors
+
+![Cost of one value of L(1/2 + it, χ) for both methods](docs/afe_cost.png)
+
+Euler-Maclaurin sums about q·(10 + |t|/π) terms, which is fine for q in the
+thousands and hopeless at q = 10⁵. `afe.py` uses a smoothed approximate functional
+equation in the style of Rubinstein instead. For a primitive χ with parity κ, the
+completed L-function is
+
+```
+Λ(s, χ) = (q/π)^z·Γ(z)·L(s, χ) = ε(χ)·Λ(1 − s, χ̄),   z = (s + κ)/2
+```
+
+and Λ is the Mellin transform of the theta series Σ χ(n)·n^κ·exp(−πn²x/q). Split
+the integral at |x| = 1 along the ray x = r·e^(iφ) instead of the positive axis, and
+apply the theta transformation to the inner half. Both pieces become incomplete
+gamma functions:
+
+```
+Λ(s, χ) = Σ χ(n)·(q/π)^z·n^(−s)·Γ(z, w_n) + ε·Σ χ̄(n)·(q/π)^z'·n^(s−1)·Γ(z', w̄_n)
+w_n = πn²·e^(iφ)/q,   z' = (1 − s + κ)/2
+```
+
+With φ = 0 this is the classical formula, and it breaks high up. On the critical
+line Γ(z) is about e^(−π|t|/4), the two sums cancel down to that size, and dividing
+by Γ(z) loses every digit by t ≈ 50. Rotating fixes the scale. Along the ray,
+|u^(z−1)| carries a factor e^(−φ·Im z), so with φ = sign(t)·(π/2 − θ) no term is
+more than about e^(|t|θ/2) times Γ(z). The code takes |t|θ/2 = 3, which gives up
+three e-folds (1.3 digits) and sets θ = 6/|t|. The terms decay like
+exp(−πn²·sin θ/q), and each sum stops once that drops below e^(−43):
+
+```
+N ≈ √(43q / (π·sin θ)) ≈ √(43q|t| / 6π)
+```
+
+That is O(√(q|t|)) terms where Euler-Maclaurin needs O(q|t|). Below |t| = 3.8 the
+angle stays at π/2 (no rotation) and N ≈ 3.7√q.
+
+`gammaincc` computes Γ(z, w)/Γ(z) for z with real part 1/4 or 3/4 and imaginary part
+up to t/2, and w nearly imaginary. It uses the power series of γ(z, w) when
+|w| < |z| + 1 and Legendre's continued fraction (modified Lentz, with converged
+entries dropped from the working set) otherwise. The fraction takes from a few to
+about a hundred steps over the range the sums need. Both forms are relative to
+Γ(z), the scale of the answer, so 1 − γ/Γ never cancels anything that matters. One
+more rewrite keeps phases small: n^(−s)·w_n^z = n^κ·(π/q)^z·e^(izφ), so the t·log n
+phase of each term cancels exactly instead of being computed and subtracted.
+
+`dirichlet_l` picks a method per point with a cost model fit to the timings above:
+the AFE when 0 < σ < 1 and q·(10 + |t|/π) > 25000 + 100·N. At t = 10 the crossover
+is near q = 2000. At q = 100003 one value costs 2.0 ms against 57 ms, and at
+q = 10007, t = 1000 it is 11.5 ms against 98 ms. `method="em"` forces the old path.
+
+Checks:
+
+- `gammaincc` against mpmath's `gammainc` at 80 random points with |Im z| ≤ 300 and
+  10⁻⁴ ≤ |w| ≤ 10³: within 1e-11 (relative to max(1, |Q|)). Also Q(1, w) = e^(−w)
+  and the recurrence Q(z + 1, w) = Q(z, w) + w^z·e^(−w)/Γ(z + 1).
+- L against mpmath's `dirichlet` at random points of the strip with |t| < 200, for
+  nine characters up to q = 97: relative error below 1e-12.
+- The value cannot depend on the rotation, and a wrong formula would. At q = 1009,
+  allowing 1.5, 3 or 6 e-folds of loss (which changes θ and the number of terms)
+  moves L by less than 2e-12 relative at t = 0, 2, 40 and 400.
+- AFE against Euler-Maclaurin for χ_(−2003) at σ = 0.2, 0.5 and 0.9: within 1e-11.
+  The zeros of χ₁₀₀₀₇(2, ·) below t = 6 found both ways agree to 1e-10, and at
+  q = 100003, t = 10 the two methods differ by 7e-14.
+
 ### Low-lying zeros
 
 ![One-level density of quadratic characters and of all characters mod 2003](docs/low_lying.png)
@@ -669,7 +741,8 @@ below the axis belong to χ̄, which is in the family too.
 
 The chart uses the 2,433 fundamental discriminants with 2000 ≤ |d| ≤ 6000 (both
 signs) and the 2,001 nontrivial characters mod 2003, 13,347 zeros in all. The run
-takes 8 minutes. Results:
+took 8 minutes on one process before the approximate functional equation, and 30 s
+on 16 processes now. Results:
 
 - Unitary: flat. Every bin of width 0.1 on [0, 3] is within 0.14 of 1.
 - Symplectic: 0.029 zeros per L-function per unit x in [0, 0.1], where W_USp
@@ -683,6 +756,27 @@ takes 8 minutes. Results:
   phase spread around the circle, so the bias averages out. The higher terms only
   win slowly as log q grows. Stopple's experiment with about a million quadratic
   characters at |d| > 10¹² found that lower-order terms still matter at that size.
+
+![Quadratic one-level density at three conductor sizes](docs/low_lying_scales.png)
+
+With the approximate functional equation the same experiment reaches conductors
+near 10⁵. The 2,133 fundamental discriminants with 100000 ≤ |d| ≤ 103500 take 60 s
+on 16 processes, and 2,000 characters mod 100003 take 42 s. The unitary family
+stays flat (every bin within 0.17 of 1, 20.0% with a zero below x = 0.2). The
+quadratic family moves toward W_USp, which averages 0.178 on (0, 0.3]:
+
+| \|d\| | characters | zeros with x ≤ 3 | density on (0, 0.3] | excess over W_USp | first zero below 0.2 |
+|---|---|---|---|---|---|
+| 2000 to 6000 | 2,433 | 7,350 | 0.377 | 0.199 ± 0.023 | 4.0% |
+| 20000 to 23500 | 2,126 | 6,394 | 0.354 | 0.177 ± 0.024 | 3.4% |
+| 100000 to 103500 | 2,133 | 6,415 | 0.320 | 0.143 ± 0.022 | 2.8% |
+
+The ± is the Poisson error of the zero count. The excess shrinks about like
+1/log|d|: the weighted line through the origin, 1.68/log|d|, passes through all
+three error bars. Lower-order terms of that size are what the L-functions ratios
+conjecture predicts for this family (Conrey and Snaith), which is why the symplectic
+limit shows up so slowly in data. The Gram oscillation is still there at 10⁵, a
+little lower.
 
 ### In the browser
 
