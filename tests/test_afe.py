@@ -5,7 +5,9 @@ import mpmath
 import numpy as np
 import pytest
 
-from zeta_explorer.afe import gammaincc
+from zeta_explorer import afe
+from zeta_explorer.afe import afe_length, gammaincc, l_afe
+from zeta_explorer.characters import conrey, quadratic
 
 
 def test_gammaincc_matches_mpmath():
@@ -34,3 +36,45 @@ def test_gammaincc_rejects_negative_axis():
         gammaincc(0.5, -2.0)
     with pytest.raises(ValueError):
         gammaincc(-0.5, 2.0)
+
+
+@pytest.mark.parametrize("q, n", [(5, 2), (7, 3), (8, 3), (12, 11), (13, 2), (21, 5), (32, 3),
+                                  (40, 3), (97, 5)])
+def test_afe_matches_mpmath(q, n):
+    chi = conrey(q, n)
+    rng = np.random.default_rng(q + n)
+    s = rng.uniform(0.02, 0.98, 8) + 1j * rng.uniform(-200, 200, 8)
+    for si, got in zip(s, l_afe(s, chi), strict=True):
+        ref = complex(mpmath.dirichlet(si, list(chi.values)))
+        assert abs(got - ref) <= 1e-12 * abs(ref)
+
+
+@pytest.mark.parametrize("t", [0.0, 2.0, 40.0, 400.0])
+def test_afe_independent_of_rotation(monkeypatch, t):
+    chi = conrey(1009, 11)
+    s = 0.37 + 1j * t
+    values = []
+    for loss in (1.5, 3.0, 6.0):
+        monkeypatch.setattr(afe, "_LOSS", loss)
+        values.append(l_afe(s, chi))
+    assert max(abs(v - values[0]) for v in values) <= 2e-12 * abs(values[0])
+
+
+def test_real_character_is_real_on_the_axis():
+    assert l_afe(0.5, quadratic(-1003)).imag == pytest.approx(0, abs=1e-14)
+    assert l_afe(0.5, quadratic(1005)).imag == pytest.approx(0, abs=1e-14)
+
+
+def test_length_grows_like_sqrt_qt():
+    assert afe_length(100 * 1009, 1.0) / afe_length(1009, 1.0) == pytest.approx(10, rel=0.01)
+    assert afe_length(1009, 4000.0) / afe_length(1009, 40.0) == pytest.approx(10, rel=0.01)
+    assert afe_length(1009, 0.0) == afe_length(1009, 3.5)
+
+
+def test_afe_rejects_bad_input():
+    with pytest.raises(ValueError):
+        l_afe(0.5, conrey(7, 1))
+    with pytest.raises(ValueError):
+        l_afe(0.5, conrey(21, 4))
+    with pytest.raises(ValueError):
+        l_afe(1.2 + 3j, conrey(7, 3))

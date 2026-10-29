@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import cmath
+import math
+
 import numpy as np
 from numpy.typing import ArrayLike
 
+from zeta_explorer.characters import Character
 from zeta_explorer.zeta import _out, loggamma
 
+_LOSS = 3.0
+_CUT = 40.0
 _EPS = 2.0**-52
 _TINY = 1e-300
 _MAX_TERMS = 10_000
@@ -59,3 +65,48 @@ def _legendre(z: complex, w: np.ndarray) -> np.ndarray:
         keep = ~done
         live, b, c, d, h = live[keep], b[keep], c[keep], d[keep], h[keep]
     raise RuntimeError("Legendre's continued fraction did not converge")
+
+
+def _angle(t: float) -> float:
+    return math.pi / 2 if abs(t) * math.pi / 4 <= _LOSS else 2 * _LOSS / abs(t)
+
+
+def afe_length(q: int, t: float) -> int:
+    return math.isqrt(math.ceil((_CUT + _LOSS) * q / (math.pi * math.sin(_angle(t))))) + 1
+
+
+def l_afe(s: ArrayLike, chi: Character) -> complex | np.ndarray:
+    if chi.is_principal or not chi.is_primitive:
+        raise ValueError("the smoothed sums need a primitive non-principal character")
+    z = np.array(s, dtype=complex, ndmin=1).ravel()
+    if np.any((z.real <= 0) | (z.real >= 1)):
+        raise ValueError("l_afe works inside the critical strip 0 < Re s < 1")
+    eps = chi.root_number()
+    out = np.array([_afe_point(complex(si), chi, eps) for si in z], dtype=complex)
+    return _out(out.reshape(np.shape(s)), s)
+
+
+def _afe_point(s: complex, chi: Character, eps: complex) -> complex:
+    q, a = chi.q, chi.parity
+    phi = math.copysign(math.pi / 2 - _angle(s.imag), s.imag)
+    n = np.arange(1, afe_length(q, s.imag) + 1)
+    n = n[chi.num[n % q] >= 0]
+    c = chi.values[n % q]
+    w = math.pi / q * n.astype(float) ** 2 * cmath.exp(1j * phi)
+
+    d1, m1 = _parts(s, a, n, c, w)
+    d2, m2 = _parts(1 - s, a, n, c.conj(), w.conj())
+    z1, z2 = (s + a) / 2, (1 - s + a) / 2
+    lq = math.log(q / math.pi)
+    lg1, lg2 = loggamma(z1), loggamma(z2)
+    first = d1 + m1 * cmath.exp(-z1 * (lq - 1j * phi) - lg1)
+    second = d2 * cmath.exp(lg2 - lg1) + m2 * cmath.exp(-z2 * (lq + 1j * phi) - lg1)
+    return first + eps * cmath.exp((0.5 - s) * lq) * second
+
+
+def _parts(
+    s: complex, a: int, n: np.ndarray, c: np.ndarray, w: np.ndarray
+) -> tuple[complex, complex]:
+    series, g = _kernel((s + a) / 2, w)
+    direct = np.sum(c[series] * np.exp(-s * np.log(n[series])))
+    return complex(direct), complex(np.sum(c * n**a * np.exp(-w) * g))
