@@ -23,8 +23,12 @@ The same machinery extends to Dirichlet L-functions: characters with LMFDB's
 Conrey labels, L(s, χ) anywhere in the plane, zeros checked against LMFDB and
 verified complete with the argument principle, the class number formula, a
 smoothed approximate functional equation that needs O(√(q|t|)) terms instead of
-O(q|t|), and the low-lying zeros of quadratic characters up to conductor 10⁵
-against the symplectic prediction of Katz and Sarnak.
+O(q|t|), and the low-lying zeros of quadratic characters up to conductor 10⁵.
+Those zeros are compared with the symplectic prediction of Katz and Sarnak, with
+the lower-order terms of the ratios conjecture (which fit the histograms with
+χ² of 16 to 21 on 30 bins, against 298 to 719 for the limit law), and, for the lowest
+zero, with gap probabilities of random symplectic matrices computed as Fredholm
+determinants.
 
 The same numerics also run in the browser at
 [louisbelot.github.io/zeta-explorer](https://louisbelot.github.io/zeta-explorer/):
@@ -97,6 +101,12 @@ from zeta_explorer.afe import l_afe
 big = conrey(100003, 2)
 l_afe(0.5 + 10j, big)   # (3.9151561336603864-8.036122558438148j), 1557 terms per sum
 l_zeros(big, 0, 1.5)    # [0.60517956, 1.49288041]
+
+from zeta_explorer.ratios import quadratic_density
+quadratic_density([-100003, 100001], [0.1, 0.5, 1.0])   # [0.1216, 1.4173, 0.8240]
+
+from zeta_explorer.rmt import gap, first_density, symplectic, symplectic_n
+gap(symplectic, 0.5), gap(symplectic_n(2), 0.5)   # 0.79479, 0.65935: P(no angle in (0, 1/2))
 ```
 
 ## The math
@@ -773,10 +783,113 @@ quadratic family moves toward W_USp, which averages 0.178 on (0, 0.3]:
 
 The ± is the Poisson error of the zero count. The excess shrinks about like
 1/log|d|: the weighted line through the origin, 1.68/log|d|, passes through all
-three error bars. Lower-order terms of that size are what the L-functions ratios
-conjecture predicts for this family (Conrey and Snaith), which is why the symplectic
-limit shows up so slowly in data. The Gram oscillation is still there at 10⁵, a
-little lower.
+three error bars. The Gram oscillation is still there at 10⁵, a little lower.
+
+### Lower-order terms from the ratios conjecture
+
+The dashed curves on the left of that chart are not fits. They come from the
+L-functions ratios conjecture (Conrey, Farmer and Zirnbauer), which Conrey and
+Snaith turned into a one-level density for quadratic characters that is exact up
+to O(X^(−1/2+ε)), lower-order terms included. For one χ_d it says the zeros near the
+central point have density, per unit x,
+
+```
+ρ_d(x) = 1 + Re B(t) / θ'(t),    θ(t) = πx
+B(t) = ζ'/ζ(1 + 2it) + A'(it; it) − e^(−2iθ(t)) ζ(1 − 2it) A(−it; it)
+A(−r; r) = Π_p (p² − p^(2r)) / (p² − 1)
+A'(r; r) = Σ_p log p / ((p + 1)(p^(1+2r) − 1))
+```
+
+with θ = θ(t, χ_d), so the gamma factor and the parity κ come in through the same
+θ the zeros were unfolded with. The products are over every prime, 2 included.
+That relies on a property of the family which `test_family_matches_local_densities`
+checks directly: among fundamental discriminants a fraction 1/(p + 1) is
+divisible by p, and the rest split evenly between χ_d(p) = 1 and −1. Both poles
+at t = 0 cancel, and expanding to first order gives ρ_d(0) = 0, which the code
+reproduces to 1e-6 at x = 10⁻⁴.
+
+`ratios.py` evaluates this from scratch. ζ'/ζ on the line Re s = 1 is the
+derivative of the entire function (s − 1)ζ(s), taken by the trapezoidal rule on a
+circle of radius 1/4 (32 points, within 1e-13 of mpmath right next to the pole).
+The Euler products run over primes up to 10⁴, which moves the density by 6e-5
+against 10⁵. The arithmetic depends only on t and the gamma part only on the
+parity, so a whole family of 2,433 characters costs 0.5 s. The family
+prediction is the average of ρ_d over the actual discriminants, each mapped
+through its own θ.
+
+Against the histograms (30 bins on [0, 3], Poisson errors):
+
+| \|d\| | χ² against the ratios prediction | χ² against W_USp | excess on (0, 0.3], measured | predicted |
+|---|---|---|---|---|
+| 2000 to 6000 | 20.7 | 718.9 | 0.199 ± 0.023 | 0.194 |
+| 20000 to 23500 | 15.6 | 410.8 | 0.177 ± 0.024 | 0.160 |
+| 100000 to 103500 | 17.7 | 298.3 | 0.143 ± 0.022 | 0.136 |
+
+So the bumps at half-integers, the shoulder near the origin and the slow approach
+to W_USp are all lower-order terms of the ratios conjecture. Nothing in the data
+at this size needs anything beyond them.
+
+The leading correction has a closed form. As |d| → ∞ at fixed x,
+
+```
+ρ_d(x) = W_USp(x) + 2(γ − ζ'(2)/ζ(2))(1 − cos 2πx) / (log(|d|/π) + ψ(1/4 + κ/2)) + ...
+```
+
+where γ − ζ'(2)/ζ(2) = 1.1472 and the −ζ'(2)/ζ(2) is A'(0; 0). The 1 − cos 2πx
+is the half-integer peak pattern from before. The denominator is where the slow
+convergence comes from: ψ(1/4) = −4.23 makes it log|d| − 5.37 for even
+characters, so at |d| = 4000 the "large" parameter is 2.9. The orange curve on
+the right panel is the full prediction for d = ±D out to D = 10⁶⁰. It bends below
+the fitted line; the excess times log D goes 1.51, 1.32, 1.23 at D = 10⁶, 10¹²,
+10²⁴, on its way to 2 · 1.1472 · 0.4954 = 1.137, where 0.4954 is the average of
+1 − cos 2πx over the window. `test_leading_correction_is_closed_form` checks the
+expansion at |d| = 10²⁰⁰ for both parities.
+
+### The lowest zero and Fredholm determinants
+
+![First zeros of quadratic L-functions against USp and SO(even) laws](docs/first_zero.png)
+
+The ratios conjecture as used above gives the one-level density, not where the
+lowest zero sits. For that the random matrix side needs a gap probability: the
+chance that no eigenangle lands in (0, s) is a Fredholm determinant
+E(s) = det(I − K) on L²(0, s), with
+
+```
+USp, N → ∞:        K(x, y) = S(x − y) − S(x + y),    S(z) = sin(πz)/(πz)
+SO(even), N → ∞:   K(x, y) = S(x − y) + S(x + y)
+USp(2N):           K(x, y) = D(x − y) − D(x + y),    D(z) = sin((2N + 1)πz/2N) / (2N sin(πz/2N))
+```
+
+in units where the mean spacing is 1. `rmt.py` follows Bornemann: Gauss-Legendre
+nodes on (0, s), and the determinant of the 40 × 40 Nyström matrix
+δ_ij − √w_i K(x_i, x_j) √w_j. The convergence is exponential; 20 and 60 nodes
+agree to 1e-14 at s = 2. The density of the lowest zero is −E'(s), and instead of
+a finite difference it comes from the resolvent at the endpoint,
+−E'(s) = E(s)·R(s, s), where R(·, s) solves the same Nyström system with K(·, s) as
+the right-hand side. That matches a central difference to 1e-8.
+
+Checks:
+
+- USp(2) is SU(2), one angle with density (2/π)sin²θ, so E(s) = 1 − s + sin(2πs)/2π
+  in closed form. SO(2) is uniform. Both to 1e-14.
+- USp(4) and SO(4) against a direct 2-D integral of the Weyl density
+  (cos θ₁ − cos θ₂)²·sin²θ₁ sin²θ₂ (or without the sines): 1e-13.
+- The sine kernel on (−s, s) splits into its even and odd parts, so
+  E_USp(s)·E_SO(s) must equal the GUE gap on an interval of length 2s, and that
+  must match Mehta's series 1 − s + π²s⁴/36 − π⁴s⁶/675 + π⁶s⁸/17640.
+- Near the origin the USp lowest-zero density is 2π²s²/3, SO(even) starts at 2,
+  the densities integrate to 1, and USp(2N) approaches the limit like 1/N.
+
+The data are nowhere near the N → ∞ law. The mean lowest zero is 0.594, 0.618 and
+0.635 at the three conductor sizes, against 0.783 for USp. What does fit is
+USp(2N) at small N: maximum likelihood over real N (the kernel formula is smooth
+in N) gives N = 1.75, 2.05 and 2.30, with likelihood-ratio 95% intervals 1.70 to
+1.85, 1.95 to 2.15 and 2.15 to 2.45. The fitted laws have means 0.598, 0.621
+and 0.636, and on the log-scale gap probability they follow the data down to
+P ≈ 10⁻². The effective size grows by about 0.17 per unit of log|d|, a third of
+the slope in the usual dictionary 2N ≈ log|d|. This is the same lesson as the one-level density: at conductors
+you can compute, the arithmetic still shapes the zeros near the central point,
+and a small matrix mimics it better than the limiting law does.
 
 ### In the browser
 
