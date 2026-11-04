@@ -57,7 +57,7 @@ def _t_max(q: np.ndarray, kappa: np.ndarray, x_max: float) -> float:
 
 
 def quadratic_density(
-    ds: ArrayLike, x: ArrayLike, p_max: int = 10**5, n: int = 3000
+    ds: ArrayLike, x: ArrayLike, p_max: int = 10**4, n: int = 1500
 ) -> np.ndarray:
     ds = np.atleast_1d(np.asarray(ds, dtype=float))
     xs = np.asarray(x, dtype=float)
