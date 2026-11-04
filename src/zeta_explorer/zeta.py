@@ -49,6 +49,26 @@ def loggamma(z: ArrayLike) -> complex | np.ndarray:
     return _out(out.reshape(np.shape(z)), z)
 
 
+_DIGAMMA = [float(bernoulli(2 * k) / (2 * k)) for k in range(1, 11)]
+
+
+def digamma(z: ArrayLike) -> complex | np.ndarray:
+    w = np.array(z, dtype=complex, ndmin=1)
+    if np.any(w.real <= 0):
+        raise ValueError("digamma needs Re z > 0")
+    shift = np.zeros_like(w)
+    while np.any(small := np.abs(w) < 15):
+        shift[small] += 1 / w[small]
+        w[small] += 1
+    inv2 = 1 / (w * w)
+    series = np.zeros_like(w)
+    term = inv2
+    for c in _DIGAMMA:
+        series += c * term
+        term = term * inv2
+    out = np.log(w) - 0.5 / w - series - shift
+    return _out(out.reshape(np.shape(z)), z)
+
 _M_MAX = 60
 _B_OVER_FACT = [float(bernoulli(2 * k) / math.factorial(2 * k)) for k in range(_M_MAX + 2)]
 

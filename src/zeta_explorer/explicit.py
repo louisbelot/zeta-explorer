@@ -102,6 +102,10 @@ def _sieve(n: int) -> np.ndarray:
     return is_prime
 
 
+def primes(n: int) -> np.ndarray:
+    return np.flatnonzero(_sieve(n))
+
+
 def prime_pi(x: ArrayLike) -> np.ndarray:
     n = np.floor(np.asarray(x, dtype=float)).astype(np.int64)
     counts = np.cumsum(_sieve(max(int(n.max()), 1)))

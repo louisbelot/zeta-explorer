@@ -11,6 +11,7 @@ from zeta_explorer.explicit import (
     mobius,
     pi_from_zeros,
     prime_pi,
+    primes,
     psi_from_zeros,
     riemann_j,
     riemann_r,
@@ -71,6 +72,7 @@ def test_riemann_r_matches_mpmath():
 
 def test_sieve_counts():
     assert prime_pi([1, 2, 10, 100, 1000, 10**6]).tolist() == [0, 1, 4, 25, 168, 78498]
+    assert primes(30).tolist() == [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
     assert chebyshev_psi(100.0) == pytest.approx(94.04531122935739, rel=1e-14)
     assert chebyshev_psi(9.0) == pytest.approx(math.log(2**3 * 3**2 * 5 * 7), rel=1e-14)
 

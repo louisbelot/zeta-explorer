@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from zeta_explorer.riemann_siegel import theta, z_rs
-from zeta_explorer.zeta import bernoulli, chi, euler_maclaurin, loggamma, xi, zeta
+from zeta_explorer.zeta import bernoulli, chi, digamma, euler_maclaurin, loggamma, xi, zeta
 
 
 @pytest.mark.parametrize(
@@ -22,6 +22,21 @@ def test_bernoulli(n, expected):
 @pytest.mark.parametrize("n", [1, 2, 5, 10, 30])
 def test_loggamma_factorials(n):
     assert loggamma(n) == pytest.approx(math.lgamma(n), abs=1e-13)
+
+
+@pytest.mark.parametrize(
+    "z", [1, 0.25, 0.75, 1e-3 + 2j, 0.25 + 50j, 3 - 7j, 0.75 + 1_000j, 40 + 0.5j]
+)
+def test_digamma_matches_mpmath(z):
+    expected = complex(mpmath.digamma(z))
+    assert abs(digamma(z) - expected) < 1e-13 * max(1, abs(expected))
+
+
+def test_digamma_quarter():
+    quarter = -np.euler_gamma - math.pi / 2 - 3 * math.log(2)
+    assert digamma(0.25) == pytest.approx(quarter, abs=1e-14)
+    g = np.euler_gamma
+    assert digamma(np.array([2.0, 3.0])) == pytest.approx([1 - g, 1.5 - g])
 
 
 @pytest.mark.parametrize("z", [0.5, 1e-3 + 1e-3j, 0.25 + 50j, 3 - 7j, 0.1 + 1_000j, 40 + 0.5j])
