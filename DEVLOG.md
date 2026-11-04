@@ -513,3 +513,75 @@ flat to 0.17 in every bin.
 
 Next: the ratios-conjecture lower-order terms for the quadratic family, drawn on
 top of the scale chart, to see whether they account for the 1.68/log|d| excess.
+
+## 2026-11-04: Ratios-conjecture lower-order terms and the lowest zero
+
+Built:
+
+- `ratios.py`: the Conrey-Snaith one-level density for quadratic characters,
+  ρ_d(x) = 1 + Re B(t)/θ'(t) with B = ζ'/ζ(1 + 2it) + A'(it; it) − e^(−2iθ)ζ(1 − 2it)A(−it; it),
+  evaluated per discriminant and averaged over the family. ζ'/ζ comes from the
+  trapezoidal rule for the derivative of (s − 1)ζ(s) on a circle of radius 1/4,
+  so it is accurate right next to the pole. A(−it; it) simplifies to
+  Π (p² − p^(2it))/(p² − 1), summed as logs.
+- `rmt.py`: Fredholm determinants with Bornemann's Gauss-Legendre Nyström method,
+  limit kernels for the sine process, USp and SO(even), and the finite USp(2N) and
+  SO(2N) kernels in unfolded units. The lowest-eigenvalue density comes from the
+  resolvent at the endpoint, −E' = E·R(s, s), and `fit_symplectic_n` does a
+  maximum-likelihood fit of N with a likelihood-ratio interval.
+- `digamma` next to `loggamma` (same Stirling shift), and a public `primes`.
+- Plots: the scale chart now carries the ratios prediction for the same characters
+  and the predicted excess out to D = 10⁶⁰, and a new lowest-zero chart compares
+  the histograms and the log-scale gap probability with USp, SO(even) and fitted
+  USp(2N). Both rendered and checked by eye.
+
+Checks:
+
+- ζ'/ζ against mpmath at six points including 1 + 0.01i: within 1e-13 relative.
+  The Laurent constant γ at u = 10⁻⁶.
+- A'(0; 0) = −ζ'(2)/ζ(2) = 0.5699610 to 2e-5 with primes up to 10⁶ (the tail is
+  about 1/P). A(−r; r) and A'(r; r) against the unsimplified product A_D(α; γ)
+  from the paper and its numerical α-derivative.
+- The family assumption behind the products: among fundamental discriminants
+  with |d| ≤ 30000, the share divisible by p = 2, 3, 5, 7 is 1/(p + 1) to 0.01
+  and χ_d(p) is balanced.
+- I derived the first-order expansion, ρ_d = W_USp + 2(γ − ζ'(2)/ζ(2))(1 − cos 2πx)/(log(|d|/π) + ψ(1/4 + κ/2)),
+  and the code matches it to 0.05 (times the log) at |d| = 10²⁰⁰ for both parities.
+- Fredholm: USp(2) and SO(2) closed forms to 1e-14, USp(4) and SO(4) against a
+  direct 2-D Weyl integral to 1e-13, the parity split E_USp·E_SO = E_GUE(2s) to
+  1e-14, Mehta's series for the GUE gap through s⁸, 2π²s²/3 near the origin, and a
+  synthetic USp(6) sample from which the fit recovers N = 3.
+
+Results on the three families from the last entry (zeros recomputed today, same
+counts as before: 7,350, 6,394, 6,415):
+
+| \|d\| | χ² ratios | χ² W_USp | excess measured | excess predicted | N_eff (95%) |
+|---|---|---|---|---|---|
+| 2000 to 6000 | 20.7 | 718.9 | 0.199 ± 0.023 | 0.194 | 1.75 (1.70 to 1.85) |
+| 20000 to 23500 | 15.6 | 410.8 | 0.177 ± 0.024 | 0.160 | 2.05 (1.95 to 2.15) |
+| 100000 to 103500 | 17.7 | 298.3 | 0.143 ± 0.022 | 0.136 | 2.30 (2.15 to 2.45) |
+
+χ² is over 30 bins with Poisson errors. The ratios prediction accounts for the
+whole 1.68/log|d| excess, the half-integer bumps and the shoulder. The mean lowest
+zero is 0.594, 0.618, 0.635, against 0.783 for the USp limit and 0.598, 0.621,
+0.636 for the fitted USp(2N).
+
+Design notes:
+
+- My first t-grid search started at t = 1 and grew by 1.5×, which is already past
+  x = 3 for |d| = 10¹⁰⁰, so almost every grid point was wasted and the large-|d|
+  check looked like it diverged. θ is convex for t > 0 (Re ψ grows with |Im|), so
+  Newton started from the bound πx/θ'(0) comes down monotonically onto the root.
+- Everything arithmetic depends only on t and the gamma factor only on parity, so
+  the per-character loop is a θ evaluation and an interpolation. Dropping the
+  prime cutoff from 10⁵ to 10⁴ moved the density by 6e-5 and the cost from 5 s to
+  0.5 s for 2,433 characters.
+- The resolvent formula for −E' avoids a finite difference, and caching the
+  Gauss-Legendre nodes made the N fit four times faster (leggauss solves an
+  eigenproblem on every call).
+- Fitting real N uses the kernel formula outside the integers. It is smooth there,
+  and N must exceed the largest data point, since USp(2N) angles fill only x ≤ N.
+
+Next: the even orthogonal side, either quadratic twists of an elliptic curve or
+real quadratic characters with the central zero statistics, so the SO(even) curve
+on the lowest-zero chart has data of its own.
