@@ -163,3 +163,13 @@ def test_plot_low_lying_scales_fits_through_origin():
     slope = excess * u.sum() / np.square(u).sum()
     assert fig.axes[1].get_legend().get_texts()[0].get_text() == f"{slope:.2f} / log |d|"
     assert len(fig.axes[0].lines) == 3
+
+
+def test_plot_low_lying_scales_draws_ratios():
+    fams = {4e3: OneLevel([np.array([0.2, 1.5])] * 4), 1e5: OneLevel([np.array([0.25, 1.6])] * 4)}
+    ds = {4e3: np.array([-4003, 4001]), 1e5: np.array([-100003, 100001])}
+    fig = plot_low_lying_scales(fams, bins=6, ratios=ds)
+    labels = [t.get_text() for t in fig.axes[1].get_legend().get_texts()]
+    assert labels[1:] == ["ratios conjecture, d = ±D", "ratios conjecture, same characters"]
+    assert len(fig.axes[0].lines) == 6
+

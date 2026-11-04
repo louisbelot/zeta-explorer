@@ -13,6 +13,7 @@ from zeta_explorer.gram import good_gram, z_values
 from zeta_explorer.lfunction import dirichlet_l, l_z, l_zeros
 from zeta_explorer.lowlying import OneLevel, w_symplectic, w_unitary
 from zeta_explorer.multieval import ZWindow
+from zeta_explorer.ratios import quadratic_density
 from zeta_explorer.riemann_siegel import theta, z_exact, z_rs
 from zeta_explorer.spacing import (
     first_zeros,
@@ -498,7 +499,7 @@ def plot_low_lying(
 
 def plot_low_lying_scales(
     families: dict[float, OneLevel], window: tuple[float, float] = (0.0, 0.3), bins: int = 30,
-    x_max: float = 3.0,
+    x_max: float = 3.0, ratios: dict[float, np.ndarray] | None = None,
 ) -> Figure:
     import matplotlib.pyplot as plt
 
@@ -507,7 +508,8 @@ def plot_low_lying_scales(
     x = np.linspace(0, x_max, 400)
     colors = ORDINAL[::2] if len(families) <= 3 else ORDINAL
     lo, hi = window
-    expected = np.mean(w_symplectic(np.linspace(lo, hi, 2001)))
+    window_x = np.linspace(lo, hi, 2001)
+    expected = np.mean(w_symplectic(window_x))
     size, excess, err = [], [], []
     for (d, fam), color in zip(sorted(families.items()), colors[: len(families)], strict=True):
         c, dens = fam.density(bins, x_max)
@@ -520,7 +522,15 @@ def plot_low_lying_scales(
         err.append(np.sqrt(k) / scale)
         right.errorbar(1 / np.log(d), excess[-1], yerr=err[-1], fmt="o", color=color,
                        markersize=7, capsize=3, linewidth=1.6)
+        if ratios is not None:
+            rho = quadratic_density(ratios[d], np.concatenate([x, window_x]))
+            left.plot(x, rho[: len(x)], color=color, linewidth=1.2, linestyle="--")
+            right.plot(1 / np.log(d), np.mean(rho[len(x) :]) - expected, "D", color=color,
+                       markerfacecolor=SURFACE, markersize=7, markeredgewidth=1.6)
     left.plot(x, w_symplectic(x), color=INK, linewidth=1.4, label="USp: 1 − sin 2πx / 2πx")
+    if ratios is not None:
+        left.plot([], [], color=INK_SECONDARY, linewidth=1.2, linestyle="--",
+                  label="ratios conjecture, same characters")
     left.set_xlim(0, x_max)
     left.set_ylim(0, 2.2)
     left.set_xlabel("x (zero height in units of the mean spacing)", color=INK)
@@ -535,6 +545,13 @@ def plot_low_lying_scales(
     grid = np.linspace(0, u.max() * 1.15, 50)
     right.plot(grid, slope * grid, color=INK_SECONDARY, linewidth=1.2, linestyle="--",
                label=f"{slope:.2f} / log |d|")
+    if ratios is not None:
+        big = np.logspace(np.log10(min(size)), 60, 14)
+        curve = [np.mean(quadratic_density([-D, D], window_x, n=1000)) - expected for D in big]
+        right.plot(1 / np.log(big), curve, color=ACCENT, linewidth=1.4,
+                   label="ratios conjecture, d = ±D")
+        right.plot([], [], "D", color=INK_SECONDARY, markerfacecolor=SURFACE, markersize=7,
+                   markeredgewidth=1.6, label="ratios conjecture, same characters")
     right.axhline(0, color=INK_SECONDARY, linewidth=1, linestyle=":")
     right.set_xlim(0, grid[-1])
     right.set_ylim(min(0, min(e - s for e, s in zip(excess, err, strict=True)) * 1.2),
