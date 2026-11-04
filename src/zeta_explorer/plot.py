@@ -15,6 +15,14 @@ from zeta_explorer.lowlying import OneLevel, w_symplectic, w_unitary
 from zeta_explorer.multieval import ZWindow
 from zeta_explorer.ratios import quadratic_density
 from zeta_explorer.riemann_siegel import theta, z_exact, z_rs
+from zeta_explorer.rmt import (
+    even_orthogonal,
+    first_density,
+    fit_symplectic_n,
+    gap,
+    symplectic,
+    symplectic_n,
+)
 from zeta_explorer.spacing import (
     first_zeros,
     gue_spacing,
@@ -566,6 +574,54 @@ def plot_low_lying_scales(
     fig.tight_layout()
     return fig
 
+
+def plot_first_zero(
+    families: dict[float, OneLevel], n_grid: ArrayLike | None = None, s_max: float = 1.5,
+    bins: int = 30,
+) -> Figure:
+    import matplotlib.pyplot as plt
+
+    grid = np.arange(1.4, 6.01, 0.05) if n_grid is None else np.asarray(n_grid, dtype=float)
+    fig, (left, right) = plt.subplots(1, 2, figsize=(12, 4.6), facecolor=SURFACE)
+    s = np.linspace(0, s_max, 301)
+    colors = ORDINAL[::2] if len(families) <= 3 else ORDINAL
+    for (d, fam), color in zip(sorted(families.items()), colors[: len(families)], strict=True):
+        first = np.sort(fam.first())
+        n, lo, hi, _ = fit_symplectic_n(first, grid)
+        left.hist(first, bins=bins, range=(0, s_max), density=True, histtype="step",
+                  color=color, linewidth=1.8, label=f"|d| ≈ {_fmt_power(d)}")
+        left.plot(s, first_density(symplectic_n(n), s), color=color, linewidth=1.2,
+                  linestyle="--", label=f"USp(2N), N = {n:.2f}")
+        survival = 1 - np.arange(len(first)) / len(first)
+        right.step(first, survival, where="post", color=color, linewidth=1.8,
+                   label=f"|d| ≈ {_fmt_power(d)}, N = {n:.2f} ({lo:.2f} to {hi:.2f})")
+        right.plot(s, gap(symplectic_n(n), s), color=color, linewidth=1.2, linestyle="--")
+    left.plot(s, first_density(symplectic, s), color=INK, linewidth=1.4, label="USp, N → ∞")
+    left.plot(s, first_density(even_orthogonal, s), color=INK_SECONDARY, linewidth=1.2,
+              linestyle=":", label="SO(even), N → ∞")
+    right.plot(s, gap(symplectic, s), color=INK, linewidth=1.4, label="USp, N → ∞")
+    right.plot(s, gap(even_orthogonal, s), color=INK_SECONDARY, linewidth=1.2, linestyle=":",
+               label="SO(even), N → ∞")
+    left.set_xlim(0, s_max)
+    left.set_ylim(0, 2.6)
+    left.set_xlabel("x of the lowest zero", color=INK)
+    left.set_ylabel("density", color=INK)
+    left.set_title("Lowest zero of L(s, χ_d) against Fredholm determinants", color=INK,
+                   fontsize=11, loc="left")
+    left.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="upper right", ncol=2)
+    right.set_yscale("log")
+    right.set_xlim(0, s_max)
+    right.set_ylim(1e-3, 1.2)
+    right.set_xlabel("s", color=INK)
+    right.set_ylabel("P(lowest zero > s)", color=INK)
+    right.set_title("Gap probability, dashed: fitted USp(2N)", color=INK, fontsize=11,
+                    loc="left")
+    right.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="lower left")
+    for ax in (left, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig
 
 def _fmt_power(x: float) -> str:
     e = int(np.floor(np.log10(x)))

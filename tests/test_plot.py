@@ -12,6 +12,7 @@ from zeta_explorer.plot import (
     plot_continuation,
     plot_domain,
     plot_explicit,
+    plot_first_zero,
     plot_gram,
     plot_l_z,
     plot_l_zeros,
@@ -173,3 +174,9 @@ def test_plot_low_lying_scales_draws_ratios():
     assert labels[1:] == ["ratios conjecture, d = ±D", "ratios conjecture, same characters"]
     assert len(fig.axes[0].lines) == 6
 
+
+def test_plot_first_zero(tmp_path):
+    fams = {4e3: OneLevel([np.array([0.5]), np.array([0.7, 1.2]), np.array([0.3])])}
+    fig = plot_first_zero(fams, n_grid=[1.5, 2.0, 3.0])
+    fig.savefig(tmp_path / "first.png")
+    assert "N = " in fig.axes[1].get_legend().get_texts()[0].get_text()
