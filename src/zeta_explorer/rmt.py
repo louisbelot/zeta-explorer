@@ -22,7 +22,7 @@ def even_orthogonal(x: np.ndarray, y: np.ndarray) -> np.ndarray:
     return np.sinc(x - y) + np.sinc(x + y)
 
 
-def _dirichlet(z: np.ndarray, m: int, n: float) -> np.ndarray:
+def _dirichlet(z: np.ndarray, m: float, n: float) -> np.ndarray:
     a = math.pi * z / (2 * n)
     den = np.sin(a)
     small = np.abs(den) < 1e-14
@@ -49,22 +49,23 @@ def _legendre(m: int) -> tuple[np.ndarray, np.ndarray]:
     return np.polynomial.legendre.leggauss(m)
 
 
-def fredholm_det(kernel: Kernel, a: float, b: float, m: int = 40) -> float:
+def _nystrom(
+    kernel: Kernel, a: float, b: float, m: int
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     u, w = _legendre(m)
     x = (b - a) / 2 * u + (a + b) / 2
     sw = np.sqrt(w * (b - a) / 2)
-    A = sw[:, None] * kernel(x[:, None], x[None, :]) * sw[None, :]
-    return float(np.linalg.det(np.eye(m) - A))
+    return x, sw, np.eye(m) - sw[:, None] * kernel(x[:, None], x[None, :]) * sw[None, :]
+
+
+def fredholm_det(kernel: Kernel, a: float, b: float, m: int = 40) -> float:
+    return float(np.linalg.det(_nystrom(kernel, a, b, m)[2]))
 
 
 def _gap_and_density(kernel: Kernel, s: float, m: int) -> tuple[float, float]:
     if s == 0:
         return 1.0, float(kernel(np.zeros(1), np.zeros(1))[0])
-    u, w = _legendre(m)
-    x = s * (u + 1) / 2
-    sw = np.sqrt(w * s / 2)
-    A = sw[:, None] * kernel(x[:, None], x[None, :]) * sw[None, :]
-    I_A = np.eye(m) - A
+    x, sw, I_A = _nystrom(kernel, 0.0, s, m)
     edge = kernel(x, np.full(m, s))
     rho = np.linalg.solve(I_A, sw * edge)
     resolvent = float(kernel(np.array([s]), np.array([s]))[0]) + sw @ (edge * rho)
