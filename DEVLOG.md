@@ -722,3 +722,56 @@ Design notes:
 
 Next: Dirichlet L-functions in the browser, then races with three or more
 residue classes (where δ depends on the order, not just the set).
+
+## 2026-11-07: Dirichlet L-functions in the browser
+
+New section on the web page: pick a modulus q ≤ 200 and a primitive character by
+its Conrey label, see Z(t, χ) with its zeros, and below it the zeros with |t| < 20
+of every primitive character mod q, one row per character. Clicking a row plots it.
+
+- `web/js/characters.js`: Conrey characters as exponent tables over a common
+  denominator, built prime power by prime power (the least generator that is also
+  primitive mod p², and the ±5^k split mod 2^e). Order, parity, conductor, conjugate
+  label n⁻¹ mod q, Gauss sum, root number ε = τ(χ)/(i^a √q).
+- `web/js/lfunction.js`: L(s, χ) = q^(−s) Σ χ(a) ζ(s, a/q), head summed to N·q with
+  N = 10 + ⌊|t|/π⌋ and an Euler-Maclaurin tail per residue. θ(t, χ), Z(t, χ), the
+  zero finder (8 samples per mean gap, Illinois refinement) and the smooth count
+  (θ(T) − θ(−T))/π.
+- `web/js/lzeros-worker.js` and `dirichlet.js`: the rows go to up to four workers,
+  one job per conjugate pair since Z(−t, χ) = Z(t, χ̄).
+
+Checks:
+
+- Character values against `characters.py` for 14 moduli up to 99, order, parity
+  and conductor for ten labels against the LMFDB, multiplicativity over all pairs
+  mod 63, 64, 99 and 120, the count of primitive characters for eleven moduli
+  (including 0 for 30), |τ| = √q, ε = 1 for every real primitive character.
+- L(s, χ) at 12 points with mpmath's `dirichlet` to 1e-12 relative, L(1, χ₋₄) = π/4
+  to 1e-14, Z against the Python `l_z` to 1e-11.
+- Im(e^(iθ) L(1/2 + it, χ)) = 0 to 1e-11 for every primitive character mod 5, 7, 16,
+  21 and 37 at five heights, and Z(−t, χ) = Z(t, χ̄).
+- First three zeros of χ₃(2, ·), χ₄(3, ·), χ₅(2, ·) against the LMFDB to 1e-10, and
+  the exact zero counts from the Python argument-principle check (31, 24, 24, 25
+  and 15 zeros for 5.2, 7.3, 13.2, 40.3 and 99.2).
+- In the browser: q = 30 says there are no primitive characters, 13.5 shows 18
+  zeros below 20 with the lowest at 2.195553, the same as the Python code.
+
+Timings (Node 24, one thread): one Z(t, χ) costs 12 μs for q = 13 at t = 20, 96 μs
+for q = 163, 265 μs for q = 199 at t = 100. All 81 distinct rows mod 163 take 6.3 s
+on one thread and about 2.3 s in the page with four workers.
+
+Design notes:
+
+- The tail term w^(1−s)/(s − 1) is computed as −log w · expm1(u)/u with
+  u = (1 − s) log w, the same trick as the Python version. The dropped 1/(s − 1)
+  cancels because Σ χ(a) = 0. Without it L(1 + 1e-9, χ₋₄) was off by 9e-8.
+- Caching χ(n) n^(−σ) per character took the critical-line evaluation from four
+  transcendental calls per term to two, but the Euler-Maclaurin tail (10 to 20
+  terms per residue) costs about as much as the head, so the real speedup for the
+  rows came from the conjugate symmetry and the worker pool.
+- `conreyGenerator(40487)` first returned 5: the check 5^(p−1) mod p² overflowed
+  doubles at p² ≈ 1.6e9. 40487 is the classic prime where 5 is a primitive root
+  mod p but not mod p², so the right answer is 10; powmod now runs in BigInt.
+
+Next: odd quadratic twists against excised SO(2N+1), then elliptic curves in the
+browser.
