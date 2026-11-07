@@ -585,3 +585,77 @@ Design notes:
 Next: the even orthogonal side, either quadratic twists of an elliptic curve or
 real quadratic characters with the central zero statistics, so the SO(even) curve
 on the lowest-zero chart has data of its own.
+
+## 2026-11-06: Elliptic curves and the even/odd twist families
+
+Built:
+
+- `elliptic.py`: `Curve` from Weierstrass coefficients (b and c invariants,
+  discriminant, conductor and root number for semistable curves), a_p by counting
+  points with a Legendre symbol table, a_n by multiplicativity and the Hecke
+  recursion, cached in power-of-two blocks. `EllipticL(E, d)` is the L-function of
+  the quadratic twist, with χ_d(n)·a_n, conductor N·d² and root number
+  w(E)·χ_d(−N).
+- `completed(s, L, y0)`: Λ(s) in the strip from the split Mellin integral with
+  incomplete gamma functions, split point y0 free. `hardy_z` uses the fact that the
+  two halves are conjugate on the critical line, so it needs one incomplete gamma
+  sum per point, and rotates y0 for |t| > 6/π. `central` gives L(1/2) or L'(1/2)
+  from the classical e^(−n/A) and E₁(n/A) series, with `exp1` written from scratch.
+- `low_zeros` and `zeros_below`: Chebyshev interpolation of P(u), where
+  Λ(1/2 + it)/√w = P(t²) or t·P(t²), roots of the Chebyshev series, central order
+  from the central value.
+- `rmt.py`: `odd_orthogonal_n` (the SO(2N + 1) kernel), `so_angles` (Haar SO(2N)
+  by QR with the sign fix and a column flip), `char_poly_at_one` and
+  `excised_first`, the DHKMS excised orthogonal ensemble. `fit_symplectic_n`
+  became `fit_n` with the kernel family as a parameter.
+- Plots: Z(t) for 11a3, 37a1, 389a1 and 5077a1 (central orders 0 to 3), the
+  central values of the even twists on the curves κc²/√d, and the lowest-zero
+  histograms of the even and odd twists against SO(even), fitted SO(2N), excised
+  SO(16), SO(odd) and SO(17).
+
+Checks:
+
+- a_n of 11a3 equal the eta product q∏(1 − qⁿ)²(1 − q¹¹ⁿ)² to n = 300; 11a1
+  (isogenous) gives the same series; 37a1 matches LMFDB; Hasse bound to 3000.
+- L(11a, 1) and L'(37a, 1) to 1e-14 against Cremona's values. 389a1 and 5077a1
+  give central values below 1e-13 with w = +1 and −1, as their ranks 2 and 3 need.
+- Λ independent of the split point to 1e-12 for two curves and two twists, and a
+  wrong root number breaks that by more than 1e-3.
+- First three zeros of 11a and 37a against LMFDB to 1e-11. Chebyshev zeros of five
+  twists against an Illinois sign scan of Z to 1e-12.
+- Waldspurger: for the 52 even twists with d ≤ 400, √(√d·L(E_d, 1/2)/κ) is an
+  integer to 1e-7, and the five zeros are d = 232, 265, 273, 344, 364.
+- Haar SO(8): one-level density against (2N − 1)/2π + sin((2N − 1)θ)/(2π sin θ)
+  within 4.5σ per bin, lowest eigenvalue of SO(6) against the Fredholm law by KS.
+  SO(3) closed form 1 − s + sin(πs)/π to 1e-14.
+
+Results for 11a3 twists with 5 ≤ d ≤ 6000 (1,674 curves, 832 even, 842 odd):
+119 even twists vanish at the center, two odd ones (d = 1393, 5777) have a triple
+zero. All 832 even central values sit on κc²/√d with κ = 6.346046521, c up to 16,
+worst distance from an integer 1.6e-7. For the 713 rank 0 even twists, the lowest
+zero has χ² 181.6 against SO(even), 164.6 against SO(16), 158.7 against the ML
+SO(2N) (N = 3.85), and 34.6 against SO(16) with the DHKMS cutoff
+det(I − A) ≥ 2.188·e^(−N/2), with no fitted parameter. KS distance 0.043 against
+0.181 without the cut. The odd twists' first non-central zero has mean 0.840,
+above the SO(odd) limit (0.783), and an SO(2N + 1) fit hits the boundary N > max x.
+
+Design notes:
+
+- Λ(1/2 + it) is entire of order one, so Chebyshev interpolation in u = t²
+  converges geometrically and degree 24 was enough for every twist I tried, up to
+  conductor 4·10⁸. Z itself carries 1/|Γ(1 + it)|, which has branch points at
+  t = ±i and would slow the interpolation, so the interpolant is for Λ.
+- Working in t² factors out the parity: the central zero of an odd twist is
+  divided out exactly instead of being a root the solver has to find next to the
+  ones I want.
+- Point counting is O(p) per prime, which is the slow part: 3.6 s for all a_n up
+  to 65,536 and 15 s to 131,072. It runs once per curve and the twists reuse it.
+- The family run is 1,674 independent twists, so it went through a process pool:
+  343 s on 12 processes, about 2.5 s of process time per twist.
+- The quadratic Dirichlet experiment wanted USp(2N) with small N. Here plain
+  SO(2N) at any N fails near the origin, and the fix is a cut on the central value
+  instead of a smaller matrix.
+
+Next: a model for the odd twists. Either an excised SO(2N + 1) with a cut on the
+derivative of the characteristic polynomial at 1, or the Heegner point heights
+behind L'(E_d, 1/2). After that, Dirichlet L-functions in the browser.

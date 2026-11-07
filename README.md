@@ -30,6 +30,13 @@ the lower-order terms of the ratios conjecture (which fit the histograms with
 zero, with gap probabilities of random symplectic matrices computed as Fredholm
 determinants.
 
+Elliptic curves come next: L-functions built from point counts, central zeros of
+order 0 to 3 for the curves 11a, 37a, 389a and 5077a, and 1,674 quadratic twists
+of 11a. Their central values sit exactly on Waldspurger's curves κc²/√d, and that
+discreteness explains why their lowest zeros stay away from the center: SO(16)
+random matrices with the matching cut on det(I − A) fit the even twists with χ² of
+34.6 on 15 bins, against 159 to 182 without the cut.
+
 The same numerics also run in the browser at
 [louisbelot.github.io/zeta-explorer](https://louisbelot.github.io/zeta-explorer/):
 a phase portrait you can pan and zoom, a Z(t) explorer that marks zeros and Gram
@@ -890,6 +897,126 @@ P ≈ 10⁻². The effective size grows by about 0.17 per unit of log|d|, a thir
 the slope in the usual dictionary 2N ≈ log|d|. This is the same lesson as the one-level density: at conductors
 you can compute, the arithmetic still shapes the zeros near the central point,
 and a small matrix mimics it better than the limiting law does.
+
+### Elliptic curves
+
+![Hardy Z of four elliptic curves with central zeros of order 0 to 3](docs/ec_z.png)
+
+`elliptic.py` takes a Weierstrass equation y² + a₁xy + a₃y = x³ + a₂x² + a₄x + a₆
+and builds its L-function from point counts. For an odd prime p, completing the
+square turns the curve into Y² = f(x) = 4x³ + b₂x² + 2b₄x + b₆, so
+a_p = −Σ_x (f(x)/p), one Legendre symbol lookup per x. p = 2 is counted by hand.
+The same sum is right at a bad prime as long as the model is minimal there, and
+it gives a_p = 1 or −1 for split or non-split multiplicative reduction. The code
+only accepts semistable curves: every prime dividing Δ must leave c₄ a unit, which
+also makes the model minimal. Then the conductor is the radical of Δ and the root
+number is w = −∏_{p|N} (−a_p). Additive reduction would need Tate's algorithm and
+raises an error. The a_n come from multiplicativity and the Hecke recursion
+a_{p^(k+1)} = a_p·a_{p^k} − p·a_{p^(k−1)}.
+
+In the analytic normalization (center at s = 1/2), Λ(s) = A^s Γ(s + 1/2) L(s)
+with A = √N/2π satisfies Λ(s) = wΛ(1 − s). Splitting the Mellin integral of the
+modular form at a point y₀ and folding the inner half over with the Fricke
+involution gives
+
+```
+Λ(s) = Σ b_n [ (A/n)^s Γ(s + 1/2, n·y₀/A) + w (A/n)^(1−s) Γ(3/2 − s, n/(y₀·A)) ],   b_n = a_n/√n
+```
+
+for any y₀ with Re y₀ > 0. The answer can't depend on y₀, which makes a sharp
+test: with the right N and w, y₀ = 1, 1.3, 0.8 and e^(0.6i) agree to 1e-12, and
+flipping the root number of a twist breaks the agreement at the 1e-3 level. On the
+critical line with |y₀| = 1 the two halves are complex conjugates, so
+Λ(1/2 + it) = S + wS̄, and the Hardy function is 2·Re(e^(iθ)S) for w = +1 or
+2·Im(e^(iθ)S) for w = −1, with θ(t) = t·log A + arg Γ(1 + it). For |t| above 6/π
+the code rotates y₀ toward i, the same trick as in the Dirichlet smoothed sums,
+so cancellation never costs more than a factor e³.
+
+At the center the incomplete gamma functions collapse to the classical series
+L(1/2) = 2Σ (a_n/n)·e^(−n/A) when w = +1 and L'(1/2) = 2Σ (a_n/n)·E₁(n/A) when
+w = −1. E₁ is my own: the power series below 1, Legendre's continued fraction
+above.
+
+Checks:
+
+- a_n of 11a3 against the eta product q∏(1 − qⁿ)²(1 − q¹¹ⁿ)² up to n = 300, and
+  the isogenous curve 11a1 gives the same series. 37a1 against its LMFDB
+  q-expansion. Hasse's bound for every p < 3000, and a_{p²} = a_p² − p.
+- L(11a, 1) = 0.2538418608559107 and L'(37a, 1) = 0.3059997738340523 to 1e-14.
+  The central values of 389a1 (rank 2) and 5077a1 (rank 3) come out below 1e-13.
+- The first three zeros of 11a and 37a against LMFDB to 1e-11, and Z(−t) = ±Z(t)
+  with the sign of w.
+
+### Quadratic twists of 11a
+
+For a fundamental discriminant d prime to N, the twist E_d has
+a_n(E_d) = χ_d(n)·a_n(E), conductor N·d² and root number w(E)·χ_d(−N), so the
+twists split by the sign of their functional equation. Katz and Sarnak predict
+even orthogonal statistics for the even ones and odd orthogonal statistics for
+the odd ones, where the forced central zero is set aside. I took the curve 11a3,
+y² + y = x³ − x², which is the one Dueñez, Huynh, Keating, Miller and Snaith
+(DHKMS, [arXiv:1107.4426](https://arxiv.org/abs/1107.4426)) use, and every
+fundamental d with 5 ≤ d ≤ 6000 prime to 11: 1,674 twists, 832 even and 842 odd.
+119 of the even twists have L(E_d, 1/2) = 0 (rank 2), and two odd ones, d = 1393
+and d = 5777, have a triple zero (rank 3). The separation is clean: the vanishing
+values come out around 1e-15, the smallest non-zero |L'(E_d, 1/2)| among the odd
+twists is 0.486, and the smallest non-zero L(E_d, 1/2) is 0.082.
+
+Finding the low zeros uses a symmetry. Λ(1/2 + it)/√w is a real entire function
+of t that is even or odd, so it equals P(t²) or t·P(t²). `low_zeros` interpolates
+P at Chebyshev points in u = t² up to the height of the third unfolded zero,
+doubling the degree until the last coefficients fall below 1e-13 of the largest,
+and takes the real roots of the Chebyshev series. The central zero is divided out
+exactly, there is no sign scan, and 25 evaluations of Λ are enough at conductor
+4·10⁸. On five test twists the roots agree with an Illinois search on sign
+changes of Z to 1e-12. Zeros are unfolded with x = θ(γ)/π, so the mean spacing is
+1. The whole family took 343 s on 12 processes.
+
+![Central values of the even twists of 11a3](docs/central_values.png)
+
+The central values are discrete. Waldspurger's theorem, in the explicit form of
+Kohnen and Zagier, says L(E_d, 1/2) = κ·c(d)²/√d where c(d) is an integer (a
+coefficient of a weight 3/2 modular form), and for this family DHKMS give
+κ = 6.346046521. Every one of the 832 even twists lands on one of the curves
+κc²/√d: the largest distance of √(√d·L/κ) from an integer is 1.6e-7, and c(d)
+goes up to 16. So L(E_d, 1/2) is either 0 or at least κ/√d, never in between.
+
+![Lowest zeros of the twists against SO(2N) with and without the cutoff](docs/twist_zeros.png)
+
+That gap is how DHKMS explain the repulsion S. J. Miller found in the lowest zero
+of elliptic curve L-functions. In a random matrix model the value of the
+characteristic polynomial at 1, Λ_A(1) = det(I − A), plays the part of L(1/2),
+and a small central value goes with an eigenvalue close to 1. In SO(2N) nothing
+stops det(I − A) from being tiny, and the lowest eigenvalue has density 2 at the
+origin. The L-functions can't have tiny central values, so DHKMS drop the
+matrices with Λ_A(1) < c·e^(−N/2). `rmt.so_angles` samples Haar SO(2N): QR of a
+Gaussian matrix with the sign of diag(R) fixed, then one column flipped when the
+determinant is −1. Its one-level density and lowest-eigenvalue law match the
+Fredholm determinants above within sampling error. With N = 8, close to
+log(√11·6000/2π) = 8.06, and the DHKMS constant c = 2.188, 80.7% of 300,000
+matrices survive the cut (14.3% of the even twists vanish). Nothing is fitted to
+my data.
+
+| model for the 713 rank 0 even twists | χ² on 15 bins of (0, 1.5) | KS distance |
+|---|---|---|
+| SO(even), N → ∞ | 181.6 | |
+| SO(16) | 164.6 | 0.181 |
+| SO(2N), maximum likelihood N = 3.85 | 158.7 | |
+| SO(16) with det(I − A) ≥ 0.0389 | 34.6 | 0.043 |
+
+The KS distance of the excised model is under the 5% critical value of 0.051 for
+713 points. Mean lowest zero: 0.394 for the twists, 0.408 excised, 0.342 for
+plain SO(16). Shrinking N doesn't do it: the likelihood is flat (95% interval 2.65
+to 6.85) and every SO(2N) still has density near 2 at the origin, which the data
+don't.
+
+The odd side is less tidy. The lowest non-central zero has mean 0.840 against
+0.783 for the SO(odd) limit, and SO(17), with kernel D(x − y) − D(x + y) where
+D now has 2N in place of 2N + 1, is nearly the same curve as the limit. A maximum
+likelihood fit over SO(2N + 1) runs into the constraint that N exceed the largest
+observed zero, so there is no honest finite N to quote. The analogue of the cutoff
+would need a lower bound for L'(E_d, 1/2), which by Gross and Zagier is the height
+of a Heegner point rather than an integer square, and I haven't built that model.
 
 ### In the browser
 
