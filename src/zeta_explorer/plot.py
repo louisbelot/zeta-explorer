@@ -18,7 +18,7 @@ from zeta_explorer.riemann_siegel import theta, z_exact, z_rs
 from zeta_explorer.rmt import (
     even_orthogonal,
     first_density,
-    fit_symplectic_n,
+    fit_n,
     gap,
     symplectic,
     symplectic_n,
@@ -587,7 +587,7 @@ def plot_first_zero(
     colors = ORDINAL[::2] if len(families) <= 3 else ORDINAL
     for (d, fam), color in zip(sorted(families.items()), colors[: len(families)], strict=True):
         first = np.sort(fam.first())
-        n, lo, hi, _ = fit_symplectic_n(first, grid)
+        n, lo, hi, _ = fit_n(first, grid)
         left.hist(first, bins=bins, range=(0, s_max), density=True, histtype="step",
                   color=color, linewidth=1.8, label=f"|d| ≈ {_fmt_power(d)}")
         left.plot(s, first_density(symplectic_n(n), s), color=color, linewidth=1.2,

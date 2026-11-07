@@ -7,7 +7,7 @@ from zeta_explorer.rmt import (
     even_orthogonal,
     even_orthogonal_n,
     first_density,
-    fit_symplectic_n,
+    fit_n,
     fredholm_det,
     gap,
     sine,
@@ -97,7 +97,7 @@ def test_fit_recovers_matrix_size():
     s = np.linspace(0, 1.6, 4001)
     cdf = 1 - gap(symplectic_n(n), s)
     sample = np.interp(rng.uniform(0, cdf[-1], 4000), cdf, s)
-    best, lo, hi, _ = fit_symplectic_n(sample, np.linspace(1.5, 8, 27))
+    best, lo, hi, _ = fit_n(sample, np.linspace(1.5, 8, 27))
     assert lo <= n <= hi
     assert hi - lo < 1.5
     assert math.isclose(best, n, abs_tol=0.6)

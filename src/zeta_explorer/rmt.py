@@ -85,8 +85,9 @@ def first_density(kernel: Kernel, s: ArrayLike, m: int = 40) -> float | np.ndarr
     return float(out[0]) if np.ndim(s) == 0 else out
 
 
-def fit_symplectic_n(
-    first: ArrayLike, grid: ArrayLike, m: int = 40
+def fit_n(
+    first: ArrayLike, grid: ArrayLike, family: Callable[[float], Kernel] = symplectic_n,
+    m: int = 40,
 ) -> tuple[float, float, float, np.ndarray]:
     x = np.asarray(first, dtype=float)
     ns = np.asarray(grid, dtype=float)
@@ -95,7 +96,7 @@ def fit_symplectic_n(
     for i, n in enumerate(ns):
         if n <= s[-1]:
             continue
-        p = np.interp(x, s, first_density(symplectic_n(n), s, m))
+        p = np.interp(x, s, first_density(family(n), s, m))
         if np.all(p > 0):
             loglik[i] = np.sum(np.log(p))
     best = int(np.argmax(loglik))
