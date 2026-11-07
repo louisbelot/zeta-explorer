@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+import cmath
 import math
 from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import ArrayLike
 
-from zeta_explorer.characters import Character, characters
-from zeta_explorer.explicit import _CHUNK, EULER_GAMMA, primes
+from zeta_explorer.characters import Character, characters, factor
+from zeta_explorer.explicit import _CHUNK, EULER_GAMMA, ei, mobius, primes
 from zeta_explorer.lfunction import dirichlet_l, l_zeros
 
 
@@ -124,7 +125,66 @@ class Race:
             out[s] += np.cos(theta) @ amp
         return out
 
+    def explicit(self, x: ArrayLike) -> np.ndarray:
+        x = np.asarray(x, dtype=float)
+        L = np.log(x).ravel()
+        rho = 0.5 + 1j * self.gamma
+        shift = 1j * np.pi * np.sign(self.gamma)
+        out = np.zeros(len(L))
+        rows = max(1, _CHUNK // max(len(rho), 1))
+        for i in range(0, len(L), rows):
+            s = slice(i, i + rows)
+            out[s] = ((ei(L[s, None] * rho) - shift) @ self.coef).real
+        for w, chi in self.chars:
+            out += (w * _pi_main(L, chi)).real
+        return (out * L / np.exp(L / 2)).reshape(x.shape)
 
+
+def _log_at_zero(chi: Character) -> complex:
+    k = chi.parity
+    a = np.arange(1, chi.q)
+    v = chi.values[1:]
+    if k:
+        z = complex(-np.sum(a * v) / chi.q)
+    else:
+        z = complex(np.sum(v * np.array([math.lgamma(t) for t in a / chi.q])))
+    sigma = np.linspace(4.0, 0.01, 800)
+    f = np.asarray(dirichlet_l(sigma + 0j, chi), dtype=complex) / sigma ** (1 - k)
+    turns = round((np.unwrap(np.angle(f))[-1] - cmath.phase(z)) / (2 * math.pi))
+    return complex(math.log(abs(z)), cmath.phase(z) + 2 * math.pi * turns)
+
+
+def _prime_powers(chi: Character, k: int, y_max: float) -> tuple[np.ndarray, np.ndarray]:
+    n, w = [], []
+    for p in primes(int(y_max)).tolist():
+        v = chi(p) ** k
+        m, pm = 1, p
+        while pm <= y_max:
+            n.append(pm)
+            w.append(v**m / m)
+            m, pm = m + 1, pm * p
+    order = np.argsort(n)
+    return np.asarray(n, dtype=float)[order], np.cumsum(np.asarray(w, dtype=complex)[order])
+
+
+def _pi_main(L: np.ndarray, chi: Character) -> np.ndarray:
+    prim = chi.primitive()
+    out = np.full(len(L), _log_at_zero(prim))
+    if prim.parity == 0:
+        out -= EULER_GAMMA + np.log(L)
+    for p, _ in factor(chi.q):
+        m = np.floor(L / math.log(p) + 1e-12).astype(np.int64)
+        powers = np.cumsum([prim(p) ** j / j for j in range(1, m.max() + 1)])
+        out -= np.where(m > 0, np.concatenate([[0], powers])[m], 0)
+    k = 2
+    while (live := L / k > math.log(2)).any():
+        if mu := mobius(k):
+            y = np.exp(L[live] / k)
+            n, Pi = _prime_powers(chi, k, y.max())
+            i = np.searchsorted(n, y * (1 + 1e-12), side="right") - 1
+            out[live] += mu / k * np.where(i >= 0, Pi[np.maximum(i, 0)], 0)
+        k += 1
+    return out
 
 
 def race(q: int, a: int, b: int, T: float = 1000.0) -> Race:

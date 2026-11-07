@@ -13,7 +13,7 @@ from zeta_explorer.bias import (
     square_roots,
     zero_sum,
 )
-from zeta_explorer.characters import conrey, quadratic
+from zeta_explorer.characters import conrey, quadratic, totient
 from zeta_explorer.lfunction import l_zeros
 
 
@@ -116,6 +116,17 @@ def test_mod_3_race_never_flips_early():
     p, d = prime_race(3, 2, 1, 10**6)
     assert np.all(d[p >= 5] > 0)
     assert observed_density(p, d) > 0.999
+
+
+@pytest.mark.parametrize("q, a", [(4, 3), (5, 2), (12, 11)])
+def test_explicit_formula_tracks_the_race(q, a):
+    R = race(q, a, 1, 200)
+    p, d = prime_race(q, a, 1, 10**5)
+    x = np.exp(np.linspace(math.log(200), math.log(1e5), 600))
+    actual = totient(q) * d[np.searchsorted(p, x, side="right") - 1] * np.log(x) / np.sqrt(x)
+    err = R.explicit(x) - actual
+    assert abs(np.mean(err)) < 0.03
+    assert np.mean(np.abs(err)) < 0.25
 
 
 def test_bad_residues():
