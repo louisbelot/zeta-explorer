@@ -7,11 +7,17 @@ import pytest
 from zeta_explorer.bias import (
     bessel_j0,
     l_log_derivative_one,
+    race,
     square_roots,
     zero_sum,
 )
 from zeta_explorer.characters import conrey, quadratic
 from zeta_explorer.lfunction import l_zeros
+
+
+@pytest.fixture(scope="module")
+def mod4():
+    return race(4, 3, 1, 200)
 
 
 def test_j0_matches_mpmath():
@@ -51,3 +57,47 @@ def test_complex_zero_sum_is_real_and_conjugate_invariant():
     chi = conrey(5, 2)
     assert not chi.is_real
     assert abs(zero_sum(chi) - zero_sum(chi.conj())) < 1e-12
+
+
+@pytest.mark.parametrize(
+    "q, a, ref",
+    [
+        (3, 2, 0.999063),
+        (4, 3, 0.995928),
+        (5, 2, 0.952175),
+        (8, 3, 0.999569),
+        (8, 5, 0.997395),
+        (8, 7, 0.998939),
+        (12, 5, 0.999206),
+        (12, 11, 0.999977),
+    ],
+)
+def test_density_matches_fiorilli_martin(q, a, ref):
+    assert abs(race(q, a, 1, 200).density() - ref) < 1.5e-6
+
+
+def test_density_flips_with_the_race(mod4):
+    assert abs(race(4, 1, 3, 200).density() + mod4.density() - 1) < 1e-12
+
+
+def test_symmetric_races_mod_5():
+    ref = race(5, 2, 1, 100).density()
+    for a, b in ((3, 1), (2, 4), (3, 4)):
+        assert abs(race(5, a, b, 100).density() - ref) < 1e-10
+    assert race(5, 2, 3, 100).density() == 0.5
+
+
+def test_density_agrees_with_monte_carlo():
+    R = race(5, 2, 1, 40)
+    x = R.sample(400_000, np.random.default_rng(11))
+    p = R.density()
+    sigma = math.sqrt(p * (1 - p) / len(x))
+    assert abs(np.mean(x > 0) - p) < 4 * sigma
+    assert abs(np.var(x) / R.variance - 1) < 0.01
+
+
+def test_bad_residues():
+    with pytest.raises(ValueError):
+        race(4, 2, 1)
+    with pytest.raises(ValueError):
+        race(5, 2, 7)
