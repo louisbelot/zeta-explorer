@@ -106,6 +106,14 @@ class Race:
         g[1:] = np.sin(self.bias * t[1:]) / t[1:] * v[1:]
         return 0.5 + h * (np.sum(g) - g[0] / 2) / math.pi
 
+    def pdf(self, u: ArrayLike) -> np.ndarray:
+        h, t, v = self._grid()
+        u = np.asarray(u, dtype=float)
+        w = np.full(len(t), h)
+        w[0] = h / 2
+        c = np.cos(np.multiply.outer(self.bias - u.ravel(), t))
+        return (c @ (w * v) / math.pi).reshape(u.shape)
+
     def sample(self, n: int, rng: np.random.Generator) -> np.ndarray:
         out = self.bias + math.sqrt(self.tail / 2) * rng.standard_normal(n)
         amp = self.amp

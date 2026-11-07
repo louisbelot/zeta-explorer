@@ -96,6 +96,14 @@ def test_density_agrees_with_monte_carlo():
     assert abs(np.var(x) / R.variance - 1) < 0.01
 
 
+def test_pdf_integrates_to_density(mod4):
+    u = np.linspace(-8, 12, 4001)
+    f = mod4.pdf(u)
+    assert abs(np.trapezoid(f, u) - 1) < 1e-9
+    assert abs(np.trapezoid(u * f, u) - mod4.bias) < 1e-8
+    assert abs(np.trapezoid(f[u >= 0], u[u >= 0]) - mod4.density()) < 1e-5
+
+
 def test_bad_residues():
     with pytest.raises(ValueError):
         race(4, 2, 1)
