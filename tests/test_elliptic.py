@@ -1,13 +1,17 @@
+import math
+
+import mpmath
 import numpy as np
 import pytest
 
-from zeta_explorer.elliptic import Curve, EllipticL, twists
+from zeta_explorer.elliptic import Curve, EllipticL, central, exp1, twists
 from zeta_explorer.explicit import primes
 
 E11 = Curve(0, -1, 1, 0, 0)
 E37 = Curve(0, 0, 1, -1, 0)
 E389 = Curve(0, 1, 1, -2, 0)
 E5077 = Curve(0, 0, 1, -7, 6)
+KAPPA = 6.346046521
 
 
 def eta_product(M):
@@ -71,6 +75,28 @@ def test_twist_data():
         EllipticL(E11, 33)
     with pytest.raises(ValueError):
         EllipticL(E11, 9)
+
+
+def test_exp1_against_mpmath():
+    x = np.array([1e-3, 0.3, 0.999, 1.0, 2.5, 30.0])
+    ref = [float(mpmath.e1(v)) for v in x]
+    assert exp1(x) == pytest.approx(ref, rel=1e-14)
+
+
+def test_central_values():
+    assert central(EllipticL(E11)) == pytest.approx(0.2538418608559107, abs=1e-14)
+    assert central(EllipticL(E37)) == pytest.approx(0.3059997738340523, abs=1e-14)
+    assert abs(central(EllipticL(E389))) < 1e-13
+    assert abs(central(EllipticL(E5077))) < 1e-13
+
+
+def test_waldspurger_squares():
+    even = [L for L in twists(E11, 5, 400, sign=1) if L.root_number == 1]
+    c = np.array([math.sqrt(max(central(L), 0) * math.sqrt(L.d) / KAPPA) for L in even])
+    assert len(even) == 52
+    assert np.abs(c - c.round()).max() < 1e-7
+    assert c[:7].round().tolist() == [1, 1, 1, 2, 2, 1, 3]
+    assert [L.d for L, ci in zip(even, c, strict=True) if ci < 0.5] == [232, 265, 273, 344, 364]
 
 
 def test_twists_family():

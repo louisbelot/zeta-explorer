@@ -6,9 +6,13 @@ from dataclasses import dataclass
 from functools import cached_property
 
 import numpy as np
+from numpy.typing import ArrayLike
 
+from zeta_explorer.afe import _legendre
 from zeta_explorer.characters import factor, is_fundamental, quadratic
 from zeta_explorer.explicit import primes
+
+_CUT = 36.0
 
 
 @dataclass(frozen=True)
@@ -133,6 +137,33 @@ class EllipticL:
     def __repr__(self) -> str:
         e = (self.E.a1, self.E.a2, self.E.a3, self.E.a4, self.E.a6)
         return f"EllipticL({list(e)}, d={self.d})"
+
+
+def exp1(x: ArrayLike) -> float | np.ndarray:
+    xs = np.atleast_1d(np.asarray(x, dtype=float))
+    if np.any(xs <= 0):
+        raise ValueError("exp1 needs x > 0")
+    out = np.empty_like(xs)
+    small = xs < 1
+    xx = xs[small]
+    term = -xx
+    total = term.copy()
+    for k in range(2, 40):
+        term = -term * xx / k
+        total += term / k
+    out[small] = -np.euler_gamma - np.log(xx) - total
+    w = xs[~small].astype(complex)
+    out[~small] = (np.exp(-w) * _legendre(0.0, w)).real
+    return float(out[0]) if np.ndim(x) == 0 else out
+
+
+def central(L: EllipticL) -> float:
+    M = math.ceil(_CUT * L.A) + 1
+    n = np.arange(1, M + 1)
+    a = L.an(M)[1:] / n
+    if L.root_number == 1:
+        return float(2 * np.sum(a * np.exp(-n / L.A)))
+    return float(2 * np.sum(a * exp1(n / L.A)))
 
 
 def twists(E: Curve, lo: int, hi: int, sign: int = 0) -> list[EllipticL]:
