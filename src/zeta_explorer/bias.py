@@ -7,7 +7,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from zeta_explorer.characters import Character, characters
-from zeta_explorer.explicit import _CHUNK, EULER_GAMMA
+from zeta_explorer.explicit import _CHUNK, EULER_GAMMA, primes
 from zeta_explorer.lfunction import dirichlet_l, l_zeros
 
 
@@ -145,3 +145,14 @@ def race(q: int, a: int, b: int, T: float = 1000.0) -> Race:
         tail += 4 * abs(delta) ** 2 * (full - np.sum(1 / (0.25 + g**2)))
     bias = float(square_roots(q, b) - square_roots(q, a))
     return Race(q, a, b, T, bias, np.concatenate(gamma), np.concatenate(coef), tail, tuple(chars))
+
+
+def prime_race(q: int, a: int, b: int, n: int) -> tuple[np.ndarray, np.ndarray]:
+    p = primes(n)
+    d = np.cumsum((p % q == a % q).astype(np.int64) - (p % q == b % q))
+    return p, d
+
+
+def observed_density(p: np.ndarray, d: np.ndarray) -> float:
+    span = np.diff(np.log(p))
+    return float(np.sum(span[d[:-1] > 0]) / np.sum(span))

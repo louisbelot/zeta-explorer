@@ -7,6 +7,8 @@ import pytest
 from zeta_explorer.bias import (
     bessel_j0,
     l_log_derivative_one,
+    observed_density,
+    prime_race,
     race,
     square_roots,
     zero_sum,
@@ -102,6 +104,18 @@ def test_pdf_integrates_to_density(mod4):
     assert abs(np.trapezoid(f, u) - 1) < 1e-9
     assert abs(np.trapezoid(u * f, u) - mod4.bias) < 1e-8
     assert abs(np.trapezoid(f[u >= 0], u[u >= 0]) - mod4.density()) < 1e-5
+
+
+def test_leech_first_lead_change():
+    p, d = prime_race(4, 3, 1, 30_000)
+    assert p[np.argmax(d < 0)] == 26861
+    assert np.all(d[p < 26861] >= 0)
+
+
+def test_mod_3_race_never_flips_early():
+    p, d = prime_race(3, 2, 1, 10**6)
+    assert np.all(d[p >= 5] > 0)
+    assert observed_density(p, d) > 0.999
 
 
 def test_bad_residues():
