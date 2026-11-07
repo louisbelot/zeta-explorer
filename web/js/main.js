@@ -1,3 +1,4 @@
+import { dirichletPlots } from "./dirichlet.js"
 import { domainPlot } from "./domain.js"
 import { zExplorer } from "./explorer.js"
 import { primesPlot } from "./primes.js"
@@ -17,6 +18,16 @@ const redraw = [
     count: $("psi-count"),
     play: $("psi-play"),
     xmax: $("psi-x"),
+  }),
+  dirichletPlots({
+    section: $("dirichlet"),
+    q: $("l-q"),
+    select: $("l-chi"),
+    info: $("l-info"),
+    plot: $("l-plot"),
+    readout: $("l-readout"),
+    rows: $("l-rows"),
+    rowsReadout: $("l-rows-readout"),
   }),
   statsPlots($("spacing-plot"), $("pair-plot"), $("stats-intro"), spacing),
 ]
