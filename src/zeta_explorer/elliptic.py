@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import cmath
 import functools
 import math
 from dataclasses import dataclass
@@ -8,9 +9,10 @@ from functools import cached_property
 import numpy as np
 from numpy.typing import ArrayLike
 
-from zeta_explorer.afe import _legendre
+from zeta_explorer.afe import _legendre, gammaincc
 from zeta_explorer.characters import factor, is_fundamental, quadratic
 from zeta_explorer.explicit import primes
+from zeta_explorer.zeta import loggamma
 
 _CUT = 36.0
 
@@ -164,6 +166,27 @@ def central(L: EllipticL) -> float:
     if L.root_number == 1:
         return float(2 * np.sum(a * np.exp(-n / L.A)))
     return float(2 * np.sum(a * exp1(n / L.A)))
+
+
+def completed(s: ArrayLike, L: EllipticL, y0: complex = 1.0) -> complex | np.ndarray:
+    z = np.array(s, dtype=complex, ndmin=1).ravel()
+    if np.any((z.real <= 0) | (z.real >= 1)):
+        raise ValueError("completed works inside the critical strip 0 < Re s < 1")
+    y0 = complex(y0)
+    if y0.real <= 0:
+        raise ValueError("the split point needs Re y0 > 0")
+    r = max(abs(y0), 1 / abs(y0))
+    M = math.ceil(_CUT * L.A * r * abs(y0) / y0.real) + 1
+    n = np.arange(1, M + 1)
+    b = L.an(M)[1:] / np.sqrt(n)
+    log_r = np.log(L.A / n)
+    w = L.root_number
+    out = np.empty(len(z), dtype=complex)
+    for i, si in enumerate(z):
+        g1 = cmath.exp(loggamma(si + 0.5)) * gammaincc(complex(si + 0.5), n * y0 / L.A)
+        g2 = cmath.exp(loggamma(1.5 - si)) * gammaincc(complex(1.5 - si), n / (y0 * L.A))
+        out[i] = np.sum(b * (np.exp(si * log_r) * g1 + w * np.exp((1 - si) * log_r) * g2))
+    return complex(out[0]) if np.ndim(s) == 0 else out.reshape(np.shape(s))
 
 
 def twists(E: Curve, lo: int, hi: int, sign: int = 0) -> list[EllipticL]:

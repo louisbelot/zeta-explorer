@@ -1,10 +1,11 @@
+import cmath
 import math
 
 import mpmath
 import numpy as np
 import pytest
 
-from zeta_explorer.elliptic import Curve, EllipticL, central, exp1, twists
+from zeta_explorer.elliptic import Curve, EllipticL, central, completed, exp1, twists
 from zeta_explorer.explicit import primes
 
 E11 = Curve(0, -1, 1, 0, 0)
@@ -88,6 +89,22 @@ def test_central_values():
     assert central(EllipticL(E37)) == pytest.approx(0.3059997738340523, abs=1e-14)
     assert abs(central(EllipticL(E389))) < 1e-13
     assert abs(central(EllipticL(E5077))) < 1e-13
+
+
+@pytest.mark.parametrize("L", [EllipticL(E11), EllipticL(E37), EllipticL(E11, -7),
+                               EllipticL(E11, 8)], ids=repr)
+def test_split_point_does_not_matter(L):
+    s = np.array([0.5, 0.3 + 0.7j, 0.8 + 2.5j])
+    ref = completed(s, L)
+    for y0 in (1.3, 0.8, cmath.exp(0.6j)):
+        assert np.abs(completed(s, L, y0) - ref).max() < 1e-12 * np.abs(ref).max()
+
+
+def test_wrong_root_number_breaks_the_split():
+    L = EllipticL(E11, 8)
+    L.__dict__["root_number"] = 1
+    s = 0.3 + 0.7j
+    assert abs(completed(s, L, 1.3) - completed(s, L)) > 1e-3 * abs(completed(s, L))
 
 
 def test_waldspurger_squares():
