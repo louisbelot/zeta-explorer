@@ -37,6 +37,13 @@ discreteness explains why their lowest zeros stay away from the center: SO(16)
 random matrices with the matching cut on det(I − A) fit the even twists with χ² of
 34.6 on 15 bins, against 159 to 182 without the cut.
 
+The zeros also settle prime races. Under GRH and LI the share of log x where
+primes ≡ 3 (mod 4) lead primes ≡ 1 is 0.9959279, computed from 868 zeros of
+L(s, χ₋₄) and an exact tail, and the same code reproduces Fiorilli and Martin's
+densities for twelve races mod 3 to 24 to six digits. With 3,130 zeros the
+explicit formula rebuilds π(x; 4, 3) − π(x; 4, 1) closely enough to see the first
+lead change at x = 26861.
+
 The same numerics also run in the browser at
 [louisbelot.github.io/zeta-explorer](https://louisbelot.github.io/zeta-explorer/):
 a phase portrait you can pan and zoom, a Z(t) explorer that marks zeros and Gram
@@ -1017,6 +1024,94 @@ likelihood fit over SO(2N + 1) runs into the constraint that N exceed the larges
 observed zero, so there is no honest finite N to quote. The analogue of the cutoff
 would need a lower bound for L'(E_d, 1/2), which by Gross and Zagier is the height
 of a Heegner point rather than an integer square, and I haven't built that model.
+
+### Chebyshev's bias
+
+![The mod 4 prime race against 3,130 zeros of L(s, χ₋₄), and the first lead change at 26861](docs/race.png)
+
+Chebyshev noticed in 1853 that primes ≡ 3 (mod 4) seem to outnumber primes ≡ 1.
+Counting confirms it: π(x; 4, 3) ≥ π(x; 4, 1) for every x below 26861, and up to
+10⁸ the 1 class leads at only 1,940 primes. Rubinstein and Sarnak explained why,
+assuming GRH and the linear independence of the zero ordinates (LI). With
+E(x) = φ(q)·(π(x; q, a) − π(x; q, b))·log x / √x, the explicit formula for each
+L(s, χ) gives
+
+E(x) = c(q, b) − c(q, a) − Σ_χ (χ̄(a) − χ̄(b)) Σ_γ x^(iγ) / (1/2 + iγ) + o(1),
+
+where c(q, a) + 1 is the number of square roots of a mod q. The constant is the
+whole bias: prime squares are all quadratic residues, so the residue class pays
+for them and starts behind by c(q, b) − c(q, a). As log x runs, LI makes the
+phases γ log x equidistribute on a torus, so E(x) behaves like
+X = C + Σ r_γ cos θ_γ with independent uniform θ_γ and r_γ = 2|χ(a) − χ(b)|/|ρ|.
+Its characteristic function is e^(iCt) ∏ J₀(r_γ t), and the share of log x where
+a leads is
+
+δ(q; a, b) = P(X > 0) = 1/2 + (1/π) ∫₀^∞ sin(Ct)/t · ∏ J₀(r_γ t) dt.
+
+```python
+from zeta_explorer.bias import race, prime_race
+
+R = race(4, 3, 1)                      # zeros of L(s, χ₋₄) up to T = 1000
+len(R.gamma), R.bias, R.variance       # 868, 2.0, 0.6223
+R.density()                            # 0.9959279226422321
+p, d = prime_race(4, 3, 1, 30_000)
+p[d < 0]                               # [26861]
+```
+
+`race` collects the zeros below T of every character with χ(a) ≠ χ(b), one per
+conjugate pair (a complex χ contributes its zeros on both sides of the real axis,
+which are the positive zeros of χ and χ̄). Zeros above T are not dropped: their
+total weight Σ 1/(1/4 + γ²) has a closed form, log(q/π) + ψ((1 + κ)/2) +
+2 Re L'/L(1, χ), so the tail variance is exact and enters as a Gaussian factor in
+the product. L'(1, χ) comes from a 48-point Cauchy integral around s = 1, and J₀
+from the midpoint rule on (1/π)∫ cos(z sin θ) dθ, which matches mpmath to 1e-14
+with about z/2 + 15 nodes. The integral is a trapezoid sum; the integrand is
+analytic and even, so the only error is aliasing, the mass of X beyond 2π/h, and h
+is chosen so that is 40 standard deviations away.
+
+| race | zeros (T = 1000) | δ here | Fiorilli-Martin | Var X | log share, 10³ to 10⁸ |
+|---|---:|---:|---:|---:|---:|
+| 3 vs 2 mod 3 (2 ahead) | 823 | 0.9990632 | 0.999063 | 0.4529 | 1.00000 |
+| 3 vs 1 mod 4 | 868 | 0.9959279 | 0.995928 | 0.6223 | 0.99894 |
+| 2 vs 1 mod 5 | 2,712 | 0.9521746 | 0.952175 | 1.4391 | 0.97730 |
+| 3 vs 1 mod 8 | 1,847 | 0.9995688 | 0.999569 | 1.5640 | 1.00000 |
+| 5 vs 1 mod 8 | 1,956 | 0.9973946 | 0.997395 | 2.2060 | 1.00000 |
+| 7 vs 1 mod 8 | 1,845 | 0.9989378 | 0.998939 | 1.8866 | 1.00000 |
+| 5 vs 1 mod 12 | 1,864 | 0.9992059 | 0.999206 | 1.7736 | 1.00000 |
+| 7 vs 1 mod 12 | 1,909 | 0.9986061 | 0.998606 | 1.9429 | 1.00000 |
+| 11 vs 1 mod 12 | 1,691 | 0.9999766 | 0.999977 | 1.0752 | 1.00000 |
+| 5 vs 1 mod 24 | 3,820 | 0.9999875 | 0.999988 | 3.9796 | 1.00000 |
+| 11 vs 1 mod 24 | 3,823 | 0.9999826 | 0.999983 | 4.2257 | 1.00000 |
+| 23 vs 1 mod 24 | 3,820 | 0.9998886 | 0.999889 | 5.5277 | 1.00000 |
+
+All twelve agree with Table 8 of Fiorilli and Martin (2013) to the six digits they
+print, and the tests check eight of them with T = 200, which already lands within
+5e-7 of the printed values. Feuerverger and Martin (2000) give 0.952140 for the mod 5 race and say their
+complex-character computation interpolated between grid points; the value here
+matches the later 0.952175. Their table of Σ_{γ>0} 1/(1/4 + γ²) for χ₋₃, χ₋₄,
+χ₋₈ and χ₁₂ is matched to all six digits. As an independent check on the Fourier
+inversion, 400,000 draws of X with random phases land within 4σ of the computed
+density, and the density integrates to 1 with mean C. The last column is what
+the primes actually do up to 10⁸, which is far from the limit for the mod 5 race
+(1 leads after 300,619 of the primes below 10⁸), while the races mod 3, 8, 12 and
+24 show no reversal at all in that range.
+
+![Limiting distributions of five races](docs/bias.png)
+
+`Race.explicit(x)` rebuilds E(x) itself from the zeros, with Riemann's Li(x^ρ)
+for each zero. The plain sum is off by about one prime at small x because the
+explicit formula for Π(x, χ) has a constant, log L(0, χ) for odd χ and
+log L'(0, χ) − γ − log log x for even χ (L(0, χ) = 0 there), and π needs the
+Möbius sum over Π(x^(1/k), χ^k). Those k ≥ 2 terms only involve primes up to √x,
+so they are counted directly. Two details matter for complex characters: the
+branch of log L(0, χ) comes from following L(σ, χ) along the real axis from
+σ = 4, and Li(x^ρ) has to be the integral from −∞, which is Ei(ρ log x) minus
+iπ·sign(γ). With Ei alone the error flips sign as T crosses each zero, because
+zeros above and below the axis no longer pair up. After both fixes the mean error
+over 200 ≤ x ≤ 10⁵ is at most 0.013 in E for the mod 4, 5, 8, 12 and 24 races. With
+the 3,130 zeros below T = 3000 the rebuilt curve goes negative for x between
+about 26857 and 26876, around the actual first lead change at 26861 (the right panel
+of the first chart).
 
 ### In the browser
 

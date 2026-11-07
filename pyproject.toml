@@ -5,12 +5,12 @@ build-backend = "hatchling.build"
 [project]
 name = "zeta-explorer"
 version = "0.1.0"
-description = "Explore the Riemann zeta function from scratch: Riemann-Siegel Z, zeta(s), Gram blocks, Turing verification, fast multi-evaluation of Z, the explicit formula for pi(x), Lehmer pairs, value distributions, and Dirichlet L-functions up to conductor 1e5 with their low-lying zeros, ratios-conjecture lower-order terms and Fredholm-determinant first-zero laws, and elliptic curve L-functions with their quadratic twists against the excised orthogonal ensemble."
+description = "Explore the Riemann zeta function from scratch: Riemann-Siegel Z, zeta(s), Gram blocks, Turing verification, fast multi-evaluation of Z, the explicit formula for pi(x), Lehmer pairs, value distributions, and Dirichlet L-functions up to conductor 1e5 with their low-lying zeros, ratios-conjecture lower-order terms and Fredholm-determinant first-zero laws, elliptic curve L-functions with their quadratic twists against the excised orthogonal ensemble, and Chebyshev's bias in prime races computed from the zeros."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 authors = [{ name = "Louis Belot" }]
-keywords = ["riemann-zeta", "riemann-hypothesis", "number-theory", "visualization", "riemann-siegel", "explicit-formula", "random-matrix-theory", "nufft", "odlyzko-schonhage", "dirichlet-l-functions", "katz-sarnak", "approximate-functional-equation", "ratios-conjecture", "fredholm-determinant", "elliptic-curves", "quadratic-twists"]
+keywords = ["riemann-zeta", "riemann-hypothesis", "number-theory", "visualization", "riemann-siegel", "explicit-formula", "random-matrix-theory", "nufft", "odlyzko-schonhage", "dirichlet-l-functions", "katz-sarnak", "approximate-functional-equation", "ratios-conjecture", "fredholm-determinant", "elliptic-curves", "quadratic-twists", "chebyshev-bias", "prime-races"]
 dependencies = [
     "numpy>=1.24",
     "mpmath>=1.3",

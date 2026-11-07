@@ -659,3 +659,66 @@ Design notes:
 Next: a model for the odd twists. Either an excised SO(2N + 1) with a cut on the
 derivative of the characteristic polynomial at 1, or the Heegner point heights
 behind L'(E_d, 1/2). After that, Dirichlet L-functions in the browser.
+
+## 2026-11-07: Chebyshev's bias
+
+Built `bias.py`: prime races mod q from the zeros of Dirichlet L-functions, after
+Rubinstein and Sarnak.
+
+- `race(q, a, b, T)` gathers the zeros below T of one character per conjugate
+  pair with χ(a) ≠ χ(b) (both sides of the axis for complex χ), the amplitudes
+  2|χ(a) − χ(b)|/|ρ|, the bias c(q, b) − c(q, a) from counting square roots, and
+  the exact variance of the zeros above T.
+- `zero_sum(χ)` = Σ_γ 1/(1/4 + γ²) = log(q/π) + ψ((1 + κ)/2) + 2 Re L'/L(1, χ),
+  from the Hadamard product of Λ. L'(1, χ) by a Cauchy integral on |s − 1| = 0.4.
+- `bessel_j0` written from the midpoint rule on the integral representation.
+- `Race.density()` is Gil-Pelaez on the characteristic function
+  e^(iCt) ∏ J₀(r t) · e^(−V t²/4); `pdf`, `sample` and `variance` alongside.
+- `Race.explicit(x)` rebuilds φ(q)(π(x; q, a) − π(x; q, b)) log x/√x from the
+  zeros with Riemann's Li(x^ρ), the constant log L(0, χ) or
+  log L'(0, χ) − γ − log log x, the Euler factors at p | q for imprimitive
+  characters, and the k ≥ 2 Möbius terms counted directly from primes up to √x.
+- `prime_race` and `observed_density` for the actual counts.
+- Plots: the mod 4 race against 3,130 zeros with a zoom on the first lead change,
+  and the limiting densities of five races.
+
+Checks:
+
+- J₀ against mpmath to 1e-14 for 0 ≤ z ≤ 80.
+- L'/L(1, χ₋₄) against γ + log 2π + 2 log(Γ(3/4)/Γ(1/4)) to 1e-13.
+- Σ_{γ>0} 1/(1/4 + γ²) for χ₋₃, χ₋₄, χ₋₈, χ₁₂ against Feuerverger-Martin Table
+  3.2 to all six digits, and the part above T = 300 against the zero density
+  (log(qT/2π) + 1)/(2πT) to 2%.
+- δ for twelve races mod 3, 4, 5, 8, 12, 24 against Fiorilli-Martin Table 8 to
+  six digits at T = 1000, eight of them in the tests at T = 200.
+- 400,000 Monte Carlo draws of X against the Fourier density (within 4σ), the
+  pdf integrating to 1 with mean C, δ(b, a) = 1 − δ(a, b), and the four N vs S
+  races mod 5 equal to 1e-10.
+- First lead of 1 mod 4 at 26861 (Leech), no lead for 1 mod 3 below 10⁶.
+- Explicit formula against the real race for 200 ≤ x ≤ 10⁵ at T = 200: mean
+  error under 0.03 for mod 4, 5 and 12.
+
+Results: δ(4; 3, 1) = 0.9959279, δ(3; 2, 1) = 0.9990632, δ(5; 2, 1) = 0.9521746
+and the most lopsided two-way race in the table, δ(24; 5, 1) = 0.9999875. One
+race mod 4 at T = 1000 takes about 0.8 s, mod 24 (3,820 zeros) about 4 s. Up to
+10⁸, 1 mod 4 leads after 1,940 primes and the share of log x in [10³, 10⁸] where
+3 leads is 0.99894.
+
+Design notes:
+
+- Feuerverger and Martin (2000) print 0.952140 for the mod 5 race; this code gives
+  0.952175, which is Fiorilli and Martin's 2013 value. The older paper says it
+  interpolated F_T between grid points for complex characters.
+- The tail is exact in variance and Gaussian in shape. The next cumulant of the
+  tail is of order Σ r⁴ ~ 1/T³, which is why T = 200 already gives six digits.
+- The trapezoid rule on the even analytic integrand only errs by aliasing, so the
+  step is set from the spread of X (period 40σ + |C|) and the sum stops once the
+  characteristic function falls below 1e-17.
+- The first version of `explicit` used Ei(ρ log x) and was off by ±0.96 in E for
+  the mod 5 race, with the sign flipping with T. Ei carries iπ·sign(Im z), which
+  cancels between γ and −γ for real characters but not for complex ones, whose
+  zeros above and below the axis differ. Riemann's Li(x^ρ) is the integral from
+  −∞ and drops that constant.
+
+Next: Dirichlet L-functions in the browser, then races with three or more
+residue classes (where δ depends on the order, not just the set).
