@@ -6,11 +6,14 @@ import pytest
 from zeta_explorer.rmt import (
     even_orthogonal,
     even_orthogonal_n,
+    excised_first,
     first_density,
     fit_n,
     fredholm_det,
     gap,
+    odd_orthogonal_n,
     sine,
+    so_angles,
     symplectic,
     symplectic_n,
 )
@@ -106,3 +109,49 @@ def test_fit_recovers_matrix_size():
 def test_kernels_reject_tiny_n():
     with pytest.raises(ValueError):
         symplectic_n(0.5)
+
+
+def test_haar_so_one_level():
+    n, size = 4, 20_000
+    theta = so_angles(n, size, seed=3)
+    counts, edges = np.histogram(theta.ravel(), bins=20, range=(0, np.pi))
+    c = (edges[1:] + edges[:-1]) / 2
+    width = edges[1] - edges[0]
+    r1 = (2 * n - 1) / (2 * np.pi) + np.sin((2 * n - 1) * c) / (2 * np.pi * np.sin(c))
+    z = (counts - size * width * r1) / np.sqrt(size * width * r1)
+    assert np.abs(z).max() < 4.5
+    assert theta.shape == (size, n)
+
+
+def test_haar_so_first_eigenvalue_matches_fredholm():
+    n = 3
+    x = np.sort(n * so_angles(n, 20_000, seed=5)[:, 0] / np.pi)
+    s = np.linspace(0, x[-1], 400)
+    cdf = 1 - gap(even_orthogonal_n(n), s)
+    ks = np.abs(np.interp(x, s, cdf) - np.arange(1, len(x) + 1) / len(x)).max()
+    assert ks < 1.6 / np.sqrt(len(x))
+
+
+def test_excised_ensemble_repels():
+    plain = excised_first(4, 0.0, 10_000, seed=1)
+    cut = excised_first(4, 0.05, 10_000, seed=1)
+    assert len(plain) == 10_000
+    assert 0 < len(cut) < len(plain)
+    assert np.mean(cut) > np.mean(plain) + 0.05
+    assert np.quantile(cut, 0.01) > 2 * np.quantile(plain, 0.01)
+
+
+def test_fit_n_for_even_orthogonal():
+    x = 3 * so_angles(3, 4000, seed=9)[:, 0] / np.pi
+    best, lo, hi, _ = fit_n(x, np.linspace(2, 6, 17), family=even_orthogonal_n)
+    assert lo <= 3 <= hi
+    assert abs(best - 3) <= 0.5
+
+
+def test_so3_closed_form():
+    expect = 1 - S + np.sin(np.pi * S) / np.pi
+    assert gap(odd_orthogonal_n(1), S) == pytest.approx(expect, abs=1e-14)
+
+
+def test_odd_orthogonal_tends_to_symplectic_limit():
+    assert gap(odd_orthogonal_n(40), S) == pytest.approx(gap(symplectic, S), abs=2e-3)

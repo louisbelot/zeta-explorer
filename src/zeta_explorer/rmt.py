@@ -44,6 +44,13 @@ def even_orthogonal_n(n: float) -> Kernel:
     return lambda x, y: _dirichlet(x - y, m, n) + _dirichlet(x + y, m, n)
 
 
+def odd_orthogonal_n(n: float) -> Kernel:
+    if n < 1:
+        raise ValueError("n must be >= 1")
+    m = 2 * n
+    return lambda x, y: _dirichlet(x - y, m, n) - _dirichlet(x + y, m, n)
+
+
 @functools.cache
 def _legendre(m: int) -> tuple[np.ndarray, np.ndarray]:
     return np.polynomial.legendre.leggauss(m)
@@ -102,3 +109,26 @@ def fit_n(
     best = int(np.argmax(loglik))
     inside = ns[loglik >= loglik[best] - 1.92]
     return float(ns[best]), float(inside.min()), float(inside.max()), loglik
+
+
+def so_angles(n: int, size: int, seed: int = 0, batch: int = 10_000) -> np.ndarray:
+    rng = np.random.default_rng(seed)
+    out = []
+    for k in range(0, size, batch):
+        Z = rng.standard_normal((min(batch, size - k), 2 * n, 2 * n))
+        Q, R = np.linalg.qr(Z)
+        Q *= np.sign(np.diagonal(R, axis1=1, axis2=2))[:, None, :]
+        Q[np.linalg.det(Q) < 0, :, 0] *= -1
+        theta = np.sort(np.abs(np.angle(np.linalg.eigvals(Q))), axis=1)
+        out.append(theta[:, ::2])
+    return np.concatenate(out)
+
+
+def char_poly_at_one(theta: np.ndarray) -> np.ndarray:
+    return np.prod(2 - 2 * np.cos(theta), axis=-1)
+
+
+def excised_first(n: int, cutoff: float, size: int, seed: int = 0) -> np.ndarray:
+    theta = so_angles(n, size, seed)
+    keep = char_poly_at_one(theta) >= cutoff
+    return n * theta[keep, 0] / math.pi
