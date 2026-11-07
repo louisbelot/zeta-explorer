@@ -8,6 +8,7 @@ from numpy.typing import ArrayLike
 from zeta_explorer.afe import afe_length, l_afe
 from zeta_explorer.characters import conrey, primitive_characters
 from zeta_explorer.continuation import dirichlet_sums, em_sums, eta_sums
+from zeta_explorer.elliptic import Curve, EllipticL, hardy_z, zeros_below
 from zeta_explorer.explicit import chebyshev_psi, pi_from_zeros, prime_pi, psi_from_zeros, riemann_r
 from zeta_explorer.gram import good_gram, z_values
 from zeta_explorer.lfunction import dirichlet_l, l_z, l_zeros
@@ -17,9 +18,11 @@ from zeta_explorer.ratios import quadratic_density
 from zeta_explorer.riemann_siegel import theta, z_exact, z_rs
 from zeta_explorer.rmt import (
     even_orthogonal,
+    even_orthogonal_n,
     first_density,
     fit_n,
     gap,
+    odd_orthogonal_n,
     symplectic,
     symplectic_n,
 )
@@ -808,6 +811,120 @@ def plot_afe(
     fig.tight_layout()
     return fig
 
+
+CURVES = {
+    "11a3": Curve(0, -1, 1, 0, 0),
+    "37a1": Curve(0, 0, 1, -1, 0),
+    "389a1": Curve(0, 1, 1, -2, 0),
+    "5077a1": Curve(0, 0, 1, -7, 6),
+}
+
+
+def plot_ec_z(t_max: float = 6.0, samples: int = 601) -> Figure:
+    import matplotlib.pyplot as plt
+
+    t = np.linspace(-t_max, t_max, samples)
+    fig, axes = plt.subplots(len(CURVES), 1, figsize=(10, 2.1 * len(CURVES) + 0.6), sharex=True,
+                             facecolor=SURFACE)
+    for ax, (name, E) in zip(axes, CURVES.items(), strict=True):
+        L = EllipticL(E)
+        z = zeros_below(L, t_max)
+        ax.set_facecolor(SURFACE)
+        ax.axhline(0, color=INK_SECONDARY, linewidth=0.8)
+        ax.plot(t, hardy_z(t, L), color=SERIES, linewidth=1.6)
+        zeros = np.concatenate([-z.t, z.t])
+        ax.plot(zeros, np.zeros_like(zeros), "o", color=SERIES, markersize=5,
+                markeredgecolor=SURFACE, markeredgewidth=1.2)
+        ax.plot([0], [0], "o", color=ACCENT, markersize=8 if z.rank else 0,
+                markeredgecolor=SURFACE, markeredgewidth=1.2)
+        _style(ax)
+        w = "+1" if L.root_number == 1 else "−1"
+        ax.set_title(f"{name}: {_fmt_curve(E)},  N = {L.conductor},  w = {w},  "
+                     f"order {z.rank} at s = 1/2", color=INK, fontsize=10, loc="left")
+        ax.set_ylabel("Z(t)", color=INK, fontsize=9)
+    ax.set_xlim(-t_max, t_max)
+    ax.set_xlabel("t", color=INK)
+    fig.suptitle("Hardy Z of elliptic curve L-functions: the central zero has order 0, 1, 2, 3",
+                 color=INK, fontsize=12, x=0.01, ha="left")
+    fig.tight_layout()
+    return fig
+
+
+def _fmt_curve(E: Curve) -> str:
+    lhs = "y²" + "".join(f" + {m}" for m, c in (("xy", E.a1), ("y", E.a3)) if c)
+    rhs = "".join(f" {'+' if c > 0 else '−'} {abs(c) if abs(c) != 1 or not m else ''}{m}"
+                  for m, c in (("x²", E.a2), ("x", E.a4), ("", E.a6)) if c)
+    return f"{lhs} = x³{rhs}"
+
+
+def plot_central_values(d: ArrayLike, value: ArrayLike, kappa: float, c_max: int = 6) -> Figure:
+    import matplotlib.pyplot as plt
+
+    d = np.asarray(d, dtype=float)
+    v = np.asarray(value, dtype=float)
+    fig, ax = plt.subplots(figsize=(11, 5), facecolor=SURFACE)
+    ax.set_facecolor(SURFACE)
+    grid = np.linspace(d.min(), d.max(), 400)
+    for c in range(1, c_max + 1):
+        ax.plot(grid, kappa * c * c / np.sqrt(grid), color=GRID, linewidth=1.2, zorder=1)
+        ax.annotate(f"c = {c}", (grid[-1], kappa * c * c / np.sqrt(grid[-1])),
+                    xytext=(4, 0), textcoords="offset points", va="center", fontsize=8,
+                    color=INK_SECONDARY)
+    zero = np.abs(v) < 1e-6
+    ax.plot(d[~zero], v[~zero], ".", color=SERIES, markersize=4, zorder=2,
+            label=f"L(E_d, 1/2) ≠ 0 ({np.count_nonzero(~zero)})")
+    ax.plot(d[zero], v[zero], "|", color=ACCENT, markersize=7, zorder=2,
+            label=f"L(E_d, 1/2) = 0, rank 2 ({np.count_nonzero(zero)})")
+    _style(ax)
+    ax.set_xlim(0, d.max() * 1.07)
+    ax.set_ylim(-0.08, kappa * c_max * c_max / np.sqrt(d.max()) * 1.4)
+    ax.set_xlabel("fundamental discriminant d > 0 with w(E_d) = +1", color=INK)
+    ax.set_ylabel("L(E_d, 1/2)", color=INK)
+    ax.set_title(f"Central values of the even twists of 11a3 sit on κ c² / √d, κ = {kappa}, "
+                 "c an integer (Waldspurger, Kohnen-Zagier)", color=INK, fontsize=11, loc="left")
+    ax.legend(frameon=True, facecolor=SURFACE, edgecolor=SURFACE, framealpha=1, fontsize=9,
+              labelcolor=INK_SECONDARY, loc="upper right")
+    fig.tight_layout()
+    return fig
+
+def plot_twist_zeros(
+    even: ArrayLike, odd: ArrayLike, excised: ArrayLike, n: int, cutoff: float,
+    n_grid: ArrayLike | None = None, s_max: float = 2.0, bins: int = 32,
+) -> Figure:
+    import matplotlib.pyplot as plt
+
+    grid = np.arange(1.0, 8.01, 0.05) if n_grid is None else np.asarray(n_grid, dtype=float)
+    even, odd = np.sort(even), np.sort(odd)
+    fig, (left, right) = plt.subplots(1, 2, figsize=(12, 4.8), facecolor=SURFACE)
+    s = np.linspace(0, s_max, 301)
+    for ax, x in ((left, even), (right, odd)):
+        ax.hist(x, bins=bins, range=(0, s_max), density=True, histtype="stepfilled",
+                color=ORDINAL[0], alpha=0.55, label=f"twists ({len(x)})")
+    n_fit, lo, hi, _ = fit_n(even, grid, even_orthogonal_n)
+    left.plot(s, first_density(even_orthogonal, s), color=INK_SECONDARY, linewidth=1.3,
+              linestyle=":", label="SO(even), N → ∞")
+    left.plot(s, first_density(even_orthogonal_n(n_fit), s), color=SERIES, linewidth=1.6,
+              linestyle="--", label=f"SO(2N), fitted N = {n_fit:.2f} ({lo:.2f} to {hi:.2f})")
+    left.hist(np.asarray(excised, dtype=float), bins=bins, range=(0, s_max), density=True,
+              histtype="step", color=ACCENT, linewidth=1.8,
+              label=f"SO({2 * n}) with Λ(1) ≥ {cutoff:.4f}")
+    right.plot(s, first_density(symplectic, s), color=INK_SECONDARY, linewidth=1.3,
+               linestyle=":", label="SO(odd), N → ∞")
+    right.plot(s, first_density(odd_orthogonal_n(n), s), color=SERIES, linewidth=1.6,
+               linestyle="--", label=f"SO({2 * n + 1})")
+    left.set_ylabel("density", color=INK)
+    left.set_title("Even twists, w = +1, rank 0", color=INK, fontsize=11, loc="left")
+    right.set_title("Odd twists, w = −1, rank 1: first zero after the central one",
+                    color=INK, fontsize=11, loc="left")
+    for ax in (left, right):
+        ax.set_facecolor(SURFACE)
+        ax.set_xlim(0, s_max)
+        ax.set_ylim(0, ax.get_ylim()[1] * 1.3)
+        ax.set_xlabel("x of the lowest zero above s = 1/2", color=INK)
+        ax.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right")
+        _style(ax)
+    fig.tight_layout()
+    return fig
 
 def _style(ax) -> None:
     ax.grid(color=GRID, linewidth=0.8)

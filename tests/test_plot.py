@@ -9,8 +9,10 @@ from zeta_explorer.lowlying import OneLevel, w_symplectic
 from zeta_explorer.plot import (
     phase_colors,
     plot_afe,
+    plot_central_values,
     plot_continuation,
     plot_domain,
+    plot_ec_z,
     plot_explicit,
     plot_first_zero,
     plot_gram,
@@ -25,6 +27,7 @@ from zeta_explorer.plot import (
     plot_rs_error,
     plot_spacing,
     plot_spiral,
+    plot_twist_zeros,
     plot_z,
     sweep_sigma,
 )
@@ -180,3 +183,27 @@ def test_plot_first_zero(tmp_path):
     fig = plot_first_zero(fams, n_grid=[1.5, 2.0, 3.0])
     fig.savefig(tmp_path / "first.png")
     assert "N = " in fig.axes[1].get_legend().get_texts()[0].get_text()
+
+
+def test_plot_ec_z(tmp_path):
+    fig = plot_ec_z(t_max=3.0, samples=61)
+    fig.savefig(tmp_path / "ec.png")
+    titles = [ax.get_title(loc="left") for ax in fig.axes]
+    assert [t.split(":")[0] for t in titles] == ["11a3", "37a1", "389a1", "5077a1"]
+    assert [t.split("order ")[1][0] for t in titles] == ["0", "1", "2", "3"]
+
+
+def test_plot_central_values(tmp_path):
+    fig = plot_central_values([5, 12, 232], [2.838, 1.832, 0.0], 6.346046521, c_max=3)
+    fig.savefig(tmp_path / "central.png")
+    labels = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
+    assert labels == ["L(E_d, 1/2) ≠ 0 (2)", "L(E_d, 1/2) = 0, rank 2 (1)"]
+
+
+def test_plot_twist_zeros(tmp_path):
+    rng = np.random.default_rng(0)
+    fig = plot_twist_zeros(rng.uniform(0.1, 1.0, 50), rng.uniform(0.3, 1.4, 50),
+                           rng.uniform(0.1, 1.0, 200), 8, 0.0389, n_grid=[1.5, 2.0, 3.0])
+    fig.savefig(tmp_path / "twists.png")
+    labels = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
+    assert labels[-1] == "SO(16) with Λ(1) ≥ 0.0389"
