@@ -15,6 +15,7 @@ from zeta_explorer.explicit import primes
 from zeta_explorer.zeta import loggamma
 
 _CUT = 36.0
+_LOSS = 3.0
 
 
 @dataclass(frozen=True)
@@ -187,6 +188,33 @@ def completed(s: ArrayLike, L: EllipticL, y0: complex = 1.0) -> complex | np.nda
         g2 = cmath.exp(loggamma(1.5 - si)) * gammaincc(complex(1.5 - si), n / (y0 * L.A))
         out[i] = np.sum(b * (np.exp(si * log_r) * g1 + w * np.exp((1 - si) * log_r) * g2))
     return complex(out[0]) if np.ndim(s) == 0 else out.reshape(np.shape(s))
+
+
+def ec_theta(t: ArrayLike, L: EllipticL) -> float | np.ndarray:
+    ts = np.asarray(t, dtype=float)
+    out = ts * math.log(L.A) + np.imag(loggamma(1 + 1j * ts))
+    return float(out) if np.ndim(out) == 0 else out
+
+
+def _rotation(t: float) -> float:
+    return math.pi / 2 if abs(t) * math.pi / 2 <= _LOSS else _LOSS / abs(t)
+
+
+def hardy_z(t: ArrayLike, L: EllipticL) -> float | np.ndarray:
+    ts = np.atleast_1d(np.asarray(t, dtype=float))
+    out = np.array([_hardy_point(ti, L) for ti in ts])
+    return float(out[0]) if np.ndim(t) == 0 else out.reshape(np.shape(t))
+
+
+def _hardy_point(t: float, L: EllipticL) -> float:
+    ang = _rotation(t)
+    y0 = cmath.exp(1j * math.copysign(math.pi / 2 - ang, t))
+    M = math.ceil((_CUT + _LOSS) * L.A / math.sin(ang)) + 1
+    n = np.arange(1, M + 1)
+    a = L.an(M)[1:] / n
+    S = np.sum(a * np.exp(-1j * t * np.log(n)) * gammaincc(complex(1, t), n * y0 / L.A))
+    v = cmath.exp(1j * ec_theta(t, L)) * S
+    return 2 * (v.real if L.root_number == 1 else v.imag)
 
 
 def twists(E: Curve, lo: int, hi: int, sign: int = 0) -> list[EllipticL]:

@@ -5,8 +5,18 @@ import mpmath
 import numpy as np
 import pytest
 
-from zeta_explorer.elliptic import Curve, EllipticL, central, completed, exp1, twists
+from zeta_explorer.elliptic import (
+    Curve,
+    EllipticL,
+    central,
+    completed,
+    exp1,
+    hardy_z,
+    twists,
+)
 from zeta_explorer.explicit import primes
+from zeta_explorer.zeros import illinois_many
+from zeta_explorer.zeta import loggamma
 
 E11 = Curve(0, -1, 1, 0, 0)
 E37 = Curve(0, 0, 1, -1, 0)
@@ -105,6 +115,37 @@ def test_wrong_root_number_breaks_the_split():
     L.__dict__["root_number"] = 1
     s = 0.3 + 0.7j
     assert abs(completed(s, L, 1.3) - completed(s, L)) > 1e-3 * abs(completed(s, L))
+
+
+@pytest.mark.parametrize("E,t", [(E11, 1.0), (E37, 1.5), (E11, 5.0)])
+def test_hardy_z_against_completed(E, t):
+    L = EllipticL(E)
+    lam = completed(0.5 + 1j * t, L)
+    scale = math.sqrt(L.A) * math.exp(loggamma(1 + 1j * t).real)
+    expect = (lam if L.root_number == 1 else lam / 1j) / scale
+    assert abs(expect.imag) < 1e-12 * abs(expect)
+    assert hardy_z(t, L) == pytest.approx(expect.real, rel=1e-9)
+
+
+def test_hardy_z_parity():
+    t = np.array([0.4, 1.7, 3.0])
+    assert hardy_z(-t, EllipticL(E11)) == pytest.approx(hardy_z(t, EllipticL(E11)), rel=1e-12)
+    assert hardy_z(-t, EllipticL(E37)) == pytest.approx(-hardy_z(t, EllipticL(E37)), rel=1e-12)
+
+
+def lmfdb_zeros(L, ts):
+    z = hardy_z(ts, L)
+    i = np.flatnonzero(z[:-1] * z[1:] < 0)
+    return illinois_many(lambda x: hardy_z(x, L), ts[i], ts[i + 1], z[i], z[i + 1], 1e-14,
+                         atol=1e-14)
+
+
+def test_zeros_against_lmfdb():
+    ts = np.linspace(4.5, 10.5, 121)
+    assert lmfdb_zeros(EllipticL(E11), ts) == pytest.approx(
+        [6.362613894713089, 8.603539619290756, 10.035509097181079], abs=1e-11)
+    assert lmfdb_zeros(EllipticL(E37), ts)[:3] == pytest.approx(
+        [5.003170014006659, 6.870391216954432, 8.014330807872879], abs=1e-11)
 
 
 def test_waldspurger_squares():
