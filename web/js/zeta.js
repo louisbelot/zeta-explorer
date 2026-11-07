@@ -4,7 +4,7 @@ export const RS_FROM = 200
 const LOG_2 = Math.log(2)
 const LOG_PI = Math.log(Math.PI)
 const HALF_LOG_TWO_PI = 0.5 * Math.log(TWO_PI)
-const M_MAX = 30
+export const M_MAX = 30
 
 function gcd(a, b) {
   if (a < 0n) a = -a
@@ -38,7 +38,7 @@ const B = bernoulli(2 * M_MAX + 2)
 const ratio = ([p, q], d = 1n) => Number(p) / Number(q * d)
 
 let fact = 1n
-const B_OVER_FACT = [1]
+export const B_OVER_FACT = [1]
 for (let k = 1; k <= M_MAX + 1; k++) {
   fact *= BigInt(2 * k - 1) * BigInt(2 * k)
   B_OVER_FACT.push(ratio(B[2 * k], fact))
