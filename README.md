@@ -47,7 +47,8 @@ lead change at x = 26861.
 The same numerics also run in the browser at
 [louisbelot.github.io/zeta-explorer](https://louisbelot.github.io/zeta-explorer/):
 a phase portrait you can pan and zoom, a Z(t) explorer that marks zeros and Gram
-points up to t = 10⁹, and the explicit formula building ψ(x) one zero at a time.
+points up to t = 10⁹, the explicit formula building ψ(x) one zero at a time, and
+Z(t, χ) with its zeros for every primitive Dirichlet character up to modulus 200.
 
 ## Install
 
@@ -1136,6 +1137,26 @@ costs about 0.37 ms (12,615 terms), so the sample count is capped by a budget of
 in doubles; the windowed evaluator would fix that, but the curve is fine for
 looking at. The explicit formula keeps a running sum per x, so moving the slider
 up only adds the new zeros.
+
+Dirichlet L-functions have their own port. `web/js/characters.js` builds Conrey
+characters the same way as `characters.py` (a generator per odd prime that is
+primitive mod p², the ±5^k split for powers of 2) and reads off order, parity,
+conductor, the Gauss sum and the root number. `web/js/lfunction.js` evaluates
+L(s, χ) as q^(−s) Σ χ(a) ζ(s, a/q) with the head summed directly up to N·q,
+N = 10 + ⌊|t|/π⌋, and an Euler-Maclaurin tail per residue class. The tail's
+w^(1−s)/(s − 1) term is written as −log w · expm1(u)/u with u = (1 − s) log w; since
+Σ χ(a) = 0 the dropped 1/(s − 1) cancels, and the first version, which skipped that
+step, lost 9e-8 to cancellation at s = 1 + 1e-9. The terms χ(n) n^(−σ) are cached per
+character, so one Z(t, χ) on the critical line costs 12 μs for q = 13 at t = 20,
+96 μs for q = 163 and 265 μs for q = 199 at t = 100. For q ≤ 200 and |t| ≤ 1000 that
+is well inside the range where the Python dispatcher also picks Euler-Maclaurin
+over the smoothed approximate functional equation.
+
+The section plots Z(t, χ) for the chosen character and, below it, the zeros with
+|t| < 20 of every primitive character mod q, one row each. Z(−t, χ) = Z(t, χ̄), so a
+complex pair is computed once and the second row is the mirror image. The rows go to
+a pool of up to four workers: mod 163 there are 161 primitive characters and 81
+distinct rows, which take 6.3 s on one thread and arrive in about 2.3 s.
 
 `python -m zeta_explorer.site` writes the three data files: the trimmed
 Riemann-Siegel coefficients, the first 10,000 zeros, and the spacing histogram and
