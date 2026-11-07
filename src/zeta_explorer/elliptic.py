@@ -12,7 +12,7 @@ from numpy.typing import ArrayLike
 from zeta_explorer.afe import _legendre, gammaincc
 from zeta_explorer.characters import factor, is_fundamental, quadratic
 from zeta_explorer.explicit import primes
-from zeta_explorer.zeta import loggamma
+from zeta_explorer.zeta import digamma, loggamma
 
 _CUT = 36.0
 _LOSS = 3.0
@@ -215,6 +215,68 @@ def _hardy_point(t: float, L: EllipticL) -> float:
     S = np.sum(a * np.exp(-1j * t * np.log(n)) * gammaincc(complex(1, t), n * y0 / L.A))
     v = cmath.exp(1j * ec_theta(t, L)) * S
     return 2 * (v.real if L.root_number == 1 else v.imag)
+
+
+def _xi(t: np.ndarray, L: EllipticL) -> np.ndarray:
+    return hardy_z(t, L) * np.exp(np.real(loggamma(1 + 1j * t)))
+
+
+def t_of_x(x: float, L: EllipticL) -> float:
+    slope = math.log(L.A) - np.euler_gamma
+    if slope <= 0:
+        raise ValueError("theta is not increasing from t = 0, the conductor is too small")
+    t = math.pi * x / slope
+    for _ in range(60):
+        slope = math.log(L.A) + float(np.real(digamma(1 + 1j * t)))
+        step = (ec_theta(t, L) - math.pi * x) / slope
+        t -= step
+        if abs(step) < 1e-14 * t:
+            break
+    return t
+
+
+@dataclass(frozen=True)
+class LowZeros:
+    L: EllipticL
+    rank: int
+    value: float
+    t: np.ndarray
+
+    @property
+    def x(self) -> np.ndarray:
+        return np.asarray(ec_theta(self.t, self.L)) / math.pi
+
+
+def low_zeros(L: EllipticL, x_max: float = 3.0, tol: float = 1e-6) -> LowZeros:
+    return zeros_below(L, t_of_x(x_max, L), tol)
+
+
+def zeros_below(L: EllipticL, T: float, tol: float = 1e-6) -> LowZeros:
+    c = central(L)
+    odd = L.root_number == -1
+    rank = int(odd) + (2 if abs(c) < tol else 0)
+    U = T * T
+
+    def p(u):
+        t = np.sqrt(u)
+        y = _xi(t, L)
+        return y / t if odd else y
+
+    P = _chebyshev(p, U)
+    u = P.roots()
+    u = u[(np.abs(u.imag) < 1e-9 * U) & (u.real > 1e-9 * U) & (u.real <= U)].real
+    return LowZeros(L, rank, c, np.sqrt(np.sort(u)))
+
+
+def _chebyshev(f, U: float, deg: int = 24, max_deg: int = 192):
+    cheb = np.polynomial.Chebyshev
+    while deg <= max_deg:
+        P = cheb.interpolate(f, deg, domain=[0, U])
+        tail = np.abs(P.coef[-4:]).max()
+        if tail <= 1e-13 * np.abs(P.coef).max():
+            return P
+        deg *= 2
+    raise RuntimeError("the Chebyshev series did not converge")
 
 
 def twists(E: Curve, lo: int, hi: int, sign: int = 0) -> list[EllipticL]:

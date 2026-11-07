@@ -10,8 +10,11 @@ from zeta_explorer.elliptic import (
     EllipticL,
     central,
     completed,
+    ec_theta,
     exp1,
     hardy_z,
+    low_zeros,
+    t_of_x,
     twists,
 )
 from zeta_explorer.explicit import primes
@@ -146,6 +149,29 @@ def test_zeros_against_lmfdb():
         [6.362613894713089, 8.603539619290756, 10.035509097181079], abs=1e-11)
     assert lmfdb_zeros(EllipticL(E37), ts)[:3] == pytest.approx(
         [5.003170014006659, 6.870391216954432, 8.014330807872879], abs=1e-11)
+
+
+def test_theta_inverse():
+    L = EllipticL(E11, 1301)
+    for x in (0.5, 3.0):
+        assert ec_theta(t_of_x(x, L), L) == pytest.approx(math.pi * x, rel=1e-13)
+
+
+@pytest.mark.parametrize("d", [5, -95, 1301, 8, 401], ids=str)
+def test_low_zeros_match_sign_changes(d):
+    L = EllipticL(E11, d)
+    z = low_zeros(L)
+    ts = np.linspace(1e-3, t_of_x(3.0, L), 400)
+    ref = lmfdb_zeros(L, ts)
+    assert len(z.t) == len(ref)
+    assert z.t == pytest.approx(ref, abs=1e-12)
+    assert np.all((z.x > 0) & (z.x <= 3))
+
+
+def test_central_order():
+    assert low_zeros(EllipticL(E11, 5)).rank == 0
+    assert low_zeros(EllipticL(E11, 8)).rank == 1
+    assert low_zeros(EllipticL(E11, 401)).rank == 2
 
 
 def test_waldspurger_squares():
