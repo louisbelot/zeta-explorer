@@ -165,6 +165,25 @@ input[type="range"] {
   accent-color: var(--series);
 }
 
+.plot.rows {
+  height: 200px;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+
+.info {
+  max-width: none;
+  margin: 10px 0;
+  font: 13px/1.4 var(--mono);
+  color: var(--ink-2);
+  white-space: pre-wrap;
+}
+
+figcaption .readout {
+  display: block;
+  margin: 4px 0 0;
+}
+
 .pair {
   display: grid;
   grid-template-columns: 1fr 1fr;

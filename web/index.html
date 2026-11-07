@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>zeta-explorer</title>
-<meta name="description" content="The Riemann zeta function computed from scratch in the browser: phase portrait of the critical strip, the Riemann-Siegel Z function with its zeros and Gram points, primes rebuilt from zeros, and zero statistics near the 10^12th zero.">
+<meta name="description" content="The Riemann zeta function computed from scratch in the browser: phase portrait of the critical strip, the Riemann-Siegel Z function with its zeros and Gram points, primes rebuilt from zeros, and zero statistics near the 10^12th zero, and Dirichlet L-functions for any primitive character up to modulus 200.">
 <link rel="stylesheet" href="style.css">
 <script type="module" src="js/main.js"></script>
 </head>
@@ -80,6 +80,42 @@
       </select>
     </label>
   </div>
+</section>
+
+<section id="dirichlet">
+  <h2>Dirichlet L-functions</h2>
+  <p>
+    A Dirichlet character χ mod q is a homomorphism (ℤ/qℤ)<sup>×</sup> → ℂ<sup>×</sup>, and
+    L(s, χ) = Σ χ(n) n<sup>−s</sup>. Characters carry Conrey labels χ<sub>q</sub>(n, ·), the
+    same ones the LMFDB uses, and only the primitive ones are listed. For those the completed
+    function (q/π)<sup>(s+a)/2</sup> Γ((s+a)/2) L(s, χ), with a = 0 for even χ and 1 for odd,
+    equals ε(χ) times the same thing for the conjugate character at 1 − s, with
+    ε = τ(χ)/(i<sup>a</sup>√q) a unit built from the Gauss sum. That makes
+    Z(t, χ) = e<sup>iθ(t, χ)</sup> L(1/2 + it, χ) real, so zeros on the line are again sign
+    changes. Unlike Z(t) for ζ it is not even: Z(−t, χ) is Z(t, χ̄), and a complex character's
+    zeros below the axis are its conjugate's zeros above it.
+  </p>
+  <div class="controls">
+    <label>modulus q <input id="l-q" type="number" min="3" max="200" step="1" value="13"></label>
+    <label>character <select id="l-chi" data-n="2"></select></label>
+    <button type="button" data-q="4" data-n="3">χ₄(3, ·)</button>
+    <button type="button" data-q="7" data-n="2">cubic mod 7</button>
+    <button type="button" data-q="5" data-n="2">quartic mod 5</button>
+    <button type="button" data-q="163" data-n="162">q = 163</button>
+  </div>
+  <p id="l-info" class="info">&nbsp;</p>
+  <div class="plot"><canvas id="l-plot"></canvas></div>
+  <div class="controls">
+    <span id="l-readout" class="readout">&nbsp;</span>
+  </div>
+  <figure>
+    <div class="plot rows"><canvas id="l-rows"></canvas></div>
+    <figcaption>
+      Zeros with |t| &lt; 20 for every primitive character mod q, one row per Conrey label.
+      Real characters give rows symmetric about t = 0; a complex pair gives two rows that are
+      mirror images. Click a row to plot it. <span id="l-rows-readout" class="readout">&nbsp;</span>
+    </figcaption>
+  </figure>
 </section>
 
 <section id="stats">
