@@ -5,10 +5,12 @@ import numpy as np
 from matplotlib.animation import PillowWriter
 from PIL import Image
 
+from zeta_explorer.bias import race
 from zeta_explorer.lowlying import OneLevel, w_symplectic
 from zeta_explorer.plot import (
     phase_colors,
     plot_afe,
+    plot_bias_densities,
     plot_central_values,
     plot_continuation,
     plot_domain,
@@ -24,6 +26,7 @@ from zeta_explorer.plot import (
     plot_low_lying,
     plot_low_lying_scales,
     plot_multieval,
+    plot_race,
     plot_rs_error,
     plot_spacing,
     plot_spiral,
@@ -207,3 +210,17 @@ def test_plot_twist_zeros(tmp_path):
     fig.savefig(tmp_path / "twists.png")
     labels = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
     assert labels[-1] == "SO(16) with Λ(1) ≥ 0.0389"
+
+
+def test_plot_race_marks_first_lead(tmp_path):
+    fig = plot_race(T=200.0, x_max=30_000, samples=300)
+    fig.savefig(tmp_path / "race.png")
+    texts = [t.get_text() for t in fig.axes[1].texts]
+    assert texts == ["26861"]
+
+
+def test_plot_bias_densities(tmp_path):
+    fig = plot_bias_densities([race(3, 2, 1, 50.0), race(4, 3, 1, 50.0)])
+    fig.savefig(tmp_path / "bias.png")
+    labels = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
+    assert [x.split(":")[0] for x in labels] == ["q = 3, 2 vs 1", "q = 4, 3 vs 1"]

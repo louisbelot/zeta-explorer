@@ -6,7 +6,8 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from zeta_explorer.afe import afe_length, l_afe
-from zeta_explorer.characters import conrey, primitive_characters
+from zeta_explorer.bias import Race, prime_race, race
+from zeta_explorer.characters import conrey, primitive_characters, totient
 from zeta_explorer.continuation import dirichlet_sums, em_sums, eta_sums
 from zeta_explorer.elliptic import Curve, EllipticL, hardy_z, zeros_below
 from zeta_explorer.explicit import chebyshev_psi, pi_from_zeros, prime_pi, psi_from_zeros, riemann_r
@@ -925,6 +926,79 @@ def plot_twist_zeros(
         _style(ax)
     fig.tight_layout()
     return fig
+
+def plot_race(
+    q: int = 4, a: int = 3, b: int = 1, T: float = 3000.0, x_max: float = 1e6,
+    zoom: tuple[float, float] = (26_500.0, 27_200.0), samples: int = 3000,
+) -> Figure:
+    import matplotlib.pyplot as plt
+
+    R = race(q, a, b, T)
+    p, d = prime_race(q, a, b, int(x_max))
+    phi = totient(q)
+    fig, (left, right) = plt.subplots(
+        1, 2, figsize=(12, 4.6), facecolor=SURFACE, gridspec_kw={"width_ratios": [1.6, 1]}
+    )
+    x = np.exp(np.linspace(np.log(100), np.log(x_max), samples))
+    i = np.searchsorted(p, x, side="right") - 1
+    left.plot(x, phi * d[i] * np.log(x) / np.sqrt(x), color="#b9b8b3", linewidth=2.2,
+              label="primes")
+    left.plot(x, R.explicit(x), color=SERIES, linewidth=0.6,
+              label=f"{len(R.gamma):,} zeros of L(s, χ)")
+    left.axhline(R.bias, color=ACCENT, linewidth=1.2, linestyle="--", label=f"mean {R.bias:g}")
+    left.axhline(0, color=INK, linewidth=0.8)
+    left.set_xscale("log")
+    left.set_xlim(100, x_max)
+    left.set_xlabel("x", color=INK)
+    left.set_ylabel(f"{phi}·(π(x; {q}, {a}) − π(x; {q}, {b}))·log x / √x", color=INK)
+    left.set_title(f"The race between {a} and {b} mod {q}", color=INK, fontsize=11, loc="left")
+    xz = np.linspace(*zoom, 1400)
+    iz = np.searchsorted(p, xz, side="right") - 1
+    right.step(xz, d[iz], where="post", color=INK_SECONDARY, linewidth=1.0, label="primes")
+    right.plot(xz, R.explicit(xz) * np.sqrt(xz) / (phi * np.log(xz)), color=SERIES,
+               linewidth=1.4, label="zeros")
+    right.axhline(0, color=INK, linewidth=0.8)
+    first = p[np.argmax(d < 0)]
+    if zoom[0] <= first <= zoom[1]:
+        right.annotate(f"{first}", (first, -1), xytext=(first + 60, -1.6), color=ACCENT,
+                       fontsize=9, arrowprops={"arrowstyle": "-", "color": ACCENT})
+    right.set_xlim(*zoom)
+    right.set_ylim(-2.5, max(4.5, d[iz].max() + 1))
+    right.set_xlabel("x", color=INK)
+    right.set_ylabel(f"π(x; {q}, {a}) − π(x; {q}, {b})", color=INK)
+    right.set_title(f"First lead for {b} mod {q}", color=INK, fontsize=11, loc="left")
+    for ax in (left, right):
+        ax.set_facecolor(SURFACE)
+        ax.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right")
+        _style(ax)
+    fig.tight_layout()
+    return fig
+
+
+def plot_bias_densities(races: list[Race], u: ArrayLike | None = None) -> Figure:
+    import matplotlib.pyplot as plt
+
+    u = np.linspace(-4, 16, 2001) if u is None else np.asarray(u, dtype=float)
+    fig, ax = plt.subplots(figsize=(9, 4.6), facecolor=SURFACE)
+    colors = [ORDINAL[1], ORDINAL[3], ACCENT, INK_SECONDARY, SERIES]
+    for R, c in zip(races, colors, strict=False):
+        f = R.pdf(u)
+        ax.plot(u, f, color=c, linewidth=1.6,
+                label=f"q = {R.q}, {R.a} vs {R.b}: δ = {R.density():.6f}")
+        ax.fill_between(u[u <= 0], f[u <= 0], color=c, alpha=0.25, linewidth=0)
+    ax.axvline(0, color=INK, linewidth=0.8)
+    ax.set_xlim(u[0], u[-1])
+    ax.set_ylim(0, None)
+    ax.set_xlabel("limiting value of φ(q)·(π(x; q, a) − π(x; q, b))·log x / √x", color=INK)
+    ax.set_ylabel("density", color=INK)
+    ax.set_title("Limiting distributions under GRH and LI; shaded where b leads",
+                 color=INK, fontsize=11, loc="left")
+    ax.set_facecolor(SURFACE)
+    ax.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right")
+    _style(ax)
+    fig.tight_layout()
+    return fig
+
 
 def _style(ax) -> None:
     ax.grid(color=GRID, linewidth=0.8)
