@@ -775,3 +775,81 @@ Design notes:
 
 Next: odd quadratic twists against excised SO(2N+1), then elliptic curves in the
 browser.
+
+## 2026-11-07: Odd twists against excised SO(2N + 1), and the heat flow
+
+Built:
+
+- `rmt.so_angles(..., odd=True)`: Haar SO(2N + 1) by the same QR recipe, dropping
+  the forced eigenvalue at 1. `excised_first` takes the same flag; for SO(2N + 1)
+  the product ∏(2 − 2 cos θ_j) over the free angles is |Λ_A'(1)|.
+- `rmt.so_moment` and `rmt.small_value_law`: E|Λ|^s in closed form for both
+  parities from Selberg's integral, and the residue at the first pole, which gives
+  P(Λ ≤ ρ) ≈ (R/α)ρ^α with α = 1/2 (SO(2N)) or 3/2 (SO(2N + 1)). `binned_chi2` for
+  comparing samples on fixed bins.
+- `elliptic.arithmetic_factor`: the CFKRS factor a_s(E) for prime conductor, as in
+  section 5 of DHKMS.
+- `heat.py`: Φ(u), H_t(z) and its first two z-derivatives on a shifted contour,
+  real zeros, complex Newton, `collision` (the double zero where a pair leaves the
+  line), `zero_paths` (every zero in a window as t decreases, complex ones
+  included), `zero_velocity` (H''/H') and `velocities` (the particle sum over a
+  list of zeros plus a smooth tail).
+- Plots: the odd twists against excised SO(17) with χ² against the cut, the zeros
+  of H_t near the pair γ = 564.161, 564.506 with the squared gap against
+  8(t − t_c), and a GIF of H_t and its zeros in the complex plane.
+
+Checks:
+
+- a_(−1/2)(11a) = 0.73269 with the primes below 2^14, DHKMS print 0.732728078;
+  a_0 = 1; the conductor factor between the two signs is exactly (12/10)^(3/2).
+- SO(3) moments in closed form to 1e-13, E Λ_A(1) = 2 for every SO(2N), Monte
+  Carlo moments for both parities within 4σ, the residue against 1/(4π) for SO(3)
+  and against DHKMS's Barnes-G asymptotic at N = 100, the small-value count of
+  60,000 SO(9) matrices within 4σ. One-level density and first-eigenvalue law of
+  the SO(2N + 1) sampler against the kernel and the Fredholm determinant.
+- CFKRS dictionary on the family (N rounded per twist): the first moment of the
+  even central values is 1.4812 against 1.4828 predicted, and the ±1/2 moments of
+  L'(E_d, 1/2) on the odd side come out 2% from a_s(E) times the SO(2N + 1) moment.
+  The s = 1 and s = −1 moments are off by 20% and 16%.
+- H_0 = ξ(1/2 + iz/2)/8 to 2e-12 for real and complex z (2.6e-11 at x = 1128,
+  where H = 5.4e-191), the defining integral by mpmath quadrature at 30 digits to
+  1e-10 for t from −1 to 0.25, the backward heat equation, Φ(u) = Φ(−u),
+  conjugate symmetry, zeros of H_0 at 2γ.
+- Collision of the pair: H and H' vanish at (t_c, x_c) to 1e-13 relative, squared
+  gap over 8(t − t_c) equal to 1 within 5e-4 at distance 1e-3 and 5e-5 at 1e-4,
+  the same for −4(Im z)² after the collision.
+- Velocities from 4,000 zeros plus the smooth tail against H''/H' at the seven
+  zeros in 1119 < x < 1139: 6.8e-7. H''/H' against finite differences of the zero
+  positions in t: 1e-7.
+
+Results: the 1,674 twists with 5 ≤ d ≤ 6000 took 591 s on 14 processes (both
+signs of d were computed; the analysis uses d > 0). Smallest √d·L'(E_d, 1/2) is
+6.437 at d = 8, a_(−3/2) = 0.2030, and the arithmetic cut is c = 0.265 (densities)
+or 2.22 (probabilities) in |Λ_A'(1)| ≥ c·e^(−N/2). At N = 8 that removes 0.13% of
+SO(17) and χ² goes from 148.4 to 147.1. The minimum of χ² over c is 61.5 at
+c = 112, keeping 83% of the matrices, with KS 0.056, still above the critical
+0.047. SO(5), SO(9) and SO(13) with their best cuts do worse. The heat flow
+collision is at t_c = −0.0614041, x_c = 1128.71107; `lehmer.newman_bound` for the
+same pair gives −0.0616036.
+
+Design notes:
+
+- The direct cosine integral loses e^(πx/8) to cancellation. Moving the contour to
+  Im u = π/8 − δ costs only e^(δx), and the trapezoid rule on the shifted line has
+  aliasing error e^(−2πδ/h), so h = δ/8 is safe. δ ∝ 1/x keeps the cancellation
+  bounded, the price is node count ∝ x. At x = 1130 a point costs about 2 ms in a
+  batch.
+- Φ is real and even, so the integral over u < 0 is the conjugate of the one over
+  u > 0. That halves the nodes and makes H exactly real on the real axis.
+- The first zero scan found nothing near x = 1130: the sign test multiplied two
+  values near 1e-191 and underflowed to zero. It compares signs now.
+- Measuring a zero's velocity by differencing positions in t works, but the heat
+  equation gives it exactly: ẋ = −H_t/H_x = H_xx/H_x. Same integral, one more
+  power of iw.
+- Matching the cut to the observed fraction of rank 3 twists (2 of 842) gives the
+  same picture as the probability recipe: almost nothing is excised. Whatever
+  repels the first odd zero, it is not the size of the central derivative.
+
+Next: lower-order terms of the one-level density for the odd family, so that an
+effective N can be computed instead of fitted. Then the Polymath 15 approximation
+of H_t to reach Lehmer's pair at x ≈ 14010, and elliptic curves in the browser.
