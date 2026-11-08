@@ -12,6 +12,7 @@ from zeta_explorer.continuation import dirichlet_sums, em_sums, eta_sums
 from zeta_explorer.elliptic import Curve, EllipticL, hardy_z, zeros_below
 from zeta_explorer.explicit import chebyshev_psi, pi_from_zeros, prime_pi, psi_from_zeros, riemann_r
 from zeta_explorer.gram import good_gram, z_values
+from zeta_explorer.heat import ht
 from zeta_explorer.lfunction import dirichlet_l, l_z, l_zeros
 from zeta_explorer.lowlying import OneLevel, w_symplectic, w_unitary
 from zeta_explorer.multieval import ZWindow
@@ -982,6 +983,100 @@ def plot_odd_excision(
         _style(ax)
     fig.tight_layout()
     return fig
+
+
+def _pair_gap_squared(z: np.ndarray, xc: float) -> float:
+    upper = z[z.imag > 0]
+    if len(upper):
+        return float(-4 * upper[np.argmin(np.abs(upper.real - xc))].imag ** 2)
+    x = np.sort(z.real)
+    i = np.searchsorted(x, xc)
+    return float((x[i] - x[i - 1]) ** 2)
+
+
+def plot_heat_flow(ts: ArrayLike, paths: list[np.ndarray], tc: float, xc: float) -> Figure:
+    import matplotlib.pyplot as plt
+
+    ts = np.asarray(ts, dtype=float)
+    fig, (left, right) = plt.subplots(
+        1, 2, figsize=(12, 4.8), facecolor=SURFACE, gridspec_kw={"width_ratios": [1.35, 1]}
+    )
+    for t, z in zip(ts, paths, strict=True):
+        real = z[z.imag == 0].real
+        left.plot(real, np.full(len(real), t), "o", color=SERIES, markersize=2.6)
+        up = z[z.imag > 0]
+        left.plot(up.real, np.full(len(up), t), "o", color=ACCENT, markersize=2.6)
+    left.plot([xc], [tc], "x", color=INK, markersize=8, markeredgewidth=1.6,
+              label=f"double zero at t = {tc:.5f}, x = {xc:.4f}")
+    left.plot([], [], "o", color=SERIES, markersize=4, label="real zeros")
+    left.plot([], [], "o", color=ACCENT, markersize=4, label="Re z of the complex pair")
+    left.axhline(0, color=INK_SECONDARY, linewidth=0.8, linestyle=":")
+    left.set_ylim(ts.min(), ts.max() + 0.12 * (ts.max() - ts.min()))
+    left.set_xlabel("x (zeros of H₀ are x = 2γ)", color=INK)
+    left.set_ylabel("t", color=INK)
+    left.set_title("Zeros of H_t near the pair γ = 564.161, 564.506", color=INK, fontsize=11,
+                   loc="left")
+    left.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right",
+                ncol=3)
+    gap2 = np.array([_pair_gap_squared(z, xc) for z in paths])
+    right.plot(ts, gap2, "o", color=SERIES, markersize=3.2, label="(z₊ − z₋)², measured")
+    right.plot(ts, 8 * (ts - tc), color=ACCENT, linewidth=1.4, label="8 (t − t_c)")
+    right.axhline(0, color=INK_SECONDARY, linewidth=0.8)
+    right.axvline(tc, color=INK_SECONDARY, linewidth=0.8, linestyle=":")
+    right.set_xlabel("t", color=INK)
+    right.set_ylabel("squared gap of the pair", color=INK)
+    right.set_title("Real pair, collision, complex pair", color=INK, fontsize=11, loc="left")
+    right.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper left")
+    for ax in (left, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig
+
+
+def heat_flow_animation(
+    ts: ArrayLike, paths: list[np.ndarray], lo: float, hi: float, samples: int = 800,
+):
+    import matplotlib.pyplot as plt
+    from matplotlib.animation import FuncAnimation
+
+    ts = np.asarray(ts, dtype=float)
+    x = np.linspace(lo, hi, samples)
+    norm = np.exp(np.pi * x / 8) * x ** -1.75
+    curves = np.array([np.asarray(ht(x, t)).real * norm for t in ts])
+    reach = np.abs(curves).max() * 1.08
+    y_max = max(0.1, max(np.abs(z.imag).max() for z in paths)) * 1.3
+    fig, (top, bottom) = plt.subplots(2, 1, figsize=(10, 6.2), facecolor=SURFACE, sharex=True,
+                                      gridspec_kw={"height_ratios": [1.3, 1]})
+    for ax in (top, bottom):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    curve, = top.plot([], [], color=SERIES, linewidth=1.4)
+    marks, = top.plot([], [], "o", color=ACCENT, markersize=5, markeredgecolor=SURFACE)
+    top.axhline(0, color=INK_SECONDARY, linewidth=0.8)
+    top.set_xlim(lo, hi)
+    top.set_ylim(-reach, reach)
+    top.set_ylabel("H_t(x) · e^(πx/8) x^(−7/4)", color=INK)
+    dots, = bottom.plot([], [], "o", color=ACCENT, markersize=6, markeredgecolor=SURFACE)
+    bottom.axhline(0, color=INK_SECONDARY, linewidth=0.8)
+    bottom.set_ylim(-y_max, y_max)
+    bottom.set_xlabel("Re z", color=INK)
+    bottom.set_ylabel("Im z", color=INK)
+    title = fig.suptitle("", color=INK, fontsize=12, x=0.01, ha="left")
+    fig.tight_layout()
+
+    def draw(i):
+        z = paths[i]
+        curve.set_data(x, curves[i])
+        real = z[z.imag == 0].real
+        marks.set_data(real, np.zeros(len(real)))
+        both = np.concatenate([z, np.conj(z[z.imag > 0])])
+        dots.set_data(both.real, both.imag)
+        state = "all zeros real" if len(real) == len(z) else "a pair has left the real line"
+        title.set_text(f"t = {ts[i]:+.3f}: {state}")
+        return curve, marks, dots, title
+
+    return FuncAnimation(fig, draw, frames=len(ts), interval=90, blit=False)
 
 
 def plot_race(

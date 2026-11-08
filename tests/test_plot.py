@@ -2,12 +2,14 @@ import math
 
 import matplotlib
 import numpy as np
+import pytest
 from matplotlib.animation import PillowWriter
 from PIL import Image
 
 from zeta_explorer.bias import race
 from zeta_explorer.lowlying import OneLevel, w_symplectic
 from zeta_explorer.plot import (
+    heat_flow_animation,
     phase_colors,
     plot_afe,
     plot_bias_densities,
@@ -18,6 +20,7 @@ from zeta_explorer.plot import (
     plot_explicit,
     plot_first_zero,
     plot_gram,
+    plot_heat_flow,
     plot_l_z,
     plot_l_zeros,
     plot_landscape,
@@ -222,6 +225,23 @@ def test_plot_odd_excision_finds_the_repulsive_cut(tmp_path):
     fig.savefig(tmp_path / "odd.png")
     best = fig.axes[1].get_legend().get_texts()[-1].get_text()
     assert 10 <= float(best.split("= ")[1]) <= 40
+
+
+def test_plot_heat_flow_squares_the_gap(tmp_path):
+    ts = np.array([0.1, 0.0, -0.1])
+    paths = [np.array([1.0, 2.0, 4.0 + 0j]), np.array([1.5, 2.5, 4.0 + 0j]),
+             np.array([4.0 + 0j, 2.0 + 0.5j])]
+    fig = plot_heat_flow(ts, paths, -0.05, 2.0)
+    fig.savefig(tmp_path / "heat.png")
+    assert list(fig.axes[1].lines[0].get_ydata()) == pytest.approx([1.0, 1.0, -1.0])
+
+
+def test_heat_flow_animation_writes_every_frame(tmp_path):
+    ts = np.array([0.05, 0.0])
+    paths = [np.array([28.2 + 0j, 42.1 + 0j]), np.array([28.27 + 0j, 42.05 + 0j])]
+    anim = heat_flow_animation(ts, paths, 20.0, 45.0, samples=100)
+    anim.save(tmp_path / "heat.gif", writer=PillowWriter(fps=5))
+    assert Image.open(tmp_path / "heat.gif").n_frames == 2
 
 
 def test_plot_race_marks_first_lead(tmp_path):
