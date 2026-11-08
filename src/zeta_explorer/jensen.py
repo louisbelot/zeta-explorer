@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Iterable
+from fractions import Fraction
 
 import mpmath
 from mpmath.calculus.quadrature import GaussLegendre
@@ -56,3 +57,45 @@ def taylor_gamma(ns: Iterable[int], dps: int = 60, **kw) -> list:
             c = mpmath.factorial(n) / (mpmath.factorial(2 * n) * mpmath.mpf(2) ** (2 * n - 1))
             out.append(c * (32 * mpmath.binomial(2 * n, 2) * F[2 * n - 2] - F[2 * n]))
     return out
+
+
+def exact(x: mpmath.mpf) -> Fraction:
+    man, exp = x.man_exp
+    return Fraction(int(man)) * Fraction(2) ** int(exp)
+
+
+def jensen(gamma: list, d: int, n: int) -> list[Fraction]:
+    return [math.comb(d, j) * exact(gamma[n + j]) for j in range(d + 1)]
+
+
+def power_sums(a: list[Fraction], m: int) -> list[Fraction]:
+    d = len(a) - 1
+    e = [a[d - k] / a[d] for k in range(d + 1)]
+    s = [Fraction(d)]
+    for k in range(1, m):
+        acc = -k * e[k] if k <= d else Fraction(0)
+        for i in range(1, min(k, d + 1)):
+            acc -= e[i] * s[k - i]
+        s.append(acc)
+    return s
+
+
+def hermite_pivots(a: list[Fraction]) -> list[Fraction]:
+    d = len(a) - 1
+    s = power_sums(a, 2 * d - 1)
+    H = [[s[i + j] for j in range(d)] for i in range(d)]
+    pivots = []
+    for c in range(d):
+        p = H[c][c]
+        pivots.append(p)
+        if p <= 0:
+            break
+        for r in range(c + 1, d):
+            f = H[r][c] / p
+            for k in range(c, d):
+                H[r][k] -= f * H[c][k]
+    return pivots
+
+
+def is_hyperbolic(a: list[Fraction]) -> bool:
+    return all(p > 0 for p in hermite_pivots(a))
