@@ -23,6 +23,7 @@ from zeta_explorer.plot import (
     plot_first_zero,
     plot_gram,
     plot_heat_flow,
+    plot_jensen,
     plot_l_z,
     plot_l_zeros,
     plot_landscape,
@@ -278,3 +279,12 @@ def test_plot_bias_densities(tmp_path):
     fig.savefig(tmp_path / "bias.png")
     labels = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
     assert [x.split(":")[0] for x in labels] == ["q = 3, 2 vs 1", "q = 4, 3 vs 1"]
+
+
+def test_plot_jensen_ratio_panel():
+    ns = np.array([1.0, 10.0, 100.0])
+    roots = np.tile([-1.0, 1.0], (3, 1))
+    delta = np.array([0.4, 0.2, 0.1])
+    fig = plot_jensen(ns, roots, {2: 3 * delta}, delta, 2)
+    assert np.allclose(fig.axes[1].lines[0].get_ydata(), 3)
+    assert len(fig.axes[0].lines) == 4

@@ -54,12 +54,25 @@ from zeta_explorer.zeta import zeta
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
+
 SERIES = "#2a78d6"
+
+
 ACCENT = "#eb6834"
+
+
 ORDINAL = ["#86b6ef", "#5598e7", "#2a78d6", "#1c5cab", "#104281"]
+
+
 INK = "#0b0b0b"
+
+
 INK_SECONDARY = "#52514e"
+
+
 GRID = "#e4e3df"
+
+
 SURFACE = "#fcfcfb"
 
 
@@ -537,7 +550,6 @@ def plot_low_lying(
     return fig
 
 
-
 def plot_low_lying_scales(
     families: dict[float, OneLevel], window: tuple[float, float] = (0.0, 0.3), bins: int = 30,
     x_max: float = 3.0, ratios: dict[float, np.ndarray] | None = None,
@@ -655,6 +667,7 @@ def plot_first_zero(
         _style(ax)
     fig.tight_layout()
     return fig
+
 
 def _fmt_power(x: float) -> str:
     e = int(np.floor(np.log10(x)))
@@ -798,7 +811,6 @@ def plot_multieval(heights: ArrayLike = (1e4, 1e6, 1e8, 1e10, 1e12), points: int
     return fig
 
 
-
 def plot_afe(
     conductors: ArrayLike = (101, 1009, 10007, 100003), heights: ArrayLike = (1, 10, 100, 1000),
     q_fixed: int = 10007, t_fixed: float = 10.0, points: int = 8,
@@ -917,6 +929,7 @@ def plot_central_values(d: ArrayLike, value: ArrayLike, kappa: float, c_max: int
     fig.tight_layout()
     return fig
 
+
 def plot_twist_zeros(
     even: ArrayLike, odd: ArrayLike, excised: ArrayLike, n: int, cutoff: float,
     n_grid: ArrayLike | None = None, s_max: float = 2.0, bins: int = 32,
@@ -955,6 +968,7 @@ def plot_twist_zeros(
         _style(ax)
     fig.tight_layout()
     return fig
+
 
 def plot_odd_excision(
     first: ArrayLike, theta: np.ndarray, predicted: dict[str, float], c_max: float = 300.0,
@@ -1243,3 +1257,39 @@ def _style(ax) -> None:
     for side in ("left", "bottom"):
         ax.spines[side].set_color(GRID)
     ax.tick_params(colors=INK_SECONDARY, labelsize=9)
+
+
+def plot_jensen(
+    ns: ArrayLike, roots: ArrayLike, errors: dict[int, ArrayLike], delta: ArrayLike, d: int
+) -> Figure:
+    import matplotlib.pyplot as plt
+
+    from zeta_explorer.jensen import hermite, real_roots
+
+    ns = np.asarray(ns, dtype=float)
+    roots = np.asarray(roots, dtype=float)
+    fig, (left, right) = plt.subplots(1, 2, figsize=(12, 4.6), facecolor=SURFACE)
+    for x in real_roots(hermite(d)):
+        left.axhline(x, color=ACCENT, linewidth=1, linestyle="--")
+    for j in range(roots.shape[1]):
+        left.plot(ns, roots[:, j], color=SERIES, linewidth=1.6)
+    left.set_xscale("log")
+    left.set_ylabel("zeros of the renormalized J^(d,n)", color=INK)
+    left.set_title(f"d = {d}: zeros move to those of H_{d} (dashed)", color=INK, fontsize=12,
+                   loc="left")
+    delta = np.asarray(delta, dtype=float)
+    colors = (ORDINAL[1], ORDINAL[2], ORDINAL[4])
+    for (k, err), color in zip(sorted(errors.items()), colors, strict=False):
+        right.plot(ns, np.asarray(err) / delta, "o-", color=color, markersize=3, linewidth=1.4,
+                   label=f"d = {k}")
+    right.set_xscale("log")
+    right.set_ylim(bottom=0)
+    right.set_ylabel("largest distance to a zero of H_d, over δ(n)", color=INK)
+    right.set_title("The error is a constant times δ(n)", color=INK, fontsize=12, loc="left")
+    right.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY)
+    for ax in (left, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+        ax.set_xlabel("shift n", color=INK)
+    fig.tight_layout()
+    return fig
