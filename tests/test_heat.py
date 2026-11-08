@@ -12,6 +12,7 @@ from zeta_explorer.heat import (
     newton,
     phi,
     real_zeros,
+    zero_paths,
 )
 from zeta_explorer.zeta import xi
 
@@ -95,3 +96,15 @@ def test_square_root_law_at_the_collision():
     z = newton(xc + 1j * math.sqrt(2 * dt), tc - dt)
     assert z.imag**2 / (2 * dt) == pytest.approx(1, rel=0.02)
     assert abs(ht(z, tc - dt)) < 1e-9 * abs(ht(1128.0, tc - dt))
+
+
+def test_zero_paths_follow_the_pair_off_the_line():
+    before, after = zero_paths([-0.05, -0.07], 1127.5, 1130.0)
+    assert np.all(before.imag == 0) and len(before) == 2
+    assert len(after) == 1 and after[0].imag > 0
+    assert abs(ht(after[0], -0.07)) < 1e-9 * abs(ht(1127.5, -0.07))
+
+
+def test_zero_paths_wants_decreasing_time():
+    with pytest.raises(ValueError):
+        zero_paths([0.0, 0.1], 20.0, 30.0)

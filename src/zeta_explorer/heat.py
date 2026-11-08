@@ -112,3 +112,30 @@ def collision(lo: float, hi: float, t_lo: float, t_hi: float) -> tuple[float, fl
     t = illinois(m, t_lo, t_hi, m(t_lo), m(t_hi), tol=1e-13)
     return t, critical_point(t, lo, hi)
 
+
+def _lost_pairs(before: np.ndarray, after: np.ndarray) -> list[tuple[float, float]]:
+    kept = {int(np.argmin(np.abs(before - x))) for x in after}
+    lost = [i for i in range(len(before)) if i not in kept]
+    if len(lost) % 2:
+        raise RuntimeError("a single real zero vanished, refine the t grid")
+    return [(before[i], before[j]) for i, j in zip(lost[::2], lost[1::2], strict=True)]
+
+
+def zero_paths(ts: ArrayLike, lo: float, hi: float, step: float = 0.01) -> list[np.ndarray]:
+    ts = np.asarray(ts, dtype=float)
+    if np.any(np.diff(ts) >= 0):
+        raise ValueError("run the flow backwards: t must decrease")
+    out, real, cplx = [], None, []
+    for t in ts:
+        r = real_zeros(t, lo, hi, step)
+        cplx = [newton(z, t) for z in cplx]
+        if real is not None and len(r) < len(real):
+            for a, b in _lost_pairs(real, r):
+                z = newton(complex((a + b) / 2, (b - a) / 2), t)
+                if abs(z.imag) < 1e-8 * abs(z):
+                    raise RuntimeError(f"no complex zero near {(a + b) / 2} at t = {t}")
+                cplx.append(z.conjugate() if z.imag < 0 else z)
+        out.append(np.concatenate([r.astype(complex), np.array(cplx, dtype=complex)]))
+        real = r
+    return out
+
