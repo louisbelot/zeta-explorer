@@ -78,6 +78,13 @@ fitted. Every Jensen polynomial of ξ with degree up to 12 and shift up to 1000
 arithmetic, as RH requires, and their zeros approach the Hermite limit of
 Griffin, Ono, Rolen and Zagier at rate exactly δ(n).
 
+Two newer pieces test the hypothesis from the outside. The Davenport-Heilbronn
+function has a functional equation of exactly Riemann's shape but no Euler
+product, and 614 of its first 7,136 zeros are off the critical line; the first
+four pairs are proved to exist with Krawczyk boxes in Arb. For ζ itself the zero
+count is redone in ball arithmetic, so RH up to t = 30,000 (35,673 zeros) comes
+with a proof that has no floating-point step in it.
+
 The same numerics also run in the browser at
 [louisbelot.github.io/zeta-explorer](https://louisbelot.github.io/zeta-explorer/):
 a phase portrait you can pan and zoom, a Z(t) explorer that marks zeros and Gram
@@ -358,6 +365,42 @@ meet, so every zero up to g_n is a sign change, which means it is on the line an
 simple. For T = 100,000 it runs in 9 seconds, needs K = 2 blocks, and stops at
 g_138068 ≈ 100000.29 with N = 138,069 (mpmath's `nzeros` agrees). The tests
 cross-check smaller heights the same way.
+
+### Certified counts in ball arithmetic
+
+`verify_zeros` decides the sign of Z with floating point. If Z(t) were 3e-12 and
+the Riemann-Siegel remainder larger than that, a sign could be wrong and the count
+would quietly stop being a proof. `certified.py` redoes the whole argument in ball
+arithmetic with python-flint (Arb), where every number is a midpoint plus a radius
+that provably contains the true value. A sign only counts once the entire ball is
+on one side of 0.
+
+θ(t) = Im log Γ(1/4 + it/2) − (t/2)·log π and Z(t) = Re(e^(iθ) ζ(1/2 + it)) are
+evaluated as balls, and `z_sign` starts at 64 bits and doubles the precision until
+the ball excludes 0. Gram points get a one-dimensional Krawczyk test: Newton gives
+a midpoint m, a box B goes around it, and K = m − (θ(m) − nπ)/θ'(B). If K lies
+inside B, the exact g_n is in K. Z is then evaluated on that whole ball, so its
+sign holds at the true Gram point and not just near it. The block count uses
+Trudgian's 2011 bound |∫ S(t) dt| ≤ 2.067 + 0.059·log t₂ for t₂ > t₁ > 168π, which
+asks for K ≥ log g·(2.067 + 0.059·log g)/6π good blocks.
+
+```python
+from zeta_explorer.certified import certify, z_ball
+
+z_ball(1000.0)        # [0.997794637521587 +/- 7.01e-16]
+c = certify(30_000)   # 42 s
+c.zeros, c.n          # (35673, 35672)
+c.log()               # every Gram block with its sample points and certified signs
+```
+
+That proves all 35,673 zeros with 0 < t ≤ g_35672 ≈ 30000.27 are simple and on
+the line, with no floating-point step in the argument. Arb's own certified
+`zeta_nzeros` gives the same count at 1,000, 3,000, 10,000 and 30,000. The JSON log
+for T = 30,000 is 4 MB: 32,109 Gram blocks, 3,365 of them longer than one interval.
+
+The balls also grade the float code. Over 13 points near each height, `z_rs`
+is off by at most 1.8e-9 at t = 250 (where the truncated Riemann-Siegel series is
+the limit), 3e-11 at 10³ and 10⁴, and 1.6e-10 at 10⁵ (rounding in the main sum).
 
 ### Many values of Z at once
 
@@ -1491,6 +1534,65 @@ over 200 ≤ x ≤ 10⁵ is at most 0.013 in E for the mod 4, 5, 8, 12 and 24 ra
 the 3,130 zeros below T = 3000 the rebuilt curve goes negative for x between
 about 26857 and 26876, around the actual first lead change at 26861 (the right panel
 of the first chart).
+
+### Davenport-Heilbronn: when the functional equation isn't enough
+
+![Davenport-Heilbronn zeros on and off the critical line](docs/davenport.png)
+
+Take the two characters mod 5 with χ(2) = ±i and mix them:
+
+```
+f(s) = (1 − iκ)/2 · L(s, χ) + (1 + iκ)/2 · L(s, χ̄),   κ = (√(10 − 2√5) − 2)/(√5 − 1) ≈ 0.284079
+```
+
+The Dirichlet coefficients are real and periodic, 1, κ, −κ, −1, 0, and κ is the
+one value that makes (1 + iκ)/(1 − iκ) equal the root number of χ. Then
+Λ(s) = (5/π)^((s+1)/2) Γ((s+1)/2) f(s) satisfies Λ(s) = Λ(1 − s), the same shape as
+Riemann's. What f lacks is an Euler product, and RH fails for it.
+
+`davenport.py` builds f out of the existing L(s, χ) code, so it works anywhere in
+the plane and switches to the approximate functional equation at large height.
+The tests compare it with Arb's Hurwitz zeta to 1e−11 (including σ < 0) and check
+Λ(s) = Λ(1 − s) with mpmath's Γ.
+
+Where can the zeros be? For σ > 1, |f(s)| ≥ 1 − Σ_{n≥2} |a_n| n^(−σ), and that
+stays positive for σ > σ₀ = 1.395136 (`zero_free_sigma`, a root of a Hurwitz zeta
+equation). By the functional equation the only zeros with σ < 1 − σ₀ are the
+trivial ones at −1, −3, −5, .... So the nontrivial zeros live in a strip of width
+1.79 instead of 1. Since f(s̄) is the conjugate of f(s), a zero ρ off the line
+always comes with its mirror 1 − ρ̄.
+
+`zeros_in_window(t₁, t₂)` counts every zero in the box
+[1 − σ₀ − 0.25, σ₀ + 0.25] × [t₁, t₂] with the argument principle. It finds the
+zeros on the line as sign changes of Z_f(t) = e^(iθ(t)) f(1/2 + it), seeds complex
+Newton from the local minima of |f| on a grid right of the line, and mirrors
+each hit. It only returns when the zeros it found add up to the box count; on a
+mismatch it refines the Z_f grid first (the usual cause is a close pair of zeros on
+the line) and then the |f| grid.
+
+```python
+from zeta_explorer.davenport import zeros_in_window
+
+w = zeros_in_window(80, 90)
+w.total, len(w.line)   # (7, 5)
+w.off                  # [0.19148282+85.69934849j, 0.80851718+85.69934849j]
+```
+
+In windows of 10 from t = 1 to 6001 there are 7,136 zeros: 6,522 on the line and
+614 off it. The first four pairs match the six digits Spira printed in 1994
+(heights 85.699, 114.163, 166.479, 176.702). Real parts right of the line run from
+0.5061 (t ≈ 5861.53) to 0.8978 (t ≈ 2442.53). None has σ > 1 below 6001, although
+Davenport and Heilbronn proved there are at least cT of them up to height T. The
+share of zeros off the line rises from 5% at T = 500 to 8.3% at 2000 and stays
+around 8.6% out to 6000.
+
+A few arXiv preprints argue that these off-line zeros are numerical artifacts.
+`certified.krawczyk` checks that claim for the first four. It evaluates f and f′
+in Arb as balls, over a box B of radius 1e−10 around each Newton root, and forms
+the Krawczyk operator K = m − f(m)/f′(m) + (1 − f′(B)/f′(m))(B − m). If K lies
+inside B, then B contains exactly one zero. All four pass, the boxes come back with
+radius under 1e−15, and every real part is above 0.57. These zeros really are
+off the line.
 
 ### The de Bruijn-Newman heat flow
 

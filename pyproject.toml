@@ -5,12 +5,12 @@ build-backend = "hatchling.build"
 [project]
 name = "zeta-explorer"
 version = "0.1.0"
-description = "Explore the Riemann zeta function from scratch: Riemann-Siegel Z, zeta(s), Gram blocks, Turing verification, fast multi-evaluation of Z, the explicit formula for pi(x), Lehmer pairs, value distributions, and Dirichlet L-functions up to conductor 1e5 with their low-lying zeros, ratios-conjecture lower-order terms and Fredholm-determinant first-zero laws, elliptic curve L-functions with their quadratic twists against the excised orthogonal ensemble, Chebyshev's bias in prime races computed from the zeros, moments of zeta against the CFKRS polynomials with the arithmetic factor, Li's coefficients from a million zeros, Jensen polynomials of xi decided hyperbolic in exact arithmetic, and the maximum of zeta over short intervals against the Fyodorov-Hiary-Keating law."
+description = "Explore the Riemann zeta function from scratch: Riemann-Siegel Z, zeta(s), Gram blocks, Turing verification, fast multi-evaluation of Z, the explicit formula for pi(x), Lehmer pairs, value distributions, and Dirichlet L-functions up to conductor 1e5 with their low-lying zeros, ratios-conjecture lower-order terms and Fredholm-determinant first-zero laws, elliptic curve L-functions with their quadratic twists against the excised orthogonal ensemble, Chebyshev's bias in prime races computed from the zeros, moments of zeta against the CFKRS polynomials with the arithmetic factor, Li's coefficients from a million zeros, Jensen polynomials of xi decided hyperbolic in exact arithmetic, the maximum of zeta over short intervals against the Fyodorov-Hiary-Keating law, the Davenport-Heilbronn function and its zeros off the line, and zero counts certified in ball arithmetic."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 authors = [{ name = "Louis Belot" }]
-keywords = ["riemann-zeta", "riemann-hypothesis", "number-theory", "visualization", "riemann-siegel", "explicit-formula", "random-matrix-theory", "nufft", "odlyzko-schonhage", "dirichlet-l-functions", "katz-sarnak", "approximate-functional-equation", "ratios-conjecture", "fredholm-determinant", "elliptic-curves", "quadratic-twists", "chebyshev-bias", "prime-races", "moments", "li-criterion", "jensen-polynomials", "extreme-values"]
+keywords = ["riemann-zeta", "riemann-hypothesis", "number-theory", "visualization", "riemann-siegel", "explicit-formula", "random-matrix-theory", "nufft", "odlyzko-schonhage", "dirichlet-l-functions", "katz-sarnak", "approximate-functional-equation", "ratios-conjecture", "fredholm-determinant", "elliptic-curves", "quadratic-twists", "chebyshev-bias", "prime-races", "moments", "li-criterion", "jensen-polynomials", "extreme-values", "davenport-heilbronn", "interval-arithmetic", "arb"]
 dependencies = [
     "numpy>=1.24",
     "mpmath>=1.4",
