@@ -11,7 +11,11 @@ from zeta_explorer.maxima import (
     fhk_cdf,
     fhk_density,
     haar_angles,
+    ks_distance,
     log_char_poly,
+    prime_shift_sample,
+    prime_shift_variance,
+    window_prime_sum,
     zeta_maxima,
 )
 from zeta_explorer.moments import EULER_GAMMA
@@ -100,3 +104,32 @@ def test_cue_maxima_large_n():
 
 def test_cue_one_by_one():
     assert np.allclose(cue_maxima(1, 5, np.random.default_rng(0)), math.log(2), atol=1e-12)
+
+
+def test_window_prime_sum_is_the_window_average():
+    lo = np.array([1000.0, 98765.4])
+    t = lo[:, None] + np.linspace(0, TWO_PI, 200_001)
+    p = np.array([2, 3, 5, 7, 11, 13])
+    f = (np.cos(t[..., None] * np.log(p)) / np.sqrt(p)).sum(axis=-1)
+    ref = np.trapezoid(f, t, axis=1) / TWO_PI
+    assert np.allclose(window_prime_sum(lo, P=13), ref, atol=1e-9)
+
+
+def test_prime_shift_variance_over_heights():
+    lo = np.random.default_rng(4).uniform(1e6, 1e9, 100_000)
+    v = window_prime_sum(lo, P=1000).var()
+    assert v == pytest.approx(prime_shift_variance(P=1000), rel=0.03)
+    assert prime_shift_variance(P=1000) < prime_shift_variance() < 0.0431
+
+
+def test_prime_shift_sample_variance():
+    x = prime_shift_sample(200_000, np.random.default_rng(6), P=200)
+    assert x.var() == pytest.approx(prime_shift_variance(P=200), rel=0.02)
+    assert abs(x.mean()) < 0.002
+
+
+def test_ks_distance():
+    x = np.arange(10.0)
+    assert ks_distance(x, x) == 0
+    assert ks_distance(x, x + 0.5) == pytest.approx(0.1)
+    assert ks_distance(x, x + 100) == 1

@@ -6,6 +6,7 @@ from functools import partial
 import numpy as np
 from numpy.typing import ArrayLike
 
+from zeta_explorer.explicit import primes
 from zeta_explorer.multieval import ZWindow
 from zeta_explorer.riemann_siegel import TWO_PI
 from zeta_explorer.values import INV_PHI
@@ -128,3 +129,40 @@ def cue_maxima(
                 break
         out.append(log_char_poly(phi[:, None, :], x).max(axis=1))
     return np.concatenate(out)
+
+
+def prime_amplitudes(length: float = TWO_PI, P: int = 1000) -> np.ndarray:
+    p = primes(P).astype(float)
+    w = length * np.log(p) / 2
+    return np.sin(w) / w / np.sqrt(p)
+
+
+def prime_shift_variance(length: float = TWO_PI, P: int = 10**6) -> float:
+    return float(np.sum(prime_amplitudes(length, P) ** 2) / 2)
+
+
+def window_prime_sum(lo: ArrayLike, length: float = TWO_PI, P: int = 1000) -> np.ndarray:
+    lo = np.asarray(lo, dtype=float)
+    out = np.zeros(lo.shape)
+    for p in primes(P):
+        w = math.log(p)
+        out += (np.sin(w * (lo + length)) - np.sin(w * lo)) / (length * w * math.sqrt(p))
+    return out
+
+
+def prime_shift_sample(
+    count: int, rng: np.random.Generator, length: float = TWO_PI, P: int = 1000
+) -> np.ndarray:
+    a = prime_amplitudes(length, P)
+    out = np.zeros(count)
+    for ap in a:
+        out += ap * np.cos(rng.uniform(0, TWO_PI, count))
+    return out
+
+
+def ks_distance(x: ArrayLike, y: ArrayLike) -> float:
+    x, y = np.sort(np.asarray(x, dtype=float)), np.sort(np.asarray(y, dtype=float))
+    grid = np.concatenate((x, y))
+    Fx = np.searchsorted(x, grid, side="right") / len(x)
+    Fy = np.searchsorted(y, grid, side="right") / len(y)
+    return float(np.max(np.abs(Fx - Fy)))
