@@ -89,3 +89,42 @@ def zeta_maxima(
         out.append(_refine(partial(_log_z, win), u[:-1], u[1:], v[:-1], v[1:], k, best,
                            margin, iters))
     return np.concatenate(out)
+
+
+def haar_angles(N: int, count: int, rng: np.random.Generator) -> np.ndarray:
+    shape = (count, N, N)
+    Z = (rng.standard_normal(shape) + 1j * rng.standard_normal(shape)) / math.sqrt(2)
+    Q, R = np.linalg.qr(Z)
+    d = np.diagonal(R, axis1=1, axis2=2)
+    Q = Q * (d / np.abs(d))[:, None, :]
+    return np.sort(np.angle(np.linalg.eigvals(Q)), axis=1)
+
+
+def log_char_poly(phi: np.ndarray, theta: np.ndarray) -> np.ndarray:
+    return np.log(np.abs(2 * np.sin((theta[..., None] - phi) / 2))).sum(axis=-1)
+
+
+def cue_maxima(
+    N: int, count: int, rng: np.random.Generator, batch: int = 4000, iters: int = 60
+) -> np.ndarray:
+    size = max(1, batch // N)
+    out = []
+    for b0 in range(0, count, size):
+        phi = haar_angles(N, min(size, count - b0), rng)
+        lo = phi
+        hi = np.concatenate((phi[:, 1:], phi[:, :1] + TWO_PI), axis=1)
+        x = (lo + hi) / 2
+        for _ in range(iters):
+            d = (x[..., None] - phi[:, None, :]) / 2
+            g = (1 / np.tan(d)).sum(axis=-1)
+            h = -(1 / np.sin(d) ** 2).sum(axis=-1) / 2
+            lo = np.where(g > 0, x, lo)
+            hi = np.where(g > 0, hi, x)
+            step = x - g / h
+            new = np.where((step >= lo) & (step <= hi), step, (lo + hi) / 2)
+            done = np.max(np.abs(new - x)) < 1e-12
+            x = new
+            if done:
+                break
+        out.append(log_char_poly(phi[:, None, :], x).max(axis=1))
+    return np.concatenate(out)

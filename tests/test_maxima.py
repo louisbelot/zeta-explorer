@@ -7,8 +7,11 @@ import pytest
 from zeta_explorer.maxima import (
     TWO_PI,
     bessel_k,
+    cue_maxima,
     fhk_cdf,
     fhk_density,
+    haar_angles,
+    log_char_poly,
     zeta_maxima,
 )
 from zeta_explorer.moments import EULER_GAMMA
@@ -65,3 +68,35 @@ def test_zeta_maxima_chunks_agree():
     a = zeta_maxima(5e5, 30)
     b = zeta_maxima(5e5, 30, chunk=7)
     assert np.allclose(a, b, atol=1e-9)
+
+
+def test_haar_traces():
+    phi = haar_angles(6, 20_000, np.random.default_rng(3))
+    for j, ref in ((1, 1), (2, 2), (7, 6)):
+        tr = np.abs(np.exp(1j * j * phi).sum(axis=1)) ** 2
+        assert tr.mean() == pytest.approx(ref, rel=0.05)
+
+
+def test_log_char_poly_matches_polynomial():
+    phi = haar_angles(5, 1, np.random.default_rng(5))[0]
+    theta = np.array([0.3, 2.0, -1.1])
+    ref = np.log(np.abs(np.polyval(np.poly(np.exp(1j * phi)), np.exp(1j * theta))))
+    assert np.allclose(log_char_poly(phi, theta), ref, atol=1e-12)
+
+
+def test_cue_maxima_against_dense_scan():
+    phi = haar_angles(9, 4, np.random.default_rng(8))
+    theta = np.linspace(0, TWO_PI, 400_001)
+    ref = [log_char_poly(p, theta).max() for p in phi]
+    assert np.allclose(cue_maxima(9, 4, np.random.default_rng(8)), ref, atol=1e-9)
+
+
+def test_cue_maxima_large_n():
+    phi = haar_angles(120, 2, np.random.default_rng(9))
+    theta = np.linspace(0, TWO_PI, 2_000_001)
+    ref = [log_char_poly(p, theta).max() for p in phi]
+    assert np.allclose(cue_maxima(120, 2, np.random.default_rng(9)), ref, atol=1e-6)
+
+
+def test_cue_one_by_one():
+    assert np.allclose(cue_maxima(1, 5, np.random.default_rng(0)), math.log(2), atol=1e-12)
