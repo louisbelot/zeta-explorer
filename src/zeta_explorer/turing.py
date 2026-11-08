@@ -11,7 +11,7 @@ from zeta_explorer.zeros import gram_points
 
 LEHMAN_A = 1.7
 LEHMAN_B = 0.114
-T_MIN = 168.0
+T_MIN = 168 * math.pi
 
 
 def blocks_needed(g_p: float) -> int:

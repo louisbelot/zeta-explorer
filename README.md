@@ -344,7 +344,7 @@ throughout.
 Sign changes of Z give a lower bound on N(T), the number of zeros with
 0 < Im s ≤ T. A zero off the critical line, or a double zero, wouldn't show up as
 a sign change. The upper bound comes from S(t) = N(t) − θ(t)/π − 1: Lehman proved
-|∫ S(t) dt| ≤ 1.7 + 0.114·log t₂ over any [t₁, t₂] above 168, so S can't stay
+|∫ S(t) dt| ≤ 1.7 + 0.114·log(t₂/2π) over any [t₁, t₂] above 168π, so S can't stay
 positive for long. Brent turned that into a block count. If K consecutive Gram
 blocks [g_n, g_p) obey Rosser's rule and
 
