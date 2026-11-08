@@ -5,7 +5,9 @@ import math
 import numpy as np
 from numpy.typing import ArrayLike
 
+from zeta_explorer.explicit import primes
 from zeta_explorer.gram import z_values
+from zeta_explorer.moments import prime_square_tail
 from zeta_explorer.riemann_siegel import z_rs
 from zeta_explorer.zeta import loggamma, zeta
 
@@ -66,11 +68,44 @@ def cue_log_mgf(u: ArrayLike, N: int) -> np.ndarray:
     return out
 
 
-def cue_density(x: ArrayLike, N: int, u_max: float = 40.0, h: float = 0.01) -> np.ndarray:
+def _invert(x: ArrayLike, u: np.ndarray, log_m: np.ndarray, h: float) -> np.ndarray:
     x = np.asarray(x, dtype=float)
-    u = np.arange(0, u_max + h, h)
-    M = np.exp(cue_log_mgf(u, N))
     w = np.full(u.shape, h)
     w[0] = w[-1] = h / 2
     phase = np.exp(-1j * np.multiply.outer(x, u))
-    return (phase * (w * M)).real.sum(axis=-1) / math.pi
+    return (phase * (w * np.exp(log_m))).real.sum(axis=-1) / math.pi
+
+
+def cue_density(x: ArrayLike, N: int, u_max: float = 40.0, h: float = 0.01) -> np.ndarray:
+    u = np.arange(0, u_max + h, h)
+    return _invert(x, u, cue_log_mgf(u, N), h)
+
+
+def _series_log(c: np.ndarray) -> np.ndarray:
+    out = np.zeros_like(c)
+    for n in range(1, c.shape[-1]):
+        out[..., n] = c[..., n] - sum(j * out[..., j] * c[..., n - j] for j in range(1, n)) / n
+    return out
+
+
+def arithmetic_cumulants(P: int = 10**6, order: int = 4) -> np.ndarray:
+    x = 1.0 / primes(P)
+    m_max = 80
+    c = np.zeros(order + 1)
+    c[0] = 1.0
+    rows = [c.copy()]
+    for j in range(m_max):
+        c = np.convolve(c, [j, 0.5])[: order + 1] / (j + 1)
+        rows.append(np.convolve(c, c)[: order + 1])
+    S = np.power.outer(x, np.arange(m_max + 1)) @ np.array(rows)
+    A = _series_log(S).sum(axis=0)
+    A[2] += np.sum(np.log1p(-x)) / 4
+    A[2:5] += np.array([-4, 4, -1])[: order - 1] / 64 * prime_square_tail(P)
+    return (A * np.array([math.factorial(j) for j in range(order + 1)]))[1:]
+
+
+def hybrid_density(x: ArrayLike, N: int, u_max: float = 40.0, h: float = 0.01) -> np.ndarray:
+    u = np.arange(0, u_max + h, h)
+    k = arithmetic_cumulants()
+    log_a = sum(k[j - 1] * (1j * u) ** j / math.factorial(j) for j in (2, 3, 4))
+    return _invert(x, u, cue_log_mgf(u, N) + log_a, h)

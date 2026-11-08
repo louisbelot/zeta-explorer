@@ -4,10 +4,14 @@ import mpmath
 import numpy as np
 import pytest
 
+from zeta_explorer.explicit import primes
+from zeta_explorer.moments import prime_square_tail
 from zeta_explorer.spacing import first_zeros, zeros_between
 from zeta_explorer.values import (
+    arithmetic_cumulants,
     cue_cumulants,
     cue_density,
+    hybrid_density,
     log_z_sample,
     records,
     sample_cumulants,
@@ -88,3 +92,39 @@ def test_log_z_beats_selberg_with_cue():
     selberg = 0.5 * math.log(math.log(T))
     assert abs(k[1] - cue) < 0.15
     assert abs(k[1] - cue) < abs(k[1] - selberg) / 4
+
+
+def _x_p_cumulants(p, nodes=512):
+    theta = 2 * math.pi * np.arange(nodes) / nodes
+    x = -np.log(np.abs(1 - np.exp(1j * theta) / math.sqrt(p)))
+    c = x - x.mean()
+    k2 = np.mean(c**2)
+    return x.mean(), k2, np.mean(c**3), np.mean(c**4) - 3 * k2**2
+
+
+def test_arithmetic_variance_is_dilog_sum():
+    ps = primes(1000)
+    ref = sum(0.5 * float(mpmath.polylog(2, 1 / int(p))) + 0.5 * math.log1p(-1 / p) for p in ps)
+    got = arithmetic_cumulants(1000)
+    assert got[1] == pytest.approx(ref - prime_square_tail(1000) / 8, rel=1e-12)
+    assert got[0] == 0
+
+
+def test_arithmetic_higher_cumulants_by_quadrature():
+    ks = np.array([_x_p_cumulants(p) for p in primes(500)])
+    assert np.all(np.abs(ks[:, 0]) < 1e-15)
+    got = arithmetic_cumulants(500)
+    tail = prime_square_tail(500)
+    assert got[2] == pytest.approx(ks[:, 2].sum() + 3 * tail / 8, rel=1e-10)
+    assert got[3] == pytest.approx(ks[:, 3].sum() - 3 * tail / 8, rel=1e-10)
+
+
+def test_hybrid_density_moments():
+    x, dx = np.linspace(-30, 8, 3801, retstep=True)
+    p = hybrid_density(x, 12)
+    k = cue_cumulants(12) + arithmetic_cumulants()
+    assert p.sum() * dx == pytest.approx(1, abs=1e-8)
+    assert (x * p).sum() * dx == pytest.approx(0, abs=1e-7)
+    assert (x**2 * p).sum() * dx == pytest.approx(k[1], rel=1e-6)
+    assert (x**3 * p).sum() * dx == pytest.approx(k[2], rel=1e-5)
+    assert p.min() > -1e-6 * p.max()
