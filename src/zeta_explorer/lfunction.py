@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import cmath
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
@@ -148,7 +149,7 @@ def count_zeros_box(chi: Character, T: float, sigma: tuple[float, float] = (-0.5
     corners = [lo - 1j * T, hi - 1j * T, hi + 1j * T, lo + 1j * T, lo - 1j * T]
     winding = 0.0
     for a, b in zip(corners[:-1], corners[1:], strict=True):
-        winding += _arg_change(prim, a, b)
+        winding += arg_change(lambda z: dirichlet_l(z, prim), a, b)
     n = winding / (2 * math.pi)
     if abs(n - round(n)) > 0.05:
         raise RuntimeError(f"winding number {n:.3f} is not close to an integer")
@@ -156,9 +157,11 @@ def count_zeros_box(chi: Character, T: float, sigma: tuple[float, float] = (-0.5
     return round(n) - trivial
 
 
-def _arg_change(chi: Character, a: complex, b: complex, max_step: float = 0.5) -> float:
+def arg_change(
+    f: Callable[[np.ndarray], np.ndarray], a: complex, b: complex, max_step: float = 0.5
+) -> float:
     u = np.linspace(0.0, 1.0, max(9, math.ceil(abs(b - a) / 0.05)))
-    vals = dirichlet_l(a + (b - a) * u, chi)
+    vals = f(a + (b - a) * u)
     for _ in range(30):
         d = np.angle(vals[1:] / vals[:-1])
         bad = np.flatnonzero(np.abs(d) > max_step)
@@ -166,8 +169,8 @@ def _arg_change(chi: Character, a: complex, b: complex, max_step: float = 0.5) -
             return float(d.sum())
         mid = (u[bad] + u[bad + 1]) / 2
         u = np.insert(u, bad + 1, mid)
-        vals = np.insert(vals, bad + 1, dirichlet_l(a + (b - a) * mid, chi))
-    raise RuntimeError("argument did not settle, L may vanish on the contour")
+        vals = np.insert(vals, bad + 1, f(a + (b - a) * mid))
+    raise RuntimeError("argument did not settle, the function may vanish on the contour")
 
 
 @dataclass(frozen=True)
