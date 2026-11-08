@@ -8,6 +8,7 @@ import pytest
 from zeta_explorer.elliptic import (
     Curve,
     EllipticL,
+    arithmetic_factor,
     central,
     completed,
     ec_theta,
@@ -188,3 +189,22 @@ def test_twists_family():
     ds = [L.d for L in fam]
     assert ds == [-3, -4, -7, -8, -15, -19, -20, -23, -24, -31, -35, -39, -40]
     assert all(L.root_number in (1, -1) for L in fam)
+
+
+def test_arithmetic_factor_against_dhkms():
+    assert arithmetic_factor(E11, -0.5, 1) == pytest.approx(0.732728078, rel=3e-4)
+
+
+def test_arithmetic_factor_is_one_at_zero():
+    assert arithmetic_factor(E11, 0.0, -1) == pytest.approx(1, abs=1e-12)
+    assert arithmetic_factor(E37, 0.0, 1) == pytest.approx(1, abs=1e-12)
+
+
+def test_arithmetic_factor_sign_enters_at_the_conductor():
+    ratio = arithmetic_factor(E11, -1.5, -1) / arithmetic_factor(E11, -1.5, 1)
+    assert ratio == pytest.approx((12 / 10) ** 1.5, rel=1e-13)
+
+
+def test_arithmetic_factor_needs_prime_conductor():
+    with pytest.raises(ValueError):
+        arithmetic_factor(Curve(1, 1, 1, -10, -10), 1.0, 1)

@@ -169,6 +169,24 @@ def central(L: EllipticL) -> float:
     return float(2 * np.sum(a * exp1(n / L.A)))
 
 
+def arithmetic_factor(E: Curve, s: float, eps: int, P: int = 1 << 14) -> float:
+    M = E.conductor
+    if factor(M) != [(M, 1)]:
+        raise ValueError("the recipe here is for prime conductor")
+    if eps not in (1, -1):
+        raise ValueError("eps is chi_d(N), so +1 or -1")
+    a = EllipticL(E).an(P)
+    p = primes(P)
+    p = p[p != M].astype(float)
+    x = 1 / np.sqrt(p)
+    lam = a[p.astype(int)] * x
+    euler = 0.5 * ((1 - lam * x + x * x) ** -s + (1 + lam * x + x * x) ** -s)
+    log_a = np.sum(np.log(p / (p + 1) * (1 / p + euler)))
+    log_a += s * (s - 1) / 2 * np.sum(np.log1p(-1 / primes(P)))
+    log_a -= s * math.log1p(-eps * a[M] / M)
+    return math.exp(log_a)
+
+
 def completed(s: ArrayLike, L: EllipticL, y0: complex = 1.0) -> complex | np.ndarray:
     z = np.array(s, dtype=complex, ndmin=1).ravel()
     if np.any((z.real <= 0) | (z.real >= 1)):
