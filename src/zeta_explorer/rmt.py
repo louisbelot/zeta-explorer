@@ -138,3 +138,40 @@ def excised_first(
     keep = char_poly_at_one(theta) >= cutoff
     return n * theta[keep, 0] / math.pi
 
+
+def _jacobi_alpha(odd: bool) -> float:
+    return 1.5 if odd else 0.5
+
+
+def so_moment(n: int, s: ArrayLike, odd: bool = False) -> float | np.ndarray:
+    a = _jacobi_alpha(odd)
+    ss = np.asarray(s, dtype=float)
+    if np.any(ss <= -a):
+        raise ValueError(f"the moment diverges for s <= {-a}")
+    j = np.arange(n)[:, None]
+    lg = np.vectorize(math.lgamma)
+    log_m = n * ss.ravel() * math.log(4) + np.sum(
+        lg(a + ss.ravel() + j) - lg(a + j) + lg(a + n + j - 0.5) - lg(a + n + j - 0.5 + ss.ravel()),
+        axis=0,
+    )
+    out = np.exp(log_m).reshape(ss.shape)
+    return float(out) if out.ndim == 0 else out
+
+
+def small_value_law(n: int, odd: bool = False) -> tuple[float, float]:
+    a = _jacobi_alpha(odd)
+    log_r = -n * a * math.log(4) - math.lgamma(a)
+    for j in range(n):
+        log_r += math.lgamma(a + n + j - 0.5) - math.lgamma(n + j - 0.5)
+        if j:
+            log_r += math.lgamma(j) - math.lgamma(a + j)
+    return math.exp(log_r), a
+
+
+def binned_chi2(x: ArrayLike, model: ArrayLike, edges: ArrayLike) -> float:
+    obs = np.histogram(x, edges)[0]
+    expect = np.histogram(model, edges)[0] / len(model) * len(x)
+    seen = expect > 0
+    if np.any(obs[~seen] > 0):
+        return math.inf
+    return float(np.sum((obs[seen] - expect[seen]) ** 2 / expect[seen]))

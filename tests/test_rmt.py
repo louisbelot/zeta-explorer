@@ -4,6 +4,8 @@ import numpy as np
 import pytest
 
 from zeta_explorer.rmt import (
+    binned_chi2,
+    char_poly_at_one,
     even_orthogonal,
     even_orthogonal_n,
     excised_first,
@@ -13,7 +15,9 @@ from zeta_explorer.rmt import (
     gap,
     odd_orthogonal_n,
     sine,
+    small_value_law,
     so_angles,
+    so_moment,
     symplectic,
     symplectic_n,
 )
@@ -178,9 +182,41 @@ def test_haar_so_odd_first_eigenvalue_matches_fredholm():
     assert ks < 1.6 / np.sqrt(len(x))
 
 
+def test_so_moment_closed_forms():
+    s = np.array([-0.4, 0.5, 1.0, 2.5])
+    so3 = 4**s * np.array([math.gamma(1.5 + x) / (math.gamma(1.5) * math.gamma(2 + x)) for x in s])
+    assert so_moment(1, s, odd=True) == pytest.approx(so3, rel=1e-13)
+    assert so_moment(7, 1.0) == pytest.approx(2, rel=1e-13)
+    assert so_moment(5, 0.0, odd=True) == 1
 
 
+@pytest.mark.parametrize("odd", [False, True])
+def test_so_moment_against_haar(odd):
+    v = char_poly_at_one(so_angles(4, 40_000, seed=8, odd=odd))
+    for s in (-0.3, 0.5, 1.0):
+        mc = v**s
+        assert abs(mc.mean() - so_moment(4, s, odd)) < 4 * mc.std() / np.sqrt(len(v))
 
+
+def test_so_moment_rejects_the_pole():
+    with pytest.raises(ValueError):
+        so_moment(3, -1.5, odd=True)
+
+
+def test_small_value_law():
+    assert small_value_law(1, odd=True) == pytest.approx((1 / (4 * np.pi), 1.5), rel=1e-14)
+    barnes_half = 0.603244281209446
+    r, a = small_value_law(100)
+    assert a == 0.5
+    assert r == pytest.approx(2**-0.875 * barnes_half * np.pi**-0.25 * 100**0.375, rel=3e-3)
+
+
+def test_small_value_law_against_haar():
+    v = char_poly_at_one(so_angles(4, 60_000, seed=11, odd=True))
+    r, a = small_value_law(4, odd=True)
+    rho = 0.05
+    k = int(np.sum(v < rho))
+    assert abs(k - len(v) * r / a * rho**a) < 4 * np.sqrt(k)
 
 
 def test_excised_odd_ensemble_repels():
@@ -189,3 +225,11 @@ def test_excised_odd_ensemble_repels():
     assert 0 < len(cut) < len(plain) == 10_000
     assert np.mean(cut) > np.mean(plain) + 0.03
     assert np.quantile(cut, 0.01) > 1.5 * np.quantile(plain, 0.01)
+
+
+def test_binned_chi2():
+    edges = np.linspace(0, 1, 5)
+    x = np.array([0.1, 0.1, 0.6, 0.9])
+    model = np.array([0.1, 0.3, 0.6, 0.9])
+    assert binned_chi2(x, model, edges) == pytest.approx(2.0)
+    assert binned_chi2(np.array([0.3]), np.array([0.1]), edges) == math.inf
