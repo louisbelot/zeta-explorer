@@ -41,7 +41,7 @@ and Zagier's height formula and the CFKRS arithmetic factor, removes 0.13% of th
 matrices and changes nothing. Fitting the cut instead lands at 50 times that size
 and still misses.
 
-Heat flow is the newest part. H_t(z), the heat-flow deformation of ξ behind the
+Heat flow came next. H_t(z), the heat-flow deformation of ξ behind the
 de Bruijn-Newman constant, is computed from its defining integral on a shifted
 contour, which keeps double precision at heights where H is 10⁻¹⁹¹. Running the
 flow backwards, the close pair of zeros at γ = 564.161 and 564.506 collides at
@@ -56,6 +56,16 @@ L(s, χ₋₄) and an exact tail, and the same code reproduces Fiorilli and Mart
 densities for twelve races mod 3 to 24 to six digits. With 3,130 zeros the
 explicit formula rebuilds π(x; 4, 3) − π(x; 4, 1) closely enough to see the first
 lead change at x = 26861.
+
+Moments and positivity close the loop on the value distribution. The arithmetic
+factor of the moment conjecture, read as a correction to the cumulants of
+log|ζ|, accounts for the whole gap between the data and random unitary matrices
+(variance within 0.015 at five heights, nothing fitted). Integrals of |ζ|^(2k) up
+to t = 10¹⁰ follow the full CFKRS polynomials, while their leading term is still
+off by a factor 11 for the sixth moment, and recomputing the paper's own tables
+turned up a swapped pair of numbers in one row. Li's coefficients λ_n, summed over
+the first million zeros and checked against Taylor coefficients of log ξ to
+1e−12, are positive for every n tried up to 10⁵.
 
 The same numerics also run in the browser at
 [louisbelot.github.io/zeta-explorer](https://louisbelot.github.io/zeta-explorer/):
@@ -579,7 +589,7 @@ in practice). Over all 138,068 gaps below t = 10⁵ (26 s), the running record o
 
 and each of those values matches mpmath's `siegelz` to 1e-10.
 
-![Histogram of log|zeta| near t = 5.6e7 with the CUE density and Selberg's normal](docs/log_z.png)
+![Histogram of log|zeta| near t = 5.6e7 with the CUE density, the arithmetic correction and Selberg's normal](docs/log_z.png)
 
 Selberg's central limit theorem says log|ζ(1/2 + it)| divided by
 sqrt(½·log log T) tends to a standard normal. Keating and Snaith (2000) proposed a
@@ -598,23 +608,169 @@ and a histogram of 20,000 Haar-random 12×12 unitaries sits within 0.015 of it.
 Sampling 200,000 random t in [T, 1.01·T] with T = 2π·e^N, so that N is an
 integer:
 
-| N | T | variance | κ₃ | CUE variance | CUE κ₃ | Selberg ½ log log T |
-|---|---|---|---|---|---|---|
-| 8 | 1.87·10⁴ | 1.730 | −2.10 | 1.829 | −2.374 | 1.143 |
-| 10 | 1.38·10⁵ | 1.864 | −2.20 | 1.940 | −2.393 | 1.236 |
-| 12 | 1.02·10⁶ | 1.957 | −2.14 | 2.031 | −2.405 | 1.314 |
-| 14 | 7.56·10⁶ | 2.019 | −2.13 | 2.108 | −2.414 | 1.381 |
-| 16 | 5.58·10⁷ | 2.093 | −2.10 | 2.175 | −2.421 | 1.441 |
+| N | T | variance | κ₃ | CUE variance | CUE κ₃ | CUE + arithmetic variance | CUE + arithmetic κ₃ | Selberg ½ log log T |
+|---|---|---|---|---|---|---|---|---|
+| 8 | 1.87·10⁴ | 1.730 | −2.10 | 1.829 | −2.374 | 1.741 | −2.140 | 1.143 |
+| 10 | 1.38·10⁵ | 1.864 | −2.20 | 1.940 | −2.393 | 1.852 | −2.159 | 1.236 |
+| 12 | 1.02·10⁶ | 1.957 | −2.14 | 2.031 | −2.405 | 1.943 | −2.171 | 1.314 |
+| 14 | 7.56·10⁶ | 2.019 | −2.13 | 2.108 | −2.414 | 2.020 | −2.180 | 1.381 |
+| 16 | 5.58·10⁷ | 2.093 | −2.10 | 2.175 | −2.421 | 2.087 | −2.187 | 1.441 |
 
 The means are all within 0.011 of zero. Selberg's normal is far too narrow at
 these heights: the variance does grow like ½ log log T, but with 0.59 to 0.65 on
-top. CUE gets the variance within 0.1, and it gets the strong negative skew right
-in sign and roughly in size (log|ζ| has a long left tail from the zeros). The
-remaining gap in the variance, 0.074 to 0.099, doesn't shrink with N. It looks
-like the arithmetic correction from small primes that the hybrid model of Gonek,
-Hughes and Keating puts on top of CUE, but I haven't computed that constant. The
-fourth cumulant (5.5 to 6.7, against 6.3 for CUE) is too noisy at this sample
-size to say more.
+top. CUE gets the variance within 0.1 and the strong negative skew roughly right
+(log|ζ| has a long left tail from the zeros), but it is too wide by 0.074 to 0.099
+at every height, and that gap doesn't shrink with N.
+
+The gap is the primes. In the moment conjecture of Keating and Snaith the CUE
+moments get multiplied by an arithmetic factor,
+
+```
+a(k) = Π_p (1 − 1/p)^(k²) · E|1 − e^(iθ)/√p|^(−2k)      (θ uniform)
+```
+
+which is what you get from the hybrid Euler-Hadamard product of Gonek, Hughes and
+Keating: ζ is a product over small primes times a product over nearby zeros, and
+only the second part looks like a random matrix. Reading log a(s/2) as an extra
+cumulant generating function gives the correction to every cumulant of log|ζ|.
+Per prime, `values.arithmetic_cumulants` expands
+log Σ_m ((s/2)_m / m!)² p^(−m) + (s²/4)·log(1 − 1/p) as a power series in s,
+sums over the 78,498 primes below 10⁶ and adds the tail beyond them in closed form
+(the p^(−2) term, −(s/2)²(s/2 − 1)²/4 · Σ_(p>P) p^(−2), with the prime sum from
+E1(log P)). The result:
+
+| | κ₂ | κ₃ | κ₄ |
+|---|---|---|---|
+| arithmetic factor | −0.0881 | +0.2337 | −0.0989 |
+
+The variance correction is ½·Σ_p (Li₂(1/p) + log(1 − 1/p)), which the test suite
+checks against mpmath's polylog, and κ₃, κ₄ are checked against the cumulants of
+−log|1 − e^(iθ)/√p| by quadrature in θ. With it the predicted variance is within
+0.015 of the data at all five heights (the sampling error of a variance here is
+0.008), and the skew moves from −2.4 to −2.14..−2.19 against −2.10..−2.20 measured.
+Nothing was fitted. The right panel of the chart is the histogram minus the CUE
+density next to the same difference for CUE with the four arithmetic cumulants
+added (`hybrid_density`): the bump at 0 and the dip near 1.7 are the primes.
+
+The full arithmetic factor can't be Fourier-inverted on its own. Its variance is
+negative, so its characteristic function grows like e^(0.044u²) and the product
+with the CUE one blows up for large u. Truncating it at the fourth cumulant gives a
+transform that decays (κ₄ < 0). At N = 12 the resulting density integrates to 1
+within 1e−8, has the predicted variance and skew, and its most negative value is
+−3e−8, in the far tail.
+
+### Moments
+
+![Moments of zeta over windows of length 1e5 against the CFKRS polynomials and the leading term](docs/moments.png)
+
+Conrey, Farmer, Keating, Rubinstein and Snaith (2005) conjectured the full
+asymptotic for the 2k-th moment,
+
+```
+∫_0^T |ζ(1/2 + it)|^(2k) dt = ∫_0^T P_k(log(t/2π)) dt + O(T^(1/2 + ε))
+```
+
+with P_k a polynomial of degree k². For k = 1 it is a theorem (Ingham):
+P_1(x) = x + 2γ. For k = 2 it matches Heath-Brown's fourth moment, and for k = 3 it
+is a conjecture. `moments.py` has P_1 in closed form and P_2, P_3 as printed in the
+paper. Their leading coefficient is a_k·G(k + 1)²/G(2k + 1), with G the Barnes
+function and a_k the arithmetic factor above at integer k; computing it from the
+Euler product (primes to 10⁶ plus the E1 tail) gives 1/(2π²) for k = 2 and
+5.708527034652e−6 for k = 3, both within 3e−11 of the paper.
+
+`z_power_integrals(C, D)` integrates Z(t)^(2k) with the trapezoid rule on a grid of
+step 1/(2k·log(D/2π)), evaluating Z through the same Odlyzko-Schönhage windows as
+the zero finder (own ζ below t = 1000). Z^(2k) is close to band-limited, with
+frequencies up to k·log(t/2π), so the interior of the trapezoid rule is
+spectrally accurate and all of the error sits at the two ends. An 8-point Gregory
+correction at each end removes it: the weights come from solving, in exact
+rationals, for the corrections that reproduce the Euler-Maclaurin endpoint terms
+on polynomials of degree below 8. Against Gauss-Legendre on mpmath's `siegelz`
+over 3-unit blocks at step 0.005, including the blocks around the records
+Z(50626.48) = 23.7 and Z(77403.72) = 28.2 where Z⁶ passes 10⁸, the agreement is
+1e−11 or better. At the default step the endpoint error is about 0.01 in absolute
+terms, which is 2e−8 of a 3-unit block and nothing on a long one: halving the step
+moves the integral over [50000, 60000] by 5e−12.
+
+The paper has two tables to compare with. For the smoothed moments
+∫_0^∞ |ζ|^(2k) e^(−t/10⁴) dt (`smoothed_moments(1e4)`, integrated to t = 6·10⁵):
+
+| k | measured here | CFKRS, measured | conjecture here | CFKRS, conjecture |
+|---|---|---|---|---|
+| 1 | 79499.9312639 | 79499.9312635 | 79496.7897047 | 79496.7897047 |
+| 2 | 5088336.51209 | 5088336.43654 | 5088332.55512 | 5088332.55512 |
+| 3 | 708967539.4 | 708967359.4 | 708965694.5 | 708965694.5 |
+
+The conjecture column uses ∫_0^∞ log(t/2π)^j e^(−t/T) dt = T·j!·[s^j] e^(as)Γ(1 + s)
+with a = log(T/2π), a power series exponentiated in closed form. It agrees with
+the paper to every printed digit, as long as the two numbers in the paper's k = 2
+row are read the other way round: printed as is, they say the conjecture is
+5088336.43654 and the measured value 5088332.55512, and my conjecture integral
+matches the second one to 12 digits. For the sixth moment over blocks of 50,000:
+
+| block | measured here | CFKRS, measured | relative gap |
+|---|---|---|---|
+| [0, 50000] | 7231006986.4 | 7231005642.3 | 1.9e−7 |
+| [50000, 100000] | 15723925543.3 | 15723919113.6 | 4.1e−7 |
+| [100000, 150000] | 21536848443.9 | 21536840937.9 | 3.5e−7 |
+| [1000000, 1050000] | 70233469614.7 | 70233393177.0 | 1.1e−6 |
+
+The paper's measured values were computed in Mathematica. The second moment agrees
+to 12 digits, so the gap grows with k, which is what a fixed relative error in the
+integration on their side would do. My two evaluators of Z agree with each other and
+with mpmath to 1e−11 or better on the same ranges.
+
+The chart repeats the comparison over windows [T, T + 10⁵] from T = 10³ to 10¹⁰
+(470 s for all fifteen windows). The second moment stays within 8e−4 of P_1 and
+the fourth within 0.5% up to 10⁹ (1.1% and 2.3% at 3·10⁹ and 10¹⁰). The sixth moment is within 0.7%
+up to 3·10⁶ and then wanders by up to 11%: with |ζ|⁶ a window of 10⁵ is
+dominated by a few large peaks, and CFKRS's own blocks at 10⁶ move by ±1%. The
+right panel is the point of the full polynomial. Keating and Snaith's leading term
+a_k g_k (log T)^(k²) / (k²)! is off by a factor 11 for k = 3 even at 10¹⁰, and the
+ratio shrinks only like a polynomial in 1/log T.
+
+### Li's criterion
+
+![Li's coefficients from a million zeros and their residual after the n log n trend](docs/li.png)
+
+Li (1997) showed that RH holds if and only if
+
+```
+λ_n = Σ_ρ [1 − (1 − 1/ρ)^n]
+```
+
+is positive for every n ≥ 1. On the critical line 1 − 1/ρ has modulus 1, so the
+pair ρ, ρ̄ contributes 4·sin²(n·arctan(1/(2γ))) ≥ 0, which is why the criterion
+works. The same numbers are Taylor coefficients at the point s = 1:
+Σ_n λ_n z^n / n = log ξ(1/(1 − z)).
+
+`li.li_exact` takes the second route with no zeros at all. A zero ρ of ξ sits at
+z = 1 − 1/ρ, which is on the unit circle when ρ is on the line, and an off-line
+zero at height γ would land within about 1/γ² of it. So log ξ(1/(1 − z)) is
+analytic well past |z| = 1/2. The code samples it on that circle, unwraps the
+phase, and reads the coefficients off a discrete Fourier transform at 40 digits;
+the aliasing error falls like 2^(−nodes). λ_1 = 1 + γ/2 − ½ log 4π = 0.0230957089661 to 1e−15, and moving the
+circle to radius 0.4 with 220 nodes changes nothing at 1e−12.
+
+`li_coefficients(n, gamma)` takes the first route: the sum over the given zeros
+plus the rest of the zeros as the smooth density θ'(t)/π beyond the last one,
+∫_T^∞ 4 sin²(n arctan(1/2t)) θ'(t)/π dt, and a boundary term −f(T)·S(T) for the
+difference between the true and the smooth count at T (integration by parts of
+∫ f dS). The integral is done in φ = arctan(1/2t) with φ = φ_T y⁴ to soften the
+logarithm of θ' at φ = 0, 200 Gauss-Legendre nodes. With the 1,000,001 zeros below
+the Gram point g_(10⁶) (found by the multi-evaluation zero finder in 148 s, count
+checked against the Gram point), the sum matches the Taylor route to 1.3e−12 for
+every n ≤ 40. Dropping the top half of the zeros moves λ_n by at most 1.6e−7 for n
+up to 10⁵, so the tail does its job.
+
+Every λ_n for n ≤ 20,000 (160 s) is positive and increasing, and so are the 120
+log-spaced values I computed up to 10⁵. The trend (n/2)(log n − 1 + γ − log 2π) is
+Voros's asymptotic under RH; what is left has standard deviation 0.43
+for n ≤ 100, 2.8 for 100 to 1000, 4.4 for 1000 to 5000 and 7.5 for 5000 to 20,000,
+so it grows, but slower than √n. If RH failed, a zero off the line at β + iγ would
+add a term growing like |1 − 1/ρ|^n, exponentially, but only once n reaches about
+γ²/(2β − 1), which for any zero above the verified height is far beyond reach. This
+is a check of the computation more than a test of RH.
 
 ### Dirichlet L-functions
 
