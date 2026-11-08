@@ -18,7 +18,8 @@ dependencies = [
 
 [project.optional-dependencies]
 plot = ["matplotlib>=3.7"]
-dev = ["pytest>=7", "ruff>=0.4", "matplotlib>=3.7"]
+certified = ["python-flint>=0.9"]
+dev = ["pytest>=7", "ruff>=0.4", "matplotlib>=3.7", "python-flint>=0.9"]
 
 [project.urls]
 Homepage = "https://github.com/louisbelot/zeta-explorer"
