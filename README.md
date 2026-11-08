@@ -35,7 +35,20 @@ order 0 to 3 for the curves 11a, 37a, 389a and 5077a, and 1,674 quadratic twists
 of 11a. Their central values sit exactly on Waldspurger's curves κc²/√d, and that
 discreteness explains why their lowest zeros stay away from the center: SO(16)
 random matrices with the matching cut on det(I − A) fit the even twists with χ² of
-34.6 on 15 bins, against 159 to 182 without the cut.
+34.6 on 15 bins, against 159 to 182 without the cut. The odd twists repel their
+first zero too, but the analogous cut on the central derivative, sized by Gross
+and Zagier's height formula and the CFKRS arithmetic factor, removes 0.13% of the
+matrices and changes nothing. Fitting the cut instead lands at 50 times that size
+and still misses.
+
+Heat flow is the newest part. H_t(z), the heat-flow deformation of ξ behind the
+de Bruijn-Newman constant, is computed from its defining integral on a shifted
+contour, which keeps double precision at heights where H is 10⁻¹⁹¹. Running the
+flow backwards, the close pair of zeros at γ = 564.161 and 564.506 collides at
+t = −0.0614041 and leaves the real line, 2·10⁻⁴ above the bound Csordas, Smith and
+Varga's criterion gives for that pair. The zeros move like charged particles: the
+velocity of each one, predicted from the positions of 4,000 others, matches the
+measured motion to 7·10⁻⁷.
 
 The zeros also settle prime races. Under GRH and LI the share of log x where
 primes ≡ 3 (mod 4) lead primes ≡ 1 is 0.9959279, computed from 868 zeros of
@@ -1018,13 +1031,74 @@ plain SO(16). Shrinking N doesn't do it: the likelihood is flat (95% interval 2.
 to 6.85) and every SO(2N) still has density near 2 at the origin, which the data
 don't.
 
-The odd side is less tidy. The lowest non-central zero has mean 0.840 against
-0.783 for the SO(odd) limit, and SO(17), with kernel D(x − y) − D(x + y) where
-D now has 2N in place of 2N + 1, is nearly the same curve as the limit. A maximum
-likelihood fit over SO(2N + 1) runs into the constraint that N exceed the largest
-observed zero, so there is no honest finite N to quote. The analogue of the cutoff
-would need a lower bound for L'(E_d, 1/2), which by Gross and Zagier is the height
-of a Heegner point rather than an integer square, and I haven't built that model.
+### Odd twists and the central derivative
+
+![Lowest zeros of the odd twists against excised SO(17), and χ² as a function of the cut](docs/odd_excision.png)
+
+The odd twists have a forced zero at the center, and Katz-Sarnak say the next one
+should follow the first nontrivial eigenvalue of SO(2N + 1), whose forced
+eigenvalue at 1 plays the part of the central zero. The data disagree in the same
+direction as on the even side: among the 840 rank 1 twists the lowest
+non-central zero never falls below x = 0.216, while SO(17) puts 1.7% of its mass
+below 0.2, and the histogram is narrower (standard deviation 0.251 against 0.325).
+
+The even fix was a cut on Λ_A(1) at the level where L(E_d, 1/2) is discretized.
+For SO(2N + 1) the characteristic polynomial vanishes at 1, so the natural
+quantity is the derivative, and det(I − zA) = (1 − z)∏(1 − 2z cos θ_j + z²) gives
+|Λ_A'(1)| = ∏(2 − 2 cos θ_j), the same product over the N free angles. On the
+arithmetic side Gross and Zagier write L'(E_d, 1/2) as a constant times the height
+of a Heegner point over √d, and heights of non-torsion points are bounded below,
+so L'(E_d, 1/2) ≥ m/√d. That is the argument in Miller's paper on zero repulsion
+([arXiv:1109.0224](https://arxiv.org/abs/1109.0224)). Here the smallest √d·L' is
+m = 6.437, at d = 8.
+
+To turn that floor into a matrix cut I followed DHKMS step by step. The CFKRS
+recipe says the moments of the family are an arithmetic factor times the matrix
+moments. `elliptic.arithmetic_factor` is the Euler product a_s(E) from their
+section 5, which gives a_(−1/2) = 0.73269 for 11a with the primes below 2^14,
+against their 0.732728078. `rmt.so_moment` gives E|Λ_A(1)|^s for SO(2N) and
+E|Λ_A'(1)|^s for SO(2N + 1) in closed form from Selberg's integral (in
+x = sin²(θ/2) the angles form a Jacobi ensemble with weight x^(∓1/2)(1 − x)^(−1/2)),
+and `rmt.small_value_law` is the residue at the first pole:
+P(Λ ≤ ρ) ≈ (R/α)ρ^α with α = 1/2 for SO(2N) and α = 3/2 for SO(2N + 1). That
+exponent is why rank 3 is so rare among odd twists. The dictionary holds up on
+this data, with N = log(√11·d/2π) rounded per twist:
+
+| s | family mean | a_s(E) × matrix mean | ratio |
+|---|---|---|---|
+| even, L(E_d, 1/2), s = 1/2 | 0.9574 | 0.9845 | 0.972 |
+| even, L(E_d, 1/2), s = 1 | 1.4812 | 1.4828 | 0.999 |
+| odd, L'(E_d, 1/2), s = −1 | 0.1994 | 0.2375 | 0.840 |
+| odd, L'(E_d, 1/2), s = −1/2 | 0.3992 | 0.3918 | 1.019 |
+| odd, L'(E_d, 1/2), s = 1/2 | 3.0766 | 3.0108 | 1.022 |
+| odd, L'(E_d, 1/2), s = 1 | 11.232 | 9.375 | 1.198 |
+
+For d > 0 every odd twist has χ_d(11) = −1, and a_(−3/2)(E) = 0.2030 with that
+sign. Matching densities near 0, as DHKMS do, scales the floor by a², and matching
+probabilities scales it by a^(2/3). With their convention that e^(−N/2) stands for
+d^(−1/2), the cut is |Λ_A'(1)| ≥ c·e^(−N/2) with c = 0.265 or c = 2.22.
+
+Neither does anything. With N = 8 and 300,000 Haar matrices from SO(17)
+(`rmt.so_angles(..., odd=True)`), c = 2.22 removes 0.13% of them. The arithmetic
+floor sits deep in the tail where P(Λ' ≤ ρ) ~ ρ^(3/2) is tiny. On 18 bins of
+(0, 1.8):
+
+| model for the 840 rank 1 odd twists | kept | χ² | KS | mean |
+|---|---|---|---|---|
+| SO(17) | 100% | 148.4 | 0.157 | 0.781 |
+| SO(17), c = 2.22 | 99.87% | 147.1 | 0.156 | 0.782 |
+| SO(17), best c = 112 | 83.1% | 61.5 | 0.056 | 0.860 |
+| data | | | | 0.840 |
+
+A cut 50 times the arithmetic one removes 17% of the matrices and cuts χ² by more
+than half, but the KS distance stays above the 5% critical value of 0.047, the
+excised mean overshoots, and the histogram is still too wide. Smaller matrices
+don't rescue it: the best cut gives χ² 74.6 for SO(5), 78.3 for SO(9) and 68.7 for
+SO(13). So the odd twists repel their first zero much harder than the size of
+L'(E_d, 1/2) explains, and part of the mismatch is in the bulk. DHKMS handle the
+bulk on the even side with an effective N from the lower-order terms of the
+one-level density (their r₁ = 2.86 for this curve). The odd family needs the same
+computation before an excised model can be judged fairly.
 
 ### Chebyshev's bias
 
@@ -1113,6 +1187,86 @@ over 200 ≤ x ≤ 10⁵ is at most 0.013 in E for the mod 4, 5, 8, 12 and 24 ra
 the 3,130 zeros below T = 3000 the rebuilt curve goes negative for x between
 about 26857 and 26876, around the actual first lead change at 26861 (the right panel
 of the first chart).
+
+### The de Bruijn-Newman heat flow
+
+![Zeros of H_t near a close pair as t runs from 0.2 to −0.2](docs/heat_flow.png)
+
+Following Pólya and de Bruijn, put
+
+```
+Φ(u) = Σ_{n≥1} (2π²n⁴e^(9u) − 3πn²e^(5u)) exp(−πn²e^(4u))
+H_t(z) = ∫_0^∞ e^(tu²) Φ(u) cos(zu) du
+```
+
+Then H_0(z) = ξ(1/2 + iz/2)/8 and ∂H/∂t = −∂²H/∂z². The de Bruijn-Newman constant
+Λ is the smallest t for which H_t has only real zeros, so RH is Λ ≤ 0. Rodgers and
+Tao proved Λ ≥ 0 in 2018 and Polymath 15 brought the upper bound to 0.22.
+
+The integral is easy to write and hard to evaluate: H_0(x) decays like e^(−πx/8)
+while the integrand is of size 1, so at x = 100 the cosine integral cancels 17
+digits. `heat.ht` moves the contour. Φ is analytic and super-exponentially small in
+the strip |Im u| < π/8, so the integral over the real line can be taken along
+Im u = θ = π/8 − δ, which pulls out a factor e^(−θz) and leaves cancellation of only
+e^(δx). With δ = (π/8)·min(1, 4/x) that factor is at most e^(π/2). Φ is even and
+real, so the half of the line with u < 0 is the conjugate of the other half, and
+what is left is a trapezoid sum over u > 0. On a line inside an analytic strip the
+trapezoid rule is exact up to an aliasing error of order e^(−2πδ/h), so a step of
+δ/8 is plenty, and the Φ sum stops once πn²e^(4u)·sin 4δ passes 40. At x = 1130
+that is 11,700 nodes and 50 terms.
+
+Checks:
+
+- H_0(z) = ξ(1/2 + iz/2)/8 to 2e-12 relative for real and complex z up to x = 400.
+  At x = 1128, where H is 5.4e-191, the agreement is 2.6e-11.
+- Against mpmath's quadrature of the defining integral itself at 30 digits, for
+  t = −1, −0.3, 0 and 0.25: 1e-10 relative.
+- The backward heat equation by finite differences, Φ(u) = Φ(−u) (which is
+  Jacobi's theta identity), H_t(z̄) = conj H_t(z), and the zeros of H_0 at exactly
+  2γ for the first five zeros of ζ.
+
+The zeros move. Write H_t = c∏(1 − z²/x_j²) over its zeros ±x_j. Differentiating
+H(x_k(t), t) = 0 and using the heat equation gives ẋ_k = H''/H' at the zero, and
+the product turns that into
+
+```
+dx_k/dt = 2 Σ_{j≠k} 1/(x_k − x_j) + 2 Σ_j 1/(x_k + x_j)
+```
+
+so as t grows the zeros repel like charges, and running t backwards pulls close
+pairs together. `heat.velocities` evaluates the sum from a list of zeros plus the
+smooth density log(x/4π)/4π beyond the last one. For the seven zeros of H_0 with
+1119 < x < 1139 it matches `heat.zero_velocity` (H''/H' from the integral, no
+differencing) to 6.8e-7 using the first 4,000 zeros of ζ:
+
+| x_k = 2γ_k | 1120.48 | 1125.12 | 1128.32 | 1129.01 | 1133.40 | 1135.46 | 1137.85 |
+|---|---|---|---|---|---|---|---|
+| dx_k/dt at t = 0 | 0.23730 | −1.31979 | −3.44762 | 2.00431 | −1.49289 | −0.68430 | −0.55859 |
+
+The third and fourth columns are the closest pair below γ = 600, γ = 564.1609 and
+564.5061. Backwards in t they collide. `heat.collision` follows the critical point
+of H_t between them and solves for the t where its value crosses zero, which lands
+at t_c = −0.0614041 and x_c = 1128.71107, where H and H' both vanish to 1e-13
+relative. Near a double zero H_t ≈ (z − x_c)² − 2(t − t_c), which solves the heat
+equation exactly, so the squared gap of the pair should be 8(t − t_c) on both
+sides: real for t > t_c and −4(Im z)² after. At t_c ± 10⁻⁴ the ratios are 0.99995
+and 1.00005, and the right panel shows how the other zeros bend the line further
+out. The other zeros hold the pair apart a little: an isolated pair with the same
+gap would collide sooner, at −Δx²/8 = −0.0596.
+
+This is the mechanism behind the old lower bounds on Λ. For a Lehmer pair,
+Csordas, Smith and Varga show the collision time cannot be below
+λ = [(1 − 5Δ²g/4)^(4/5) − 1]/(8g), and `lehmer.newman_bound` gives λ = −0.0616036
+for this pair (Δ²g = 0.238). The real collision is only 2.0·10⁻⁴ above it.
+
+![H_t near x = 1129 and its zeros in the complex plane as t decreases](docs/heat_flow.gif)
+
+`heat.zero_paths` tracks every zero in a window as t decreases: real zeros by
+sign changes and Illinois steps, and when two real zeros disappear between steps
+it starts Newton from their midpoint with an imaginary part of half their old gap,
+then follows the complex zero by Newton. Over t ∈ [−0.2, 0.2] the other five zeros
+in the window stay real and the pair reaches Im z = 0.545 at t = −0.2. Each of the
+81 frames takes about 1.6 s.
 
 ### In the browser
 
