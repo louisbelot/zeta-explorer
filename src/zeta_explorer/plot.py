@@ -14,7 +14,9 @@ from zeta_explorer.explicit import chebyshev_psi, pi_from_zeros, prime_pi, psi_f
 from zeta_explorer.gram import good_gram, z_values
 from zeta_explorer.heat import ht
 from zeta_explorer.lfunction import dirichlet_l, l_z, l_zeros
+from zeta_explorer.li import li_trend
 from zeta_explorer.lowlying import OneLevel, w_symplectic, w_unitary
+from zeta_explorer.moments import keating_snaith, polynomial_integral
 from zeta_explorer.multieval import ZWindow
 from zeta_explorer.ratios import quadratic_density
 from zeta_explorer.riemann_siegel import theta, z_exact, z_rs
@@ -39,7 +41,13 @@ from zeta_explorer.spacing import (
     unfold,
     wigner_surmise,
 )
-from zeta_explorer.values import cue_cumulants, cue_density, sample_cumulants
+from zeta_explorer.values import (
+    arithmetic_cumulants,
+    cue_cumulants,
+    cue_density,
+    hybrid_density,
+    sample_cumulants,
+)
 from zeta_explorer.zeros import find_zeros, gram_points
 from zeta_explorer.zeta import zeta
 
@@ -378,21 +386,39 @@ def plot_log_z(sample: np.ndarray, T: float, N: int, bins: int = 120) -> Figure:
     x = np.linspace(-8, 5, 600)
     k = sample_cumulants(sample)
     selberg = 0.5 * np.log(np.log(T))
-    fig, ax = plt.subplots(figsize=(10, 4.8), facecolor=SURFACE)
-    ax.set_facecolor(SURFACE)
-    ax.hist(sample, bins=bins, range=(-8, 5), density=True, color=ORDINAL[0], edgecolor=SURFACE,
-            linewidth=0.4, label=f"log|ζ(1/2 + it)|, {len(sample):,} random t, variance {k[1]:.3f}")
-    ax.plot(x, cue_density(x, N), color=INK, linewidth=1.8,
+    cue = cue_density(x, N)
+    hybrid = hybrid_density(x, N)
+    hybrid_var = cue_cumulants(N)[1] + arithmetic_cumulants()[1]
+    fig, (ax, diff) = plt.subplots(1, 2, figsize=(13, 4.8), facecolor=SURFACE,
+                                   gridspec_kw={"width_ratios": [1.5, 1]})
+    for a in (ax, diff):
+        a.set_facecolor(SURFACE)
+        _style(a)
+        a.set_xlim(-8, 5)
+        a.set_xlabel("log |ζ(1/2 + it)|", color=INK)
+    label = f"log|ζ(1/2 + it)|, {len(sample):,} random t, variance {k[1]:.3f}"
+    hist, edges, _ = ax.hist(sample, bins=bins, range=(-8, 5), density=True, color=ORDINAL[0],
+                             edgecolor=SURFACE, linewidth=0.4, label=label)
+    ax.plot(x, cue, color=INK, linewidth=1.8,
             label=f"CUE, N = {N}, variance {cue_cumulants(N)[1]:.3f}")
+    ax.plot(x, hybrid, color=ORDINAL[4], linewidth=1.4, linestyle=":",
+            label=f"CUE with the arithmetic factor, variance {hybrid_var:.3f}")
     ax.plot(x, np.exp(-(x**2) / (2 * selberg)) / np.sqrt(2 * np.pi * selberg), color=ACCENT,
             linewidth=1.4, linestyle="--", label=f"Selberg normal, variance {selberg:.3f}")
-    _style(ax)
-    ax.set_xlim(-8, 5)
-    ax.set_xlabel("log |ζ(1/2 + it)|", color=INK)
     ax.set_ylabel("density", color=INK)
     ax.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="upper left")
     ax.set_title(f"Value distribution near t = {T:.3g} against random unitary matrices",
                  color=INK, fontsize=12, loc="left")
+    mid = (edges[:-1] + edges[1:]) / 2
+    err = np.sqrt(hist / (len(sample) * (edges[1] - edges[0])))
+    diff.axhline(0, color=INK_SECONDARY, linewidth=0.8)
+    diff.fill_between(mid, -2 * err, 2 * err, color=GRID, step="mid", label="±2σ sampling noise")
+    diff.plot(mid, hist - cue_density(mid, N), color=ORDINAL[2], linewidth=1.2,
+              drawstyle="steps-mid", label="histogram − CUE")
+    diff.plot(x, hybrid - cue, color=ACCENT, linewidth=1.8, label="arithmetic factor − CUE")
+    diff.set_ylabel("density difference", color=INK)
+    diff.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="lower left")
+    diff.set_title("What CUE misses", color=INK, fontsize=12, loc="left")
     fig.tight_layout()
     return fig
 
@@ -1148,6 +1174,63 @@ def plot_bias_densities(races: list[Race], u: ArrayLike | None = None) -> Figure
     ax.set_facecolor(SURFACE)
     ax.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right")
     _style(ax)
+    fig.tight_layout()
+    return fig
+
+
+def plot_moments(T: ArrayLike, H: float, integrals: ArrayLike) -> Figure:
+    import matplotlib.pyplot as plt
+
+    T = np.asarray(T, dtype=float)
+    integrals = np.asarray(integrals, dtype=float)
+    fig, (full, lead) = plt.subplots(1, 2, figsize=(12, 4.6), facecolor=SURFACE)
+    for k, color in zip((1, 2, 3), (ORDINAL[1], ORDINAL[2], ORDINAL[4]), strict=True):
+        data = integrals[:, k - 1]
+        cfkrs = np.array([polynomial_integral(k, t, t + H) for t in T])
+        mid = np.log((T + H / 2) / (2 * np.pi))
+        leading = H * keating_snaith(k, mid)
+        for ax, ref in ((full, cfkrs), (lead, leading)):
+            ax.plot(T, data / ref, "o-", color=color, markersize=4, linewidth=1.4, label=f"k = {k}")
+    full.axhline(1, color=INK_SECONDARY, linewidth=0.8)
+    lead.axhline(1, color=INK_SECONDARY, linewidth=0.8)
+    lead.set_yscale("log")
+    for ax, title in ((full, "against the full CFKRS polynomial"),
+                      (lead, "against the leading term only")):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+        ax.set_xscale("log")
+        ax.set_xlabel("T", color=INK)
+        ax.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY)
+        ax.set_title(title, color=INK, fontsize=12, loc="left")
+    full.set_ylabel(f"∫ |ζ|^2k over [T, T + {H:,.0f}] / prediction", color=INK)
+    fig.tight_layout()
+    return fig
+
+
+def plot_li(n: ArrayLike, lam: ArrayLike) -> Figure:
+    import matplotlib.pyplot as plt
+
+    n = np.asarray(n, dtype=float)
+    lam = np.asarray(lam, dtype=float)
+    fig, (left, res) = plt.subplots(1, 2, figsize=(12, 4.6), facecolor=SURFACE)
+    left.plot(n, lam, color=SERIES, linewidth=1.6, label="λ_n from the zeros")
+    big = n >= 20
+    left.plot(n[big], li_trend(n[big]), color=ACCENT, linewidth=1.2, linestyle="--",
+             label="(n/2)(log n − 1 + γ − log 2π)")
+    left.set_xscale("log")
+    left.set_yscale("log")
+    left.set_ylabel("λ_n", color=INK)
+    left.set_title("Li's coefficients are positive", color=INK, fontsize=12, loc="left")
+    res.plot(n, lam - li_trend(n), color=SERIES, linewidth=0.5)
+    res.axhline(0, color=INK_SECONDARY, linewidth=0.8)
+    res.set_xlim(0, n[-1])
+    res.set_ylabel("λ_n − trend", color=INK)
+    res.set_title("What is left after the trend", color=INK, fontsize=12, loc="left")
+    for ax in (left, res):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+        ax.set_xlabel("n", color=INK)
+    left.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY)
     fig.tight_layout()
     return fig
 

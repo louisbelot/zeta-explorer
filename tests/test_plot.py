@@ -7,7 +7,9 @@ from matplotlib.animation import PillowWriter
 from PIL import Image
 
 from zeta_explorer.bias import race
+from zeta_explorer.li import li_trend
 from zeta_explorer.lowlying import OneLevel, w_symplectic
+from zeta_explorer.moments import polynomial_integral
 from zeta_explorer.plot import (
     heat_flow_animation,
     phase_colors,
@@ -25,9 +27,11 @@ from zeta_explorer.plot import (
     plot_l_zeros,
     plot_landscape,
     plot_lehmer,
+    plot_li,
     plot_log_z,
     plot_low_lying,
     plot_low_lying_scales,
+    plot_moments,
     plot_multieval,
     plot_odd_excision,
     plot_race,
@@ -117,6 +121,24 @@ def test_plot_log_z():
     texts = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
     assert texts[0].startswith("log|ζ(1/2 + it)|, 2,000 random t")
     assert "CUE, N = 8" in texts[1]
+    assert "arithmetic factor, variance 1.741" in texts[2]
+    assert len(fig.axes) == 2
+
+
+def test_plot_moments_ratios():
+    T = np.array([1e4, 1e5])
+    rows = np.array([[polynomial_integral(k, t, t + 100) for k in (1, 2, 3)] for t in T])
+    fig = plot_moments(T, 100.0, rows)
+    for line in fig.axes[0].lines[:3]:
+        assert np.allclose(line.get_ydata(), 1)
+    assert fig.axes[1].get_yscale() == "log"
+    assert fig.axes[1].lines[2].get_ydata()[0] > 10
+
+
+def test_plot_li_residual():
+    n = np.arange(1, 50)
+    fig = plot_li(n, li_trend(n) + 1)
+    assert np.allclose(fig.axes[1].lines[0].get_ydata(), 1)
 
 
 def test_plot_landscape_puts_a_pit_at_each_zero():
