@@ -1005,3 +1005,65 @@ Design notes:
 
 Next: Davenport-Heilbronn's function and its zeros off the line, then interval
 arithmetic for certified zero counts.
+
+## 2026-11-08: Davenport-Heilbronn, and certified zero counts in Arb
+
+Built:
+
+- `davenport.py`: the Davenport-Heilbronn function f = c·L(s, χ) + c̄·L(s, χ̄) mod 5
+  on top of `dirichlet_l`, its theta and Hardy function Z_f, the zero-free
+  half-plane σ > σ₀ = 1.395136 from a Hurwitz zeta equation, argument-principle
+  counts over boxes, complex Newton seeded from minima of |f|, and
+  `zeros_in_window`, which refuses to return until the zeros it found on and off
+  the line add up to the box count.
+- `certified.py` on python-flint: θ, Z and ζ as Arb balls, `z_sign` with
+  precision doubling, Gram points isolated by a Krawczyk test, a Turing count with
+  Trudgian's 2011 constants (2.067 + 0.059·log t₂ above 168π) that only uses
+  certified signs, a JSON proof log, and a complex Krawczyk test for zeros of f
+  using Arb's Hurwitz zeta power series for f and f′.
+- `lfunction.arg_change` now takes any function, so the box count is shared.
+- Chart: `docs/davenport.png`.
+
+Checks:
+
+- f against Arb's Hurwitz zeta to 1e−11 at nine points, three of them left of the
+  strip or high up; against the raw Dirichlet series at σ = 4; Λ(s) = Λ(1 − s) to
+  1e−11 with mpmath's Γ; real on the real axis with zeros at −1, −3, −5; the first
+  line zeros against mpmath's own Dirichlet series with findroot.
+- κ makes c̄/c equal the root number of χ to 1e−14, and σ₀ solves its equation to
+  1e−12 when the sum is redone in Arb.
+- Spira's four zeros reproduce to his six digits, and so do their mirrors.
+- Z, θ and ζ balls contain mpmath's values; Gram balls overlap Arb's own
+  `gram_point`; `certify` agrees with Arb's `zeta_nzeros` at 100, 1,000 and 3,000
+  in the tests and at 10,000 and 30,000 by hand.
+
+Results:
+
+- From t = 1 to 6001, 7,136 zeros of f: 6,522 on the line, 614 off it in 307
+  mirrored pairs, real parts 0.5061 to 0.8978, none with σ > 1. The scan takes
+  15 minutes. The share off the line goes 5.0%, 6.2%, 8.3%, 8.6% at T = 500, 1000,
+  2000, 6000.
+- Krawczyk boxes of radius 1e−10 certify the first four off-line zeros: exactly one
+  zero in each, real parts above 0.57. RH provably fails for f.
+- `certify(30000)` proves 35,673 zeros simple and on the line in 42 s with a 4 MB
+  log. Against the balls, `z_rs` is off by 1.8e−9 at t = 250, 3e−11 at 10³ and 10⁴,
+  1.6e−10 at 10⁵.
+
+Design notes:
+
+- The first off-line search missed a zero at σ ≈ 0.52 because the grid's first
+  column was also its edge, and edge cells can't be local minima. Padding the grid
+  by one cell on each side fixed it. The box count caught the miss, which is the
+  reason the count is there.
+- Near t = 1001 the box held 11 zeros and only 9 were found: a pair on the line
+  0.107 apart, under the Z_f grid step. Refining the cheap Z_f grid before the
+  expensive |f| grid, and a coarser first |f| grid, took the scan to 2,000 from
+  over 20 minutes (stopped unfinished) to 2.
+- The float Turing code used 168 as the lower limit for Lehman's bound. The bound
+  holds for t₁ ≥ 168π, so `turing.T_MIN` is now 168π.
+- Krawczyk instead of a ball Newton step: it needs f′ over the whole box, which
+  Arb's power series gives directly, and it proves uniqueness along with
+  existence.
+
+Next: Platt's zeros from the LMFDB cross-checked at high precision, then the
+L-function of Ramanujan's Δ and the Sato-Tate law for τ(p).
