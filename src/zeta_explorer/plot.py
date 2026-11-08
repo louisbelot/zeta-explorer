@@ -1328,3 +1328,58 @@ def plot_maxima(
     sd.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY)
     fig.tight_layout()
     return fig
+
+
+def plot_davenport(off: ArrayLike, line: ArrayLike, sigma0: float, T: float) -> Figure:
+    import matplotlib.pyplot as plt
+
+    from zeta_explorer.davenport import dh_z
+
+    off = np.asarray(off, dtype=complex)
+    line = np.sort(np.asarray(line, dtype=float))
+    fig, (zp, zmap, share) = plt.subplots(1, 3, figsize=(15, 4.8), facecolor=SURFACE)
+
+    t = np.linspace(80, 92, 2401)
+    zp.plot(t, dh_z(t), color=SERIES, linewidth=1.5)
+    zp.axhline(0, color=INK_SECONDARY, linewidth=0.8)
+    near = line[(line > t[0]) & (line < t[-1])]
+    zp.plot(near, np.zeros_like(near), "o", color=SERIES, markersize=4)
+    pair = off[(off.imag > t[0]) & (off.imag < t[-1]) & (off.real > 0.5)]
+    for rho in pair:
+        zp.axvline(rho.imag, color=ACCENT, linewidth=1.2, linestyle="--")
+        zp.text(0.98, 0.04, f"zeros at {rho.real:.4f} and {1 - rho.real:.4f} + {rho.imag:.3f}i",
+                transform=zp.transAxes, ha="right", color=ACCENT, fontsize=9)
+    zp.set_xlabel("t", color=INK)
+    zp.set_ylabel("Z_f(t)", color=INK)
+    zp.set_title("Z_f misses a sign change at the first pair", color=INK, fontsize=12,
+                 loc="left")
+
+    for edge in (sigma0, 1 - sigma0):
+        zmap.axvline(edge, color=INK_SECONDARY, linewidth=1, linestyle=":")
+    zmap.axvspan(sigma0, sigma0 + 0.1, color=GRID)
+    zmap.axvspan(1 - sigma0 - 0.1, 1 - sigma0, color=GRID)
+    zmap.axvline(0.5, color=SERIES, linewidth=2, alpha=0.35)
+    zmap.axvline(1, color=INK_SECONDARY, linewidth=0.8)
+    zmap.axvline(0, color=INK_SECONDARY, linewidth=0.8)
+    zmap.plot(off.real, off.imag, "o", color=ACCENT, markersize=2.5)
+    zmap.set_xlim(1 - sigma0 - 0.1, sigma0 + 0.1)
+    zmap.set_ylim(0, T)
+    zmap.set_xlabel("σ", color=INK)
+    zmap.set_ylabel("t", color=INK)
+    zmap.set_title(f"{len(off)} zeros off the line, {len(line)} on it", color=INK, fontsize=12,
+                   loc="left")
+
+    grid = np.linspace(200, T, 400)
+    n_off = np.searchsorted(np.sort(off.imag), grid)
+    n_line = np.searchsorted(line, grid)
+    share.plot(grid, n_off / (n_off + n_line), color=ACCENT, linewidth=1.6)
+    share.set_ylim(bottom=0)
+    share.set_xlim(0, T)
+    share.set_xlabel("T", color=INK)
+    share.set_ylabel("share of zeros with 0 < t < T off the line", color=INK)
+    share.set_title("Share of zeros off the line", color=INK, fontsize=12, loc="left")
+    for ax in (zp, zmap, share):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig

@@ -17,6 +17,7 @@ from zeta_explorer.plot import (
     plot_bias_densities,
     plot_central_values,
     plot_continuation,
+    plot_davenport,
     plot_domain,
     plot_ec_z,
     plot_explicit,
@@ -302,3 +303,13 @@ def test_plot_maxima_limits():
     assert fig.axes[2].lines[2].get_ydata()[0] == pytest.approx(np.pi / np.sqrt(12))
     added = fig.axes[2].lines[3].get_ydata() ** 2 - fig.axes[2].lines[1].get_ydata() ** 2
     assert np.allclose(added, 0.04)
+
+
+def test_plot_davenport_counts():
+    off = np.array([0.8 + 85.7j, 0.2 + 85.7j, 0.6 + 300j, 0.4 + 300j])
+    line = np.linspace(5, 400, 300)
+    fig = plot_davenport(off, line, 1.4, 400.0)
+    assert fig.axes[1].get_title(loc="left") == "4 zeros off the line, 300 on it"
+    share = fig.axes[2].lines[0].get_ydata()
+    assert np.all((share > 0) & (share < 0.05))
+    assert "0.8000" in fig.axes[0].texts[0].get_text()
