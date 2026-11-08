@@ -155,3 +155,37 @@ def test_so3_closed_form():
 
 def test_odd_orthogonal_tends_to_symplectic_limit():
     assert gap(odd_orthogonal_n(40), S) == pytest.approx(gap(symplectic, S), abs=2e-3)
+
+
+def test_haar_so_odd_one_level():
+    n, size = 4, 20_000
+    theta = so_angles(n, size, seed=4, odd=True)
+    counts, edges = np.histogram(theta.ravel(), bins=20, range=(0, np.pi))
+    u = np.linspace(0, np.pi, 20 * 64 + 1)[1:] - np.pi / (20 * 64 * 2)
+    r1 = 2 * n / (2 * np.pi) - np.sin(2 * n * u) / (2 * np.pi * np.sin(u))
+    expect = size * r1.reshape(20, 64).mean(axis=1) * (edges[1] - edges[0])
+    z = (counts - expect) / np.sqrt(expect)
+    assert np.abs(z).max() < 4.5
+    assert theta.shape == (size, n)
+
+
+def test_haar_so_odd_first_eigenvalue_matches_fredholm():
+    n = 3
+    x = np.sort(n * so_angles(n, 20_000, seed=6, odd=True)[:, 0] / np.pi)
+    s = np.linspace(0, x[-1], 400)
+    cdf = 1 - gap(odd_orthogonal_n(n), s)
+    ks = np.abs(np.interp(x, s, cdf) - np.arange(1, len(x) + 1) / len(x)).max()
+    assert ks < 1.6 / np.sqrt(len(x))
+
+
+
+
+
+
+
+def test_excised_odd_ensemble_repels():
+    plain = excised_first(4, 0.0, 10_000, seed=2, odd=True)
+    cut = excised_first(4, 2.0, 10_000, seed=2, odd=True)
+    assert 0 < len(cut) < len(plain) == 10_000
+    assert np.mean(cut) > np.mean(plain) + 0.03
+    assert np.quantile(cut, 0.01) > 1.5 * np.quantile(plain, 0.01)
