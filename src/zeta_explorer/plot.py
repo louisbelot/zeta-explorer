@@ -18,6 +18,8 @@ from zeta_explorer.multieval import ZWindow
 from zeta_explorer.ratios import quadratic_density
 from zeta_explorer.riemann_siegel import theta, z_exact, z_rs
 from zeta_explorer.rmt import (
+    binned_chi2,
+    char_poly_at_one,
     even_orthogonal,
     even_orthogonal_n,
     first_density,
@@ -926,6 +928,61 @@ def plot_twist_zeros(
         _style(ax)
     fig.tight_layout()
     return fig
+
+def plot_odd_excision(
+    first: ArrayLike, theta: np.ndarray, predicted: dict[str, float], c_max: float = 300.0,
+    s_max: float = 1.8, bins: int = 18,
+) -> Figure:
+    import matplotlib.pyplot as plt
+
+    x = np.sort(np.asarray(first, dtype=float))
+    n = theta.shape[1]
+    lam = char_poly_at_one(theta) * np.exp(n / 2)
+    eig = n * theta[:, 0] / np.pi
+    edges = np.linspace(0, s_max, bins + 1)
+    cs = np.geomspace(0.1, c_max, 90)
+    chi = np.array([binned_chi2(x, eig[lam >= c], edges) for c in cs])
+    best = cs[np.argmin(chi)]
+    kept = np.mean(lam >= best)
+    fig, (left, right) = plt.subplots(
+        1, 2, figsize=(12, 4.8), facecolor=SURFACE, gridspec_kw={"width_ratios": [1.3, 1]}
+    )
+    left.hist(x, bins=edges, density=True, histtype="stepfilled", color=ORDINAL[0], alpha=0.55,
+              label=f"odd twists, rank 1 ({len(x)})")
+    left.hist(eig, bins=edges, density=True, histtype="step", color=INK_SECONDARY,
+              linewidth=1.3, linestyle=":", label=f"SO({2 * n + 1})")
+    name, c = max(predicted.items(), key=lambda kv: kv[1])
+    left.hist(eig[lam >= c], bins=edges, density=True, histtype="step", color=SERIES,
+              linewidth=1.6, label=f"SO({2 * n + 1}), |Λ'(1)| ≥ {c:.2f}·e^(−N/2) ({name})")
+    left.hist(eig[lam >= best], bins=edges, density=True, histtype="step", color=ACCENT,
+              linewidth=1.8, label=f"best cut c = {best:.0f}, keeps {kept:.0%}")
+    left.set_xlim(0, s_max)
+    left.set_ylim(0, left.get_ylim()[1] * 1.35)
+    left.set_xlabel("x of the lowest zero above the central one", color=INK)
+    left.set_ylabel("density", color=INK)
+    left.set_title("Odd twists of 11a3 against excised SO(2N + 1)", color=INK, fontsize=11,
+                   loc="left")
+    right.plot(cs, chi, color=SERIES, linewidth=1.6)
+    for (label, c), style in zip(predicted.items(), ("--", ":"), strict=False):
+        right.axvline(c, color=INK_SECONDARY, linewidth=1.1, linestyle=style,
+                      label=f"{label}: c = {c:.2f}")
+    right.axvline(best, color=ACCENT, linewidth=1.1, label=f"minimum: c = {best:.0f}")
+    right.set_xscale("log")
+    right.set_xlim(cs[0], cs[-1])
+    right.set_ylim(0, chi[0] * 1.3)
+    right.set_xlabel("cut c in |Λ'(1)| ≥ c·e^(−N/2)", color=INK)
+    right.set_ylabel(f"χ² on {bins} bins of (0, {s_max})", color=INK)
+    right.set_title(f"N = {n}: the arithmetic cut does nothing", color=INK, fontsize=11,
+                    loc="left")
+    left.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right")
+    right.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="lower left",
+                 bbox_to_anchor=(0.42, 0.02))
+    for ax in (left, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig
+
 
 def plot_race(
     q: int = 4, a: int = 3, b: int = 1, T: float = 3000.0, x_max: float = 1e6,

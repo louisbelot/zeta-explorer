@@ -26,6 +26,7 @@ from zeta_explorer.plot import (
     plot_low_lying,
     plot_low_lying_scales,
     plot_multieval,
+    plot_odd_excision,
     plot_race,
     plot_rs_error,
     plot_spacing,
@@ -34,6 +35,7 @@ from zeta_explorer.plot import (
     plot_z,
     sweep_sigma,
 )
+from zeta_explorer.rmt import so_angles
 from zeta_explorer.spacing import first_zeros, zeros_between
 from zeta_explorer.values import log_z_sample
 
@@ -210,6 +212,16 @@ def test_plot_twist_zeros(tmp_path):
     fig.savefig(tmp_path / "twists.png")
     labels = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
     assert labels[-1] == "SO(16) with Λ(1) ≥ 0.0389"
+
+
+def test_plot_odd_excision_finds_the_repulsive_cut(tmp_path):
+    theta = so_angles(3, 20_000, seed=1, odd=True)
+    lam = np.prod(2 - 2 * np.cos(theta), axis=1) * np.exp(1.5)
+    x = 3 * theta[lam >= 20, 0][:800] / np.pi
+    fig = plot_odd_excision(x, theta, {"densities": 0.3, "probabilities": 2.0}, c_max=200)
+    fig.savefig(tmp_path / "odd.png")
+    best = fig.axes[1].get_legend().get_texts()[-1].get_text()
+    assert 10 <= float(best.split("= ")[1]) <= 40
 
 
 def test_plot_race_marks_first_lead(tmp_path):
