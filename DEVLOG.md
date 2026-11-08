@@ -938,3 +938,70 @@ Design notes:
 Next: the Fyodorov-Hiary-Keating maximum of |ζ| in short intervals using the same
 window machinery, then Jensen polynomials of ξ, and interval arithmetic for
 certified zero counts.
+
+## 2026-11-08: Maxima in short intervals, and Jensen polynomials of ξ
+
+Built:
+
+- `jensen.py`: the Taylor coefficients γ(n) of (4z² − 1)Λ(1/2 + z) from Riemann's
+  theta integral, with every F(m) = ∫ (log t)^m t^(−3/4) θ₀(t) dt read off one set
+  of Gauss-Legendre panels in u = log t; Jensen polynomials in exact `Fraction`
+  arithmetic; Hermite's criterion (positive definite Hankel matrix of Newton power
+  sums) as an exact hyperbolicity test; GORZ's closed-form A(n), δ(n), the same
+  shift read off the data, and the renormalization toward Hermite polynomials.
+- `maxima.py`: K₀ and K₁ from the cosh integral, the Fyodorov-Hiary-Keating limit
+  density and CDF, maxima of log|ζ| over consecutive windows of length 2π through
+  the multi-evaluation windows, Haar unitaries and the exact maximum of their
+  characteristic polynomials (Newton on each gap between eigenangles), and the
+  window average of the small-prime sum with its variance and a sampler.
+- Two charts: `docs/jensen.png` and `docs/maxima.png`.
+
+Checks:
+
+- γ(10), γ(100), γ(1000) equal the GORZ table to all 11 printed digits; γ(0..3)
+  match mpmath's Taylor series of the left side to 1e−20; F(m) matches a 50-digit
+  mpmath quadrature with jtheta to 1e−35.
+- Hermite's test is right on known cases: (X−1)(X−2)(X−3), X² + 1, a double root,
+  a pair of roots 1e−30 apart, and random real-rooted polynomials against the same
+  ones with a complex pair added. For d = 2 it agrees with Turán's inequality.
+- GORZ's A(n), δ(n) approach the data values: δ is 9% off at n = 20, 0.5% at 170,
+  0.14% at 492.
+- K₀, K₁ against mpmath to 1e−12 for x from 0.005 to 60. The limit density has
+  mass 1, mean γ and variance π²/12 to 1e−7, and its CDF matches 200,000 simulated
+  (G₁ + G₂)/2 within KS noise.
+- Window maxima of ζ against 100,001-point scans to 1e−8; chunked and unchunked
+  runs agree to 1e−9. CUE maxima against 400,001-point scans at N = 9 and a
+  2,000,001-point scan at N = 120; the Haar sampler gives E|Tr U^j|² = min(j, N).
+- The window-averaged prime sum against direct trapezoid integration to 1e−9, its
+  variance over random heights against the closed form within 3%.
+
+Results:
+
+- All 12,012 Jensen polynomials with d ≤ 12 and n ≤ 1000 are hyperbolic (335 s
+  at 130 digits), and so are d = 20, 30, 40 at n = 0, 10, 100, 1000. With 15-digit
+  γ(n), J^(20,100) shows a spurious complex pair; 60, 160 and 300 digits agree.
+- The zeros of the renormalized J^(d,n) approach those of H_d at rate exactly
+  δ(n): the largest error over δ(n) levels off near 5.7, 14.6, 24.3 for d = 3, 6, 9.
+- ζ maxima over 50,000 windows at each height 10⁴..10¹²: mean 0.419 to 0.412,
+  variance 0.213 to 0.309, against the limit's 0.577 and 0.822. CUE of the same size
+  lags the same way, and still does at N = 400 (mean 0.418, variance 0.474).
+- The variance gap to CUE is the small-prime shift: Σ_p sinc²(π log p)/(2p) =
+  0.0430, which closes it to within 0.0041 from 10⁶ to 10¹² with nothing fitted.
+  The leftover mean gap falls from 0.058 to 0.017.
+
+Design notes:
+
+- The first `exact()` wrapped its argument in `mpmath.mpf`, which rounds to the
+  global 15 digits. Every J^(d,n) with d ≥ 10 then failed the test. Rounding inside
+  a precision-sensitive pipeline has to be impossible, so the γ(n) go to Fractions
+  once and nothing after that rounds.
+- The FFT route to CUE maxima died at N = 100 because the characteristic
+  polynomial's coefficients sum to 2^N. Concavity of log|2 sin| between eigenangles
+  gives a better method: one Newton solve per gap, exact at any N. The first Newton
+  version also stalled: once converged, x equalled a bracket end, the strict
+  in-bracket test rejected the step and bisection threw it away again.
+- Refining every grid cell within 0.02 of its window's best grid value covers
+  maxima on window edges and in either neighbouring cell with no special cases.
+
+Next: Davenport-Heilbronn's function and its zeros off the line, then interval
+arithmetic for certified zero counts.
