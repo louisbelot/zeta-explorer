@@ -99,3 +99,59 @@ def hermite_pivots(a: list[Fraction]) -> list[Fraction]:
 
 def is_hyperbolic(a: list[Fraction]) -> bool:
     return all(p > 0 for p in hermite_pivots(a))
+
+
+def hermite(d: int) -> list[Fraction]:
+    prev, cur = [Fraction(1)], [Fraction(0), Fraction(1)]
+    if d == 0:
+        return prev
+    for k in range(1, d):
+        nxt = [Fraction(0)] + cur
+        for i, c in enumerate(prev):
+            nxt[i] -= 2 * k * c
+        prev, cur = cur, nxt
+    return cur
+
+
+def _saddle(n: float) -> float:
+    return float(mpmath.findroot(lambda L: L * (mpmath.pi * mpmath.exp(L) + 0.75) - n,
+                                 math.log(n / math.log(n))))
+
+
+def gorz_shift(n: int) -> tuple[float, float]:
+    m = 2 * n - 2
+    L = _saddle(m)
+    K = (1 / L + 1 / L**2) * m - 0.75
+    delta = math.sqrt(1 / m - 2 / (L**2 * K))
+    A = math.log(n * L**2 / (4 * m**2)) + (L - 1) / (L**2 * K) + m * (L + 2) / (L**4 * K**2)
+    return A, delta
+
+
+def data_shift(gamma: list, n: int) -> tuple[float, float]:
+    with mpmath.workdps(30):
+        l0, l1, l2 = (mpmath.log(gamma[n + j]) for j in range(3))
+        delta2 = -(l2 - 2 * l1 + l0) / 2
+        return float(l1 - l0 + delta2), float(mpmath.sqrt(delta2))
+
+
+def renormalized(a: list[Fraction], A: float, delta: float) -> list[Fraction]:
+    d = len(a) - 1
+    scale = exact(mpmath.exp(-mpmath.mpf(A)))
+    c0, c1 = -scale, Fraction(delta) * scale
+    out = [Fraction(0)] * (d + 1)
+    power = [Fraction(1)]
+    for j in range(d + 1):
+        for i, c in enumerate(power):
+            out[i] += a[j] * c
+        old, power = power, [c0 * c for c in power] + [Fraction(0)]
+        for i, c in enumerate(old):
+            power[i + 1] += c1 * c
+    norm = 1 / (Fraction(delta) ** d * a[0])
+    return [c * norm for c in out]
+
+
+def real_roots(a: list[Fraction], dps: int = 40) -> list[float]:
+    with mpmath.workdps(dps):
+        r = mpmath.polyroots([mpmath.mpf(c.numerator) / c.denominator for c in a],
+                             maxsteps=400, extraprec=4 * dps, asc=True)
+    return sorted(float(mpmath.re(z)) for z in r)

@@ -13,7 +13,7 @@ authors = [{ name = "Louis Belot" }]
 keywords = ["riemann-zeta", "riemann-hypothesis", "number-theory", "visualization", "riemann-siegel", "explicit-formula", "random-matrix-theory", "nufft", "odlyzko-schonhage", "dirichlet-l-functions", "katz-sarnak", "approximate-functional-equation", "ratios-conjecture", "fredholm-determinant", "elliptic-curves", "quadratic-twists", "chebyshev-bias", "prime-races", "moments", "li-criterion"]
 dependencies = [
     "numpy>=1.24",
-    "mpmath>=1.3",
+    "mpmath>=1.4",
 ]
 
 [project.optional-dependencies]

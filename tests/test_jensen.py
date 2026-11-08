@@ -5,9 +5,14 @@ import numpy as np
 import pytest
 
 from zeta_explorer.jensen import (
+    data_shift,
+    gorz_shift,
+    hermite,
     is_hyperbolic,
     jensen,
     power_sums,
+    real_roots,
+    renormalized,
     taylor_gamma,
     theta_moments,
 )
@@ -92,3 +97,39 @@ def test_small_degrees_hyperbolic(gamma):
 
 def test_degree_twelve_far_out(gamma):
     assert is_hyperbolic(jensen(gamma, 12, 200))
+
+
+def test_gorz_shift_converges_to_data(gamma):
+    gaps = []
+    for n in (20, 60, 200):
+        A, delta = gorz_shift(n)
+        A_d, delta_d = data_shift(gamma, n)
+        gaps.append(abs(delta / delta_d - 1))
+        assert A == pytest.approx(A_d, abs=5e-3)
+    assert gaps[0] > gaps[1] > gaps[2] and gaps[2] < 5e-3
+
+
+def test_hermite_normalization():
+    assert hermite(3) == [0, -6, 0, 1]
+    with mpmath.workdps(30):
+        for d in range(1, 9):
+            ref = mpmath.hermite(d, 0.35)
+            val = sum(float(c) * 0.7**i for i, c in enumerate(hermite(d)))
+            assert val == pytest.approx(float(ref), rel=1e-12)
+
+
+def test_renormalized_tends_to_hermite(gamma):
+    target = np.array(real_roots(hermite(6)))
+    err = []
+    for n in (10, 50, 220):
+        a = renormalized(jensen(gamma, 6, n), *data_shift(gamma, n))
+        err.append(np.max(np.abs(np.array(real_roots(a)) - target)))
+    assert err[0] > err[1] > err[2]
+
+
+def test_renormalized_keeps_roots(gamma):
+    a = jensen(gamma, 5, 30)
+    A, delta = data_shift(gamma, 30)
+    x = np.array(real_roots(a, dps=60))
+    y = np.array(real_roots(renormalized(a, A, delta), dps=60))
+    assert np.allclose((delta * y - 1) / np.exp(A), x, rtol=1e-12)
