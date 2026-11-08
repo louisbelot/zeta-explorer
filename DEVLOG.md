@@ -853,3 +853,88 @@ Design notes:
 Next: lower-order terms of the one-level density for the odd family, so that an
 effective N can be computed instead of fitted. Then the Polymath 15 approximation
 of H_t to reach Lehmer's pair at x ≈ 14010, and elliptic curves in the browser.
+
+## 2026-11-08: Moments, the arithmetic factor, and Li's coefficients
+
+Built:
+
+- `moments.py`: the CFKRS moment polynomials (P_1 = x + 2γ in closed form, P_2 and
+  P_3 as printed in the paper), their leading coefficient a_k·G(k + 1)²/G(2k + 1)
+  from the Euler product, exact integrals of P_k(log(t/2π)) over blocks and against
+  e^(−t/T), and `z_power_integrals`, which integrates Z^(2k) on long ranges through
+  the Odlyzko-Schönhage windows with Gregory end corrections.
+- `values.arithmetic_cumulants` and `hybrid_density`: the arithmetic factor of the
+  moment conjecture read as a correction to the first four cumulants of log|ζ|, and
+  the CUE density with that correction. The value distribution chart got a second
+  panel with histogram minus CUE against the predicted correction.
+- `li.py`: Li's coefficients λ_n two ways, as a sum over zeros with a smooth tail
+  and a boundary term, and as Taylor coefficients of log ξ(1/(1 − z)) from a
+  discrete Fourier transform on |z| = 1/2 at 40 digits.
+- Charts: moments over windows of 10⁵ up to T = 10¹⁰ against the full polynomials
+  and the leading term, λ_n up to 20,000 with the residual after Voros's trend.
+
+Checks:
+
+- Leading coefficients: 1/(2π²) for k = 2 and CFKRS's 5.708527034652e−6 for k = 3,
+  both to 3e−11. a_2 = 6/π² to 1e−10.
+- Polynomial integrals reproduce the conjecture columns of CFKRS's tables 5.1.2 and
+  5.1.3 to every printed digit, and the smoothed one matches mpmath quadrature to
+  1e−12.
+- Gregory weights: (3/8, 7/6, 23/24) for three points, and exact on x^d, d < 8,
+  for eight.
+- Z^(2k) integrals against Gauss-Legendre on mpmath's siegelz: 1e−11 or better on
+  3-unit blocks at 60000, at the record values near 50626 and 77403 (Z⁶ above
+  10⁸), and across the seam at t = 1000 where the code switches from ζ to the
+  windows. Window length and step don't move a long integral beyond 5e−12.
+- Arithmetic κ₂ against ½Σ_p (Li₂(1/p) + log(1 − 1/p)) with mpmath's polylog, κ₃
+  and κ₄ against cumulants of −log|1 − e^(iθ)/√p| by trapezoid in θ, all to
+  1e−10. The hybrid density integrates to 1 within 1e−8 with the predicted variance
+  and skew.
+- λ_1 = 1 + γ/2 − ½ log 4π to 1e−15. The two routes to λ_n agree to 1.3e−12 for
+  n ≤ 40 with a million zeros, and to 1e−6 with 1,000 zeros. Dropping half of the
+  million zeros moves λ_n by 1.6e−7 at most for n up to 10⁵.
+
+Results:
+
+- The arithmetic factor contributes κ₂ = −0.0881, κ₃ = +0.2337, κ₄ = −0.0989. On the
+  same 200,000-point samples as before (N = 8 to 16), CUE plus this correction gets
+  the variance within 0.015 of the data at every height (the sampling error is
+  0.008) and moves the predicted skew from −2.4 to −2.14..−2.19, measured
+  −2.10..−2.20. That closes the gap the last value-distribution entry left open,
+  with nothing fitted.
+- Smoothed moments at T = 10⁴: 79499.9312639, 5088336.51209, 708967539.4 for k = 1,
+  2, 3. CFKRS print 79499.9312635 for k = 1. Their k = 2 row has the two numbers
+  the other way round: my conjecture integral is 5088332.55512, which they list as
+  the measured value. Their sixth-moment blocks are 2e−7 to 1.1e−6 below mine,
+  growing with k while k = 1 agrees to 12 digits.
+- Over windows [T, T + 10⁵] up to 10¹⁰ the second moment stays within 8e−4 of P_1,
+  the fourth within 0.5% up to 10⁹, and the sixth within 0.7% up to 3·10⁶ and then
+  within 11%. The leading term alone is off by a factor 105 for k = 3 at 10³ and
+  still 11 at 10¹⁰.
+- The first 1,000,001 zeros (to g_(10⁶) ≈ 600270) in 148 s. λ_n is positive and
+  increasing for every n ≤ 20,000 and at 120 log-spaced n up to 10⁵. The residual
+  after (n/2)(log n − 1 + γ − log 2π) has standard deviation 0.43, 2.8, 4.4 and 7.5
+  on [1, 100], [100, 1000], [1000, 5000], [5000, 20000].
+
+Design notes:
+
+- The trapezoid rule on Z^(2k) looked like it converged at second order, which
+  made no sense for a band-limited integrand. It was all endpoint error: f' at the
+  ends is in the hundreds. Gregory corrections derived from Euler-Maclaurin (solve
+  Σ c_j j^d = B_(d+1)/(d+1) for odd d, 0 for even d, in exact rationals) fix it
+  without touching the interior weights.
+- The full arithmetic factor can't be inverted into a density on its own: its
+  variance is negative, so the characteristic function grows like e^(0.044u²).
+  Keeping its first four cumulants gives a transform that decays because κ₄ < 0.
+  The first attempt multiplied the full quadrature-based factor into the CUE
+  transform and the density integrated to 1.022.
+- λ_n via mpmath.taylor fails (no ξ in mpmath, and finite differences at z = 0 hit
+  the pole of ζ). The DFT on a circle avoids the point and gives all coefficients
+  from one set of 160 samples. The phase of log ξ is unwrapped along the circle;
+  the winding number is 0 because nothing vanishes inside.
+- The tail of λ_n is the integral in φ = arctan(1/2t) with φ = φ_T y⁴, which turns
+  the log singularity of θ' at φ = 0 into y³ log y for Gauss-Legendre.
+
+Next: the Fyodorov-Hiary-Keating maximum of |ζ| in short intervals using the same
+window machinery, then Jensen polynomials of ξ, and interval arithmetic for
+certified zero counts.
