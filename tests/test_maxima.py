@@ -5,11 +5,14 @@ import numpy as np
 import pytest
 
 from zeta_explorer.maxima import (
+    TWO_PI,
     bessel_k,
     fhk_cdf,
     fhk_density,
+    zeta_maxima,
 )
 from zeta_explorer.moments import EULER_GAMMA
+from zeta_explorer.multieval import ZWindow
 
 
 def test_bessel_k_matches_mpmath():
@@ -47,3 +50,18 @@ def test_fhk_right_tail():
     y = np.array([6.0, 9.0, 12.0])
     tail = 1 - fhk_cdf(y)
     assert np.allclose(tail / (y * np.exp(-2 * y)), 2, rtol=0.12)
+
+
+def test_zeta_maxima_against_dense_scan():
+    T = 123456.0
+    M = zeta_maxima(T, 6)
+    win = ZWindow(T - 1, T + 6 * TWO_PI + 1)
+    for k in range(6):
+        t = np.linspace(T + k * TWO_PI, T + (k + 1) * TWO_PI, 100_001)
+        assert M[k] == pytest.approx(np.log(np.abs(win.z(t - win.t0))).max(), abs=1e-8)
+
+
+def test_zeta_maxima_chunks_agree():
+    a = zeta_maxima(5e5, 30)
+    b = zeta_maxima(5e5, 30, chunk=7)
+    assert np.allclose(a, b, atol=1e-9)
