@@ -22,6 +22,14 @@ def test_kappa_cancels_the_root_number():
     assert abs(math.atan(D.KAPPA) - cmath.phase(D.CHI.root_number()) / 2) < 1e-14
 
 
+@pytest.mark.parametrize("s", [0.5 + 20j, 0.3 + 5j, 0.81 + 85.7j, 1.3 + 400j, 3 + 1j,
+                               -0.6 + 33j, -2.5 + 0.5j, 0.5 + 1500j, 2 - 10j])
+def test_dh_matches_arb_hurwitz(s):
+    ref = C.dh_ball(s, 128)
+    ref = complex(float(ref.real.mid()), float(ref.imag.mid()))
+    assert abs(D.dh(s) - ref) < 1e-11 * max(1.0, abs(ref))
+
+
 def test_dh_is_the_dirichlet_series_for_large_sigma():
     s = 4 + 3j
     a = D.coefficients()
@@ -88,6 +96,20 @@ def test_spira_zeros_and_their_mirrors():
     assert np.max(np.abs(roots - np.array(D.SPIRA))) < 1e-6
     assert np.max(np.abs(D.dh(roots))) < 1e-12
     assert np.max(np.abs(D.dh(1 - np.conj(roots)))) < 1e-12
+
+
+def test_spira_zeros_certified_off_the_line():
+    roots, _ = D.newton(list(D.SPIRA))
+    for r in roots:
+        box = C.krawczyk(complex(r), 1e-10)
+        assert box is not None
+        assert box.real > 0.57
+        assert box.rad() < 1e-15
+        assert abs(complex(float(box.real.mid()), float(box.imag.mid())) - r) < 1e-12
+
+
+def test_krawczyk_rejects_a_box_without_a_zero():
+    assert C.krawczyk(0.8 + 90j, 1e-3) is None
 
 
 def test_count_below_the_first_off_line_zero_is_all_on_the_line():

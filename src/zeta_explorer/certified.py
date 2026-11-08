@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 import flint
 import numpy as np
-from flint import acb, arb
+from flint import acb, acb_series, arb
 
 from zeta_explorer.riemann_siegel import theta
 from zeta_explorer.zeros import gram_points
@@ -181,3 +181,31 @@ def _turing(
         if run >= blocks_needed(float(gf[k])):
             return start, run
     return None
+
+
+def _dh_series(s: acb) -> tuple[acb, acb]:
+    k = ((arb(10) - 2 * arb(5).sqrt()).sqrt() - 2) / (arb(5).sqrt() - 1)
+    x = acb_series([s, 1])
+    f = sum(
+        (c * x.zeta(acb(a) / 5) for a, c in zip((1, 2, 3, 4), (1, k, -k, -1), strict=True)),
+        acb_series([0]),
+    )
+    f = f * (-x * arb(5).log()).exp()
+    c = f.coeffs()
+    return c[0], c[1]
+
+
+def dh_ball(s: complex, bits: int = 64) -> acb:
+    with precision(bits, cap=2):
+        return _dh_series(acb(s.real, s.imag))[0]
+
+
+def krawczyk(s: complex, r: float, bits: int = 128) -> acb | None:
+    with precision(bits, cap=2):
+        m = acb(s.real, s.imag)
+        box = acb(arb(s.real, r), arb(s.imag, r))
+        fm, dm = _dh_series(m)
+        y = 1 / dm.mid()
+        _, d_box = _dh_series(box)
+        k = m - y * fm + (1 - y * d_box) * (box - m)
+        return k if box.contains_interior(k) else None
