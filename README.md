@@ -67,6 +67,17 @@ turned up a swapped pair of numbers in one row. Li's coefficients λ_n, summed o
 the first million zeros and checked against Taylor coefficients of log ξ to
 1e−12, are positive for every n tried up to 10⁵.
 
+The extremes of ζ behave like those of a log-correlated field. Over 50,000
+windows of length 2π at each height up to 10¹², the maximum of log|ζ| sits far
+from the Fyodorov-Hiary-Keating limit law, and so do random unitary matrices of
+the same size, even at N = 400. What separates ζ from them is arithmetic: the
+window average of the sum over small primes has variance 0.043, and adding it to
+the random-matrix variance matches the data to 0.004 from 10⁶ up, with nothing
+fitted. Every Jensen polynomial of ξ with degree up to 12 and shift up to 1000
+(and degree 40 at a few shifts) is decided hyperbolic in exact rational
+arithmetic, as RH requires, and their zeros approach the Hermite limit of
+Griffin, Ono, Rolen and Zagier at rate exactly δ(n).
+
 The same numerics also run in the browser at
 [louisbelot.github.io/zeta-explorer](https://louisbelot.github.io/zeta-explorer/):
 a phase portrait you can pan and zoom, a Z(t) explorer that marks zeros and Gram
@@ -729,6 +740,87 @@ right panel is the point of the full polynomial. Keating and Snaith's leading te
 a_k g_k (log T)^(k²) / (k²)! is off by a factor 11 for k = 3 even at 10¹⁰, and the
 ratio shrinks only like a polynomial in 1/log T.
 
+### The maximum in a short interval
+
+![Distribution of the maximum of log|zeta| over windows of length 2pi at T = 1e12, with CUE and the two-Gumbel limit, and its mean and spread against N](docs/maxima.png)
+
+Fyodorov, Hiary and Keating (2012) predicted the largest value of |ζ| on a
+window of fixed length near height T. With N = log(T/2π), the number of zeros in a
+window of length 2π,
+
+```
+max_(0 ≤ h ≤ 2π) log|ζ(1/2 + i(T + h))| = log N − ¾ log log N + y
+```
+
+where y has a limit law with density 4e^(−2y) K₀(2e^(−y)), the law of half the sum
+of two independent standard Gumbel variables. The −¾ log log N (rather than the
+−¼ that independent values would give) and the y·e^(−2y) right tail come from the
+logarithmic correlations of log|ζ|, the same structure as branching random walks.
+The leading order is a theorem (Arguin, Belius, Bourgade, Radziwiłł and
+Soundararajan 2019), and Arguin, Bourgade and Radziwiłł proved the −¾ term with
+tight tails (2020, 2023). The limit law itself is open.
+
+`maxima.py` computes K₀ and K₁ from ∫_0^∞ e^(−x cosh s) cosh(νs) ds with the
+trapezoid rule, which converges double-exponentially (1e−12 against mpmath), so
+the limit density and its CDF 2e^(−y) K₁(2e^(−y)) need nothing outside numpy. The
+law has mean γ and variance π²/12, and 200,000 simulated pairs of Gumbels sit within
+the KS noise of the CDF.
+
+`zeta_maxima(T, count)` takes consecutive windows [T + 2πk, T + 2π(k + 1)],
+evaluates Z on 16 points per mean zero spacing through the Odlyzko-Schönhage
+windows, with the grid aligned to the window edges, and then runs golden-section
+search on every grid cell whose higher end is within 0.02 of its window's best
+grid value. The grid misses the top of a typical peak by about 0.005, a quarter
+of that margin, so the cell holding the true maximum qualifies. Against scans with 100,001 points per
+window the maxima agree to 1e−8. 50,000 windows take 52 s at 10⁴ and 124 s at 10¹².
+
+The random-matrix side is the maximum of log|p_N(θ)| = Σ log|2 sin((θ − φ_j)/2)|
+over the circle for Haar unitaries (QR of a complex Ginibre matrix with the phases
+of R's diagonal divided out). Each term is concave between eigenangles, so the
+maximum on each gap is the unique root of ½Σ cot((θ − φ_j)/2), found by Newton with
+a bisection safeguard. My first version evaluated p_N by FFT of its coefficients,
+which is fine for N = 26 and useless at N = 100: the coefficients sum to 2^N in
+absolute value and the rounding error swamps |p_N| (it reported a mean of 17).
+
+Over 50,000 windows at each height:
+
+| T | N | ζ mean | CUE mean | ζ variance | CUE variance | CUE + primes | KS: CUE, + primes, limit |
+|---|---|---|---|---|---|---|---|
+| 10⁴ | 7.4 | 0.419 | 0.361 | 0.213 | 0.146 | 0.189 | 0.093, 0.068, 0.168 |
+| 10⁵ | 9.7 | 0.419 | 0.375 | 0.220 | 0.172 | 0.215 | 0.065, 0.049, 0.165 |
+| 10⁶ | 12.0 | 0.420 | 0.381 | 0.234 | 0.193 | 0.235 | 0.063, 0.048, 0.159 |
+| 10⁷ | 14.3 | 0.419 | 0.389 | 0.253 | 0.210 | 0.253 | 0.052, 0.035, 0.153 |
+| 10⁸ | 16.6 | 0.419 | 0.390 | 0.266 | 0.225 | 0.268 | 0.049, 0.034, 0.147 |
+| 10⁹ | 18.9 | 0.417 | 0.393 | 0.280 | 0.237 | 0.280 | 0.042, 0.029, 0.143 |
+| 10¹⁰ | 21.2 | 0.415 | 0.394 | 0.291 | 0.247 | 0.290 | 0.039, 0.028, 0.140 |
+| 10¹¹ | 23.5 | 0.414 | 0.395 | 0.302 | 0.255 | 0.298 | 0.037, 0.024, 0.137 |
+| 10¹² | 25.8 | 0.412 | 0.396 | 0.309 | 0.264 | 0.307 | 0.034, 0.022, 0.135 |
+
+The CUE columns are interpolated between integer N from 100,000 matrices per
+size. The data are nowhere near the limit law: the mean is
+0.41 against γ = 0.577 and the variance 0.31 against 0.82 at 10¹², and the KS
+distance to the limit only falls from 0.168 to 0.135 across eight decades. Random
+matrices show the same lag well past any height ζ can reach: at N = 100, 200 and
+400 (20,000, 5,000 and 1,000 matrices) the CUE mean is 0.403, 0.385 and 0.418 and
+the variance 0.376, 0.404 and 0.474. The slow convergence belongs to the
+log-correlated field, not to ζ. FHK met the same
+thing at 10²⁸ and rescaled their data to the predicted variance before comparing.
+
+ζ's maxima also spread more than CUE's at every height, by 0.045 in variance at
+10¹². That excess is arithmetic. A random matrix has no structure on scales longer
+than the circle, but ζ has primes, and p^(−1/2−it) with small p changes slowly
+enough to lift or sink a whole window. Averaged over a window of length L the prime
+sum Re Σ_p p^(−1/2−it) has amplitude p^(−1/2)·|sin(½L log p)/(½L log p)| for each
+p, and since the log p are linearly independent the phases behave like independent
+uniforms over many windows, so the shift has variance
+Σ_p sin²(½L log p) / (2p·(½L log p)²) = 0.0430 for L = 2π (0.0420 from p ≤ 30). It
+correlates with the measured maximum at 0.42 to 0.44 at every height. Adding it to
+the CUE variance, with nothing fitted, lands within 0.0041 of ζ's variance from 10⁶
+up (0.005 at 10⁵ and 0.024 at 10⁴), and adding an independent sample of the shift
+to the CUE maxima cuts the KS distance to the data by 27 to 37%. What is left is a mean offset that shrinks from
+0.058 at 10⁴ to 0.017 at 10¹²; with both means removed, the KS distance between
+ζ and CUE plus primes is 0.010 to 0.017 from 10⁵ up.
+
 ### Li's criterion
 
 ![Li's coefficients from a million zeros and their residual after the n log n trend](docs/li.png)
@@ -771,6 +863,62 @@ so it grows, but slower than √n. If RH failed, a zero off the line at β + iγ
 add a term growing like |1 − 1/ρ|^n, exponentially, but only once n reaches about
 γ²/(2β − 1), which for any zero above the verified height is far beyond reach. This
 is a check of the computation more than a test of RH.
+
+### Jensen polynomials
+
+![Zeros of renormalized Jensen polynomials of xi moving to Hermite zeros, and the error over delta(n)](docs/jensen.png)
+
+Write the completed zeta function around the center as
+
+```
+(4z² − 1)·Λ(1/2 + z) = Σ_n γ(n) z^(2n) / n!,      Λ(s) = π^(−s/2) Γ(s/2) ζ(s)
+```
+
+and attach to the sequence γ the Jensen polynomials
+
+```
+J^(d,n)(X) = Σ_(j=0..d) C(d, j) γ(n + j) X^j.
+```
+
+Pólya showed that RH holds if and only if every J^(d,n) is hyperbolic (has only
+real zeros). Griffin, Ono, Rolen and Zagier (2019) proved it for d ≤ 8 and every
+n, and for each d once n is large enough, by showing that after the change of
+variable X → (δ(n)X − 1)/e^(A(n)) and the scaling δ(n)^(−d)/γ(n), J^(d,n) tends to
+the Hermite polynomial H_d (in their normalization Σ H_d t^d/d! = e^(−t² + Xt)).
+
+`jensen.taylor_gamma` gets γ(n) from Riemann's theta integral,
+Λ(1/2 + z) = −4/(1 − 4z²) + 2∫_1^∞ t^(−3/4) cosh(z log(t)/2) θ₀(t) dt with
+θ₀(t) = Σ e^(−πk²t), which turns into
+γ(n) = n!/(2n)! · (32·C(2n, 2)·F(2n − 2) − F(2n)) / 2^(2n−1) with
+F(m) = ∫_1^∞ (log t)^m t^(−3/4) θ₀(t) dt. All F(m) share one set of Gauss-Legendre
+panels in u = log t, so a thousand of them cost one pass over the nodes; at 130
+digits γ(0) to γ(1040) take 35 s. They match the paper's γ(10), γ(100) and γ(1000)
+(1.6323380490e−17, 6.5777263785e−205, 3.8760340890e−2567) to every printed digit,
+mpmath's Taylor series of the left side for n ≤ 3 to 1e−20, and an independent
+50-digit quadrature of F(m) to 1e−35.
+
+Hyperbolicity is decided exactly. The γ(n) are converted to rationals, J^(d,n)
+is formed in `Fraction` arithmetic, and Hermite's criterion does the rest: a real
+polynomial has d distinct real zeros if and only if the Hankel matrix of the
+power sums of its zeros, s_(i+j) for 0 ≤ i, j < d, is positive definite. The
+power sums come from Newton's identities and the pivots of Gaussian elimination
+decide definiteness, so there is no rounding after the γ(n) themselves. Their
+precision still matters: with 15-digit γ, J^(20,100) appears to have a pair of
+complex zeros, while 60, 160 and 300 digits all give the same positive pivots.
+The sweep below runs at 130 digits.
+
+Every J^(d,n) with d ≤ 12 and n ≤ 1000 is hyperbolic (12,012 polynomials, 335 s),
+and so are d = 20, 30 and 40 at n = 0, 10, 100 and 1000 (1.5, 11 and 45 s each).
+That is a check, not news: Chasse showed hyperbolicity at n = 0 up to
+d = 2·10¹⁷. The more interesting output is how the limit is approached. The
+paper's closed form for A(n), δ(n), with L(n) the root of n = L(πe^L + 3/4)
+evaluated at 2n − 2, agrees with the values read off the data
+(δ² = −½·Δ² log γ(n), A = Δ log γ(n) + δ²) to 9% in δ at n = 20, 0.5% at 170 and
+0.14% at 492. With the data values, the largest distance between a zero of the
+renormalized J^(d,n) and the matching zero of H_d, divided by δ(n), levels off
+near 5.7, 14.6 and 24.3 for d = 3, 6 and 9. So the convergence is first order in
+δ(n), which falls like 1/√n up to logs, and it is slow: at n = 1000 every zero of
+the d = 6 polynomial is still 0.15 to 0.25 below its Hermite limit (left panel).
 
 ### Dirichlet L-functions
 
