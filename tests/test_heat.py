@@ -1,11 +1,15 @@
+import math
+
 import mpmath
 import numpy as np
 import pytest
 
 from zeta_explorer.heat import (
+    collision,
     ht,
     ht_prime,
     ht_second,
+    newton,
     phi,
     real_zeros,
 )
@@ -73,3 +77,21 @@ def test_derivatives():
 
 def test_zeros_at_time_zero_are_twice_the_zeta_zeros():
     assert real_zeros(0.0, 20.0, 70.0) == pytest.approx(2 * np.array(GAMMA), abs=1e-9)
+
+
+def test_collision_of_a_close_pair_is_a_double_zero():
+    tc, xc = collision(1128.2, 1129.2, -0.1, -0.05)
+    assert -0.1 < tc < -0.05
+    scale = abs(ht(1128.0, tc))
+    assert abs(ht(xc, tc)) < 1e-9 * scale
+    assert abs(ht_prime(xc, tc)) < 1e-6 * abs(ht_prime(1128.0, tc))
+
+
+def test_square_root_law_at_the_collision():
+    tc, xc = collision(1128.2, 1129.2, -0.1, -0.05)
+    dt = 1e-4
+    a, b = real_zeros(tc + dt, 1128.2, 1129.2, 0.002)
+    assert (b - a) ** 2 / (8 * dt) == pytest.approx(1, rel=0.02)
+    z = newton(xc + 1j * math.sqrt(2 * dt), tc - dt)
+    assert z.imag**2 / (2 * dt) == pytest.approx(1, rel=0.02)
+    assert abs(ht(z, tc - dt)) < 1e-9 * abs(ht(1128.0, tc - dt))
