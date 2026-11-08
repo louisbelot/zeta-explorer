@@ -12,8 +12,11 @@ from zeta_explorer.heat import (
     newton,
     phi,
     real_zeros,
+    velocities,
     zero_paths,
+    zero_velocity,
 )
+from zeta_explorer.spacing import first_zeros
 from zeta_explorer.zeta import xi
 
 GAMMA = [14.134725141734693, 21.022039638771555, 25.010857580145688, 30.424876125859513,
@@ -108,3 +111,15 @@ def test_zero_paths_follow_the_pair_off_the_line():
 def test_zero_paths_wants_decreasing_time():
     with pytest.raises(ValueError):
         zero_paths([0.0, 0.1], 20.0, 30.0)
+
+
+def test_zero_velocity_is_the_measured_motion():
+    e = 1e-4
+    drift = (real_zeros(e, 20.0, 70.0) - real_zeros(-e, 20.0, 70.0)) / (2 * e)
+    assert zero_velocity(2 * np.array(GAMMA), 0.0) == pytest.approx(drift, abs=1e-7)
+
+
+def test_velocity_law_from_the_zeros():
+    x = 2 * first_zeros(1000)
+    v = velocities(x, range(5))
+    assert v == pytest.approx(zero_velocity(x[:5], 0.0), abs=1e-5)

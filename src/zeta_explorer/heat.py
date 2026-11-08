@@ -8,6 +8,8 @@ from numpy.typing import ArrayLike
 
 from zeta_explorer.zeros import illinois, illinois_many
 
+_gauss = np.polynomial.legendre.leggauss
+
 _TAIL = 40.0
 
 
@@ -139,3 +141,22 @@ def zero_paths(ts: ArrayLike, lo: float, hi: float, step: float = 0.01) -> list[
         real = r
     return out
 
+
+def zero_velocity(x: ArrayLike, t: float) -> np.ndarray:
+    return np.real(np.asarray(ht_second(x, t)) / np.asarray(ht_prime(x, t)))
+
+
+def velocities(x: ArrayLike, which: ArrayLike, t: float = 0.0, nodes: int = 200) -> np.ndarray:
+    x = np.sort(np.asarray(x, dtype=float))
+    X = x[-1] + (x[-1] - x[-2]) / 2
+    u, w = _gauss(nodes)
+    s = (u + 1) / 2
+    y = X / s
+    rho = np.log(y / (4 * math.pi)) / (4 * math.pi) + t / (16 * y)
+    out = []
+    for k in np.atleast_1d(np.asarray(which, dtype=int)):
+        xk = x[k]
+        near = np.sum(1 / (xk - np.delete(x, k))) + np.sum(1 / (xk + x))
+        tail = np.sum(w / 2 * rho * 2 * xk * X / (xk * xk * s * s - X * X))
+        out.append(2 * (near + tail))
+    return np.array(out)
