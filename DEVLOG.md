@@ -822,8 +822,8 @@ Checks:
   zeros in 1119 < x < 1139: 6.8e-7. H''/H' against finite differences of the zero
   positions in t: 1e-7.
 
-Results: the 1,674 twists with 5 ≤ d ≤ 6000 took 591 s on 14 processes (both
-signs of d were computed; the analysis uses d > 0). Smallest √d·L'(E_d, 1/2) is
+Results: the 3,345 twists with 5 ≤ |d| ≤ 6000 took 591 s on 14 processes, and
+the analysis uses the 1,674 with d > 0, as before. Smallest √d·L'(E_d, 1/2) is
 6.437 at d = 8, a_(−3/2) = 0.2030, and the arithmetic cut is c = 0.265 (densities)
 or 2.22 (probabilities) in |Λ_A'(1)| ≥ c·e^(−N/2). At N = 8 that removes 0.13% of
 SO(17) and χ² goes from 148.4 to 147.1. The minimum of χ² over c is 61.5 at
@@ -837,7 +837,7 @@ Design notes:
 - The direct cosine integral loses e^(πx/8) to cancellation. Moving the contour to
   Im u = π/8 − δ costs only e^(δx), and the trapezoid rule on the shifted line has
   aliasing error e^(−2πδ/h), so h = δ/8 is safe. δ ∝ 1/x keeps the cancellation
-  bounded, the price is node count ∝ x. At x = 1130 a point costs about 2 ms in a
+  bounded, the price is node count ∝ x. At x = 1130 a point costs about 1 ms in a
   batch.
 - Φ is real and even, so the integral over u < 0 is the conjugate of the one over
   u > 0. That halves the nodes and makes H exactly real on the real axis.
