@@ -54,25 +54,12 @@ from zeta_explorer.zeta import zeta
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
-
 SERIES = "#2a78d6"
-
-
 ACCENT = "#eb6834"
-
-
 ORDINAL = ["#86b6ef", "#5598e7", "#2a78d6", "#1c5cab", "#104281"]
-
-
 INK = "#0b0b0b"
-
-
 INK_SECONDARY = "#52514e"
-
-
 GRID = "#e4e3df"
-
-
 SURFACE = "#fcfcfb"
 
 
@@ -550,6 +537,7 @@ def plot_low_lying(
     return fig
 
 
+
 def plot_low_lying_scales(
     families: dict[float, OneLevel], window: tuple[float, float] = (0.0, 0.3), bins: int = 30,
     x_max: float = 3.0, ratios: dict[float, np.ndarray] | None = None,
@@ -667,7 +655,6 @@ def plot_first_zero(
         _style(ax)
     fig.tight_layout()
     return fig
-
 
 def _fmt_power(x: float) -> str:
     e = int(np.floor(np.log10(x)))
@@ -811,6 +798,7 @@ def plot_multieval(heights: ArrayLike = (1e4, 1e6, 1e8, 1e10, 1e12), points: int
     return fig
 
 
+
 def plot_afe(
     conductors: ArrayLike = (101, 1009, 10007, 100003), heights: ArrayLike = (1, 10, 100, 1000),
     q_fixed: int = 10007, t_fixed: float = 10.0, points: int = 8,
@@ -929,7 +917,6 @@ def plot_central_values(d: ArrayLike, value: ArrayLike, kappa: float, c_max: int
     fig.tight_layout()
     return fig
 
-
 def plot_twist_zeros(
     even: ArrayLike, odd: ArrayLike, excised: ArrayLike, n: int, cutoff: float,
     n_grid: ArrayLike | None = None, s_max: float = 2.0, bins: int = 32,
@@ -968,7 +955,6 @@ def plot_twist_zeros(
         _style(ax)
     fig.tight_layout()
     return fig
-
 
 def plot_odd_excision(
     first: ArrayLike, theta: np.ndarray, predicted: dict[str, float], c_max: float = 300.0,
@@ -1291,5 +1277,54 @@ def plot_jensen(
         ax.set_facecolor(SURFACE)
         _style(ax)
         ax.set_xlabel("shift n", color=INK)
+    fig.tight_layout()
+    return fig
+
+
+def plot_maxima(
+    zeta: dict[float, ArrayLike], cue: dict[int, ArrayLike], shift: ArrayLike, bins: int = 80
+) -> Figure:
+    import matplotlib.pyplot as plt
+
+    from zeta_explorer.maxima import fhk_density
+    from zeta_explorer.moments import EULER_GAMMA
+
+    fig, (hist, mean, sd) = plt.subplots(1, 3, figsize=(15, 4.6), facecolor=SURFACE)
+    shift = np.asarray(shift, dtype=float)
+    N_top = max(zeta)
+    y = np.asarray(zeta[N_top], dtype=float)
+    c = np.asarray(cue[round(N_top)], dtype=float)
+    hybrid = c + shift[: len(c)]
+    edges = np.linspace(np.quantile(y, 1e-4) - 0.3, np.quantile(y, 1 - 1e-4) + 0.3, bins + 1)
+    hist.hist(y, edges, density=True, color=ORDINAL[0], label=f"ζ, N = {N_top:.1f}")
+    hist.hist(c, edges, density=True, histtype="step", color=INK_SECONDARY, linewidth=1.2,
+              label=f"CUE, N = {round(N_top)}")
+    hist.hist(hybrid, edges, density=True, histtype="step", color=ORDINAL[4], linewidth=1.6,
+              label="CUE + small primes")
+    grid = np.linspace(edges[0], edges[-1], 400)
+    hist.plot(grid, fhk_density(grid), color=ACCENT, linewidth=1.6, linestyle="--",
+              label="N → ∞ (two Gumbels)")
+    hist.set_xlabel("max log|ζ| − log N + ¾ log log N", color=INK)
+    hist.set_ylabel("density", color=INK)
+    hist.set_title("Maximum over a window of length 2π", color=INK, fontsize=12, loc="left")
+    zn, cn = sorted(zeta), sorted(cue)
+    for ax, stat, limit, label in ((mean, np.mean, EULER_GAMMA, "mean"),
+                                   (sd, np.std, np.pi / np.sqrt(12), "standard deviation")):
+        ax.plot(zn, [stat(zeta[n]) for n in zn], "o-", color=SERIES, markersize=4,
+                linewidth=1.4, label="ζ")
+        ax.plot(cn, [stat(cue[n]) for n in cn], "s-", color=INK_SECONDARY, markersize=4,
+                linewidth=1.2, label="CUE")
+        ax.axhline(limit, color=ACCENT, linewidth=1.2, linestyle="--", label="N → ∞")
+        ax.set_xscale("log")
+        ax.set_xlabel("N = log(T/2π), or the matrix size", color=INK)
+        ax.set_title(label, color=INK, fontsize=12, loc="left")
+    sd.plot(cn, [np.sqrt(np.var(cue[n]) + shift.var()) for n in cn], "s-", color=ORDINAL[4],
+            markersize=4, linewidth=1.2, label="CUE + small primes")
+    for ax in (hist, mean, sd):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    hist.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="upper right")
+    mean.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY)
+    sd.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY)
     fig.tight_layout()
     return fig

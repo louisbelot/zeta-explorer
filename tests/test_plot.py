@@ -9,7 +9,7 @@ from PIL import Image
 from zeta_explorer.bias import race
 from zeta_explorer.li import li_trend
 from zeta_explorer.lowlying import OneLevel, w_symplectic
-from zeta_explorer.moments import polynomial_integral
+from zeta_explorer.moments import EULER_GAMMA, polynomial_integral
 from zeta_explorer.plot import (
     heat_flow_animation,
     phase_colors,
@@ -32,6 +32,7 @@ from zeta_explorer.plot import (
     plot_log_z,
     plot_low_lying,
     plot_low_lying_scales,
+    plot_maxima,
     plot_moments,
     plot_multieval,
     plot_odd_excision,
@@ -288,3 +289,16 @@ def test_plot_jensen_ratio_panel():
     fig = plot_jensen(ns, roots, {2: 3 * delta}, delta, 2)
     assert np.allclose(fig.axes[1].lines[0].get_ydata(), 3)
     assert len(fig.axes[0].lines) == 4
+
+
+def test_plot_maxima_limits():
+    rng = np.random.default_rng(0)
+    zeta = {21.3: rng.gumbel(size=500) / 2 + 0.3}
+    cue = {21: rng.gumbel(size=500) / 2, 50: rng.gumbel(size=500) / 2}
+    shift = np.full(500, 0.2)
+    shift[::2] = -0.2
+    fig = plot_maxima(zeta, cue, shift)
+    assert fig.axes[1].lines[-1].get_ydata()[0] == EULER_GAMMA
+    assert fig.axes[2].lines[2].get_ydata()[0] == pytest.approx(np.pi / np.sqrt(12))
+    added = fig.axes[2].lines[3].get_ydata() ** 2 - fig.axes[2].lines[1].get_ydata() ** 2
+    assert np.allclose(added, 0.04)
