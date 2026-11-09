@@ -7,7 +7,10 @@ import mpmath
 import numpy as np
 from numpy.typing import ArrayLike
 
+from zeta_explorer.mertens import arrays, certified_zeros
+from zeta_explorer.multieval import zeros_fast
 from zeta_explorer.riemann_siegel import z_rs
+from zeta_explorer.zeros import gram_points
 
 BLOCK = 1 << 22
 
@@ -51,6 +54,17 @@ def lehman_errors(
             "s6": A * mpmath.log(A) * mpmath.exp(-(A**2) / (2 * alpha) + hi / 2)
             * (4 / mpmath.sqrt(alpha) + 15 * eta),
         }
+
+
+def first_zeros(n: int, chunk: int = 20_000) -> np.ndarray:
+    edges = np.arange(100, n + chunk + 100, chunk)
+    gs = gram_points(edges)
+    parts = [arrays(certified_zeros(float(gs[0]), bits=64))[0]]
+    for lo, hi, a, b in zip(edges[:-1], edges[1:], gs[:-1], gs[1:], strict=True):
+        win, u = zeros_fast(int(lo) - 50, int(hi) + 200)
+        u = u + win.t0
+        parts.append(u[(u >= a) & (u < b)])
+    return np.concatenate(parts)[:n]
 
 
 def polish(gamma: ArrayLike, h: float = 1e-7, block: int = 1 << 16) -> np.ndarray:

@@ -4,7 +4,10 @@ import pytest
 
 pytest.importorskip("flint")
 
+from flint import acb  # noqa: E402
+
 from zeta_explorer import skewes  # noqa: E402
+from zeta_explorer.certified import precision  # noqa: E402
 from zeta_explorer.mertens import arrays, certified_zeros  # noqa: E402
 
 CHAO_PLYMEN = dict(omega=727.952074, eta=0.000198219, alpha=7.86e10, T=1131944.4718, A=7.79e6)
@@ -83,3 +86,11 @@ def test_polish_recovers_perturbed_zeros(first_thousand):
     assert np.max(np.abs(skewes.polish(noisy) - t)) < 1e-10
     with pytest.raises(ValueError):
         skewes.polish(t + 1e-3)
+
+
+def test_first_zeros_keep_their_indices():
+    g = skewes.first_zeros(45_000)
+    assert len(g) == 45_000 and np.all(np.diff(g) > 0)
+    with precision(128):
+        for n in (1, 101, 102, 20_100, 20_101, 40_100, 45_000):
+            assert abs(float(acb.zeta_zeros(n, 1)[0].imag.mid()) - g[n - 1]) < 1e-8
