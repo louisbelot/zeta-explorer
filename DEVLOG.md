@@ -1371,3 +1371,64 @@ Design notes:
 Next: elliptic curves in the browser (pick a curve, Z(t), the central order, the
 twist central values), or the two-level density of the odd twists from the ratios
 conjecture, which is where the first zero should get its narrowness from.
+
+## 2026-11-09: Symmetric powers of Δ, Turing's method, and the line from one transform
+
+- `selfdual.py`: the smoothed functional equation pulled out of `symsquare.py` into
+  a class that takes coefficients, a conductor, gamma shifts and a sign. It has
+  Z(t), the zero scan, and Turing's method with Booker's bound on the integral of
+  S(t) for a general L-function. `SymSquare` is now a subclass.
+- `sympower.py`: sym^m Δ for m ≤ 4 (coefficients from the Satake angles, gamma
+  shifts from the Hodge types), the Petersson norm of Δ to 30 digits, and Zagier's
+  rational critical values of L(sym² Δ, s).
+- `mellin.py`: every Z(t) on [0, T] from one FFT per window, after Booker's FFT
+  method. `MellinLine(L, T).zeros()` replaces a scan of pointwise evaluations.
+- `plot_sympower`, rendered to `docs/sympower.png`.
+
+Checks:
+
+- Two smoothing weights agree to 1e−11 for m = 2, 3, 4; a flipped sign or a shifted
+  gamma factor breaks that at 1e−4. The Euler product at 2.5 + i agrees to 2e−9.
+- Zeros against Yoshida (arXiv:math/9411213): ten of sym³ to his ten digits, fourteen
+  of sym⁴ to the digits he prints. I checked the numbers against the tables in the
+  arXiv source before using them.
+- L(sym² Δ, 1) = 2²³ π¹³ (Δ, Δ)/11! to 13 digits. Zagier's rationals at s = 5, 7, 9, 11
+  come back from continued fractions at relative tolerance 1e−17 to 1e−28.
+- Turing on [30, 40]: at most 0.53, 0.79, 0.97 zeros missing for sym², sym³, sym⁴ of
+  Δ, and exactly 1 more with a zero below 30 deleted. Sym² of 11a on [18, 30]: 0.56.
+- `MellinLine` against the pointwise code: 1e−12 on Z(t) at random points for all
+  four L-functions, 8e−12 on zeros. For Δ itself it matches the incomplete gamma
+  code in `delta.py`, which shares nothing with it, to 2e−11 up to t = 60.
+- Timings on this machine (zeros below T, pointwise against one transform): sym² Δ
+  to 40, 4.5 s and 0.04 s; sym³ Δ to 40, 11.4 s and 0.07 s; sym⁴ Δ to 40, 32.1 s and
+  0.14 s; sym² 11a to 30, 26.0 s and 0.09 s. Further up: 240 zeros of sym² Δ below
+  200 in 0.33 s, 271 zeros of sym² 11a below 150 in 2.5 s (13,302 terms), 404 zeros
+  of Δ below 400 in 0.6 s. All of those pass Turing on their last 12 units.
+
+Design notes:
+
+- The rotation in `smoothed` used to be the full πd/4 minus 2/T. With shifts like
+  22 and 23 the gamma factor has not started to decay at t = 10, and the full
+  rotation overshoots. It is now Σ atan2(T, c − 1/2 + μ_j)/2, the actual argument of
+  each gamma factor.
+- In `mellin.py` the same idea picks θ per window: θ = Σ Im ψ((1/2 + μ_j + it*)/2)/2
+  makes e^(θt)|γ(1/2 + it)| peak at t*. That weight is log-concave in t, so a window
+  is everything within e⁸ of the peak. Sym⁴ Δ gains e⁶⁰ between t = 0 and 40 under
+  the full rotation, which is why one θ cannot serve the whole line.
+- My first version let the top window's peak run as far as the e⁸ rule allowed. For
+  sym² of 11a that put the peak far past T with θ within 0.012 of 3π/4, and the
+  kernel then needs 215,722 terms (275 s). The top window now uses the smallest θ
+  that still reaches T: 1,228 terms, 0.08 s.
+- The kernel K(y e^(iθ)) decays like exp(−dπ cos(2θ/d) y^(2/d)) times a power of y
+  (Gauss multiplication collapses the gamma product to one Γ(ds/2 + A)). That sets
+  the number of terms. The contour sits on Re s = 1: further right the factor
+  e^(u(c − 1/2)) amplifies rounding error at small u, further left the aliases of
+  the truncated sum at negative u decay too slowly.
+- The Dirichlet polynomial is only correct for u ≥ 0, where the dropped terms are
+  negligible. For u < 0 the FFT output is garbage by design and g(−u) = ε g(u)
+  replaces it.
+
+Next: the 119 rank 2 twists of 11a against SO(2N) conditioned on a double
+eigenvalue at 1, or the two-level density of the odd twists. With `MellinLine`
+the zeros of sym² of every twist are cheap, which opens the symplectic family of
+Iwaniec, Luo and Sarnak.
