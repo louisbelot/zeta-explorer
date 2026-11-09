@@ -1575,3 +1575,57 @@ def plot_skewes(omega: ArrayLike, s: ArrayLike, peaks: ArrayLike, w: ArrayLike, 
         _style(ax)
     fig.tight_layout()
     return fig
+
+
+def plot_effective(x: ArrayLike, err: dict[str, ArrayLike], bound: dict[str, ArrayLike],
+                   t: float, y: float, rms: dict[float, tuple[ArrayLike, ArrayLike]],
+                   model: dict[float, tuple[ArrayLike, ArrayLike]],
+                   hist: dict[float, tuple[ArrayLike, ArrayLike]], X: float,
+                   bins: int = 50) -> Figure:
+    import matplotlib.pyplot as plt
+
+    fig, (left, mid, right) = plt.subplots(1, 3, figsize=(15, 4.6), facecolor=SURFACE)
+    for (name, e), color in zip(err.items(), (ORDINAL[0], SERIES), strict=True):
+        left.plot(x, e, "o", color=color, markersize=3.5, label=f"|H/B − ({name})|")
+        left.plot(x, bound[name], color=color, linewidth=1.4, label=f"bound for {name}")
+    left.set_xscale("log")
+    left.set_yscale("log")
+    left.set_xlabel("x", color=INK)
+    left.set_ylabel("error relative to B_t", color=INK)
+    left.set_title(f"Effective approximation, t = {t:g}, y = {y:g}", color=INK, fontsize=12,
+                   loc="left")
+    left.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="lower left")
+    colors = dict(zip(sorted(rms), ["#9a9893", *ORDINAL[1:]], strict=False))
+    for ts in sorted(rms):
+        h, r = rms[ts]
+        mid.plot(h, r, "o", color=colors[ts], markersize=4.5, label=f"t = {ts:g}")
+        if ts in model:
+            g, m = model[ts]
+            mid.plot(g, m, color=colors[ts], linewidth=1.3)
+    mid.plot([], [], color=INK_SECONDARY, linewidth=1.3, label="random phase model")
+    mid.set_xscale("log")
+    mid.set_ylim(0, None)
+    mid.set_xlabel("x", color=INK)
+    mid.set_ylabel("rms displacement from the ideal point", color=INK)
+    mid.set_title("Zeros of H_t crystallize", color=INK, fontsize=12, loc="left")
+    mid.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="lower left", ncol=2)
+    edges = np.linspace(-0.5, 0.5, bins + 1)
+    for ts in sorted(hist):
+        d, m = hist[ts]
+        right.hist(d, edges, density=True, histtype="step", color=colors[ts], linewidth=1.6,
+                   label=f"t = {ts:g}")
+        if m is not None:
+            dens, _ = np.histogram(m, edges, density=True)
+            right.plot((edges[1:] + edges[:-1]) / 2, dens, "--", color=colors[ts],
+                       linewidth=1.0)
+    right.plot([], [], "--", color=INK_SECONDARY, linewidth=1.0, label="model")
+    right.set_xlabel("displacement (in units of the mean gap)", color=INK)
+    right.set_ylabel("density", color=INK)
+    right.set_title(f"Displacements near x = {_fmt_power(X)}", color=INK, fontsize=12,
+                    loc="left")
+    right.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right")
+    for ax in (left, mid, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig

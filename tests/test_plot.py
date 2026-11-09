@@ -24,6 +24,7 @@ from zeta_explorer.plot import (
     plot_delta,
     plot_domain,
     plot_ec_z,
+    plot_effective,
     plot_explicit,
     plot_first_zero,
     plot_gram,
@@ -356,3 +357,18 @@ def test_plot_skewes_shades_the_proof():
     fig = plot_skewes(w * 10, np.sin(w), [5.0], w, w, 0.5, 0.75, 1000)
     assert fig.axes[0].texts[0].get_text() == "5.000"
     assert len(fig.axes[1].collections) == 1
+
+
+def test_plot_effective_panels():
+    x = np.geomspace(200, 1e6, 5)
+    err = {"A + B": x**-0.5, "A + B − C": x**-1.0}
+    rms = {0.0: ([1e4, 1e6], [0.28, 0.27]), 0.2: ([1e4, 1e6], [0.2, 0.16])}
+    model = {0.2: ([1e4, 1e6], [0.21, 0.16])}
+    rng = np.random.default_rng(1)
+    hist = {0.0: (rng.uniform(-0.5, 0.5, 500), None), 0.2: (rng.normal(0, 0.1, 500),) * 2}
+    fig = plot_effective(x, err, err, 0.2, 0.2, rms, model, hist, 1e8)
+    assert fig.axes[0].get_yscale() == "log"
+    assert len(fig.axes[0].lines) == 4
+    assert fig.axes[2].get_title(loc="left") == "Displacements near x = 10⁸"
+    assert [t.get_text() for t in fig.axes[1].get_legend().get_texts()] == [
+        "t = 0", "t = 0.2", "random phase model"]
