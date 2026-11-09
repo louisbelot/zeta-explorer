@@ -7,6 +7,7 @@ from matplotlib.animation import PillowWriter
 from PIL import Image
 
 from zeta_explorer.bias import race
+from zeta_explorer.dedekind import zeros as field_zeros
 from zeta_explorer.delta import sato_tate, zeros
 from zeta_explorer.li import li_trend
 from zeta_explorer.lowlying import OneLevel, w_symplectic
@@ -19,6 +20,7 @@ from zeta_explorer.plot import (
     plot_central_values,
     plot_continuation,
     plot_davenport,
+    plot_dedekind,
     plot_delta,
     plot_domain,
     plot_ec_z,
@@ -324,3 +326,13 @@ def test_plot_delta_panels():
     assert fig.axes[1].get_title(loc="left").startswith(f"{len(st.p):,} primes")
     labels = [t.get_text() for t in fig.axes[2].get_legend().get_texts()]
     assert labels == ["Sym^1, ε = +1", "Sym^2, ε = +1", "Sym^3, ε = -1"]
+
+
+def test_plot_dedekind_counts():
+    gz, gl = field_zeros(-4, 120.0, per_gap=16)
+    fig = plot_dedekind(-4, gz, gl)
+    n = len(gz) + len(gl) - 1
+    assert fig.axes[1].get_title(loc="left").startswith(f"{n:,} spacings")
+    zero_marks = [ln for ln in fig.axes[0].lines if ln.get_marker() == "o"]
+    assert sum(len(ln.get_xdata()) for ln in zero_marks) == int(
+        np.sum((gz > 100) & (gz < 112)) + np.sum((gl > 100) & (gl < 112)))

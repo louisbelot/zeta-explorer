@@ -7,7 +7,7 @@ from numpy.typing import ArrayLike
 
 from zeta_explorer.afe import afe_length, l_afe
 from zeta_explorer.bias import Race, prime_race, race
-from zeta_explorer.characters import conrey, primitive_characters, totient
+from zeta_explorer.characters import conrey, primitive_characters, quadratic, totient
 from zeta_explorer.continuation import dirichlet_sums, em_sums, eta_sums
 from zeta_explorer.delta import SatoTate
 from zeta_explorer.elliptic import Curve, EllipticL, hardy_z, zeros_below
@@ -1433,6 +1433,53 @@ def plot_delta(st: SatoTate, zeros: ArrayLike, x: ArrayLike, ms: tuple[int, ...]
     bias.set_ylim(-4.5, 2.5)
     bias.legend(frameon=False, fontsize=8, ncol=3, loc="upper center")
     for ax in (zp, hist, bias):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig
+
+
+def plot_dedekind(D: int, gz: ArrayLike, gl: ArrayLike, t0: float = 100.0, width: float = 12.0,
+                  bins: int = 60) -> Figure:
+    import matplotlib.pyplot as plt
+
+    from zeta_explorer import dedekind
+
+    gz, gl = np.asarray(gz, dtype=float), np.asarray(gl, dtype=float)
+    chi = quadratic(D)
+    fig, (zp, sp) = plt.subplots(1, 2, figsize=(13, 4.8), facecolor=SURFACE)
+
+    t = np.linspace(t0, t0 + width, 1201)
+    zp.plot(t, z_rs(t), color=SERIES, linewidth=1.5, label="Z(t) for ζ")
+    zp.plot(t, l_z(t, chi), color=ACCENT, linewidth=1.5, label=f"Z(t) for L(s, χ_{D})")
+    zp.axhline(0, color=INK_SECONDARY, linewidth=0.8)
+    for g, color in ((gz, SERIES), (gl, ACCENT)):
+        near = g[(g > t[0]) & (g < t[-1])]
+        zp.plot(near, np.zeros_like(near), "o", color=color, markersize=4)
+    zp.set_xlim(t[0], t[-1])
+    zp.set_xlabel("t", color=INK)
+    zp.set_title(f"ζ_K = ζ · L(s, χ_{D}): two independent sets of zeros", color=INK, fontsize=12,
+                 loc="left")
+    lo, hi = zp.get_ylim()
+    zp.set_ylim(lo, hi + 0.35 * (hi - lo))
+    zp.legend(frameon=False, fontsize=9, ncol=2, loc="upper left")
+
+    u = np.sort(np.concatenate([dedekind.unfold(D, gz), dedekind.unfold(D, gl)]))
+    s = np.diff(u)
+    sp.hist(s, bins=bins, range=(0, 3), density=True, color=ORDINAL[0], edgecolor=SURFACE,
+            linewidth=0.4)
+    x = np.linspace(0, 3, 400)
+    sp.plot(x, dedekind.superposition_spacing(x), color=ACCENT, linewidth=1.8,
+            label="two independent GUE halves")
+    sp.plot(x, gue_spacing(x), color=INK_SECONDARY, linewidth=1.4, linestyle="--",
+            label="one GUE spectrum")
+    sp.set_xlim(0, 3)
+    sp.set_xlabel("normalized spacing", color=INK)
+    sp.set_ylabel("density", color=INK)
+    sp.set_title(f"{len(s):,} spacings of ζ_K zeros up to t = {max(gz[-1], gl[-1]):,.0f}",
+                 color=INK, fontsize=12, loc="left")
+    sp.legend(frameon=False, fontsize=9)
+    for ax in (zp, sp):
         ax.set_facecolor(SURFACE)
         _style(ax)
     fig.tight_layout()
