@@ -50,53 +50,27 @@ def fft_size(n: int) -> int:
     return best
 
 
-class ZWindow:
-    def __init__(self, t_lo: float, t_hi: float, oversample: float = 2.0, tol: float = 1e-12):
-        if not 8 * math.pi <= t_lo < t_hi:
-            raise ValueError("need 8π <= t_lo < t_hi")
+class BandSum:
+    def __init__(self, a: ArrayLike, u_lo: float, u_hi: float, oversample: float = 2.0,
+                 tol: float = 1e-12):
         if oversample <= 1:
             raise ValueError("oversample must exceed 1")
-        self.t0 = float(round((t_lo + t_hi) / 2))
-        self.u_lo, self.u_hi = t_lo - self.t0, t_hi - self.t0
-        self.n_min = math.isqrt(int(t_lo / TWO_PI))
-        self.n = n = math.isqrt(int(t_hi / TWO_PI))
+        a = np.asarray(a, dtype=complex)
+        n = len(a)
+        self.u_lo, self.u_hi = u_lo, u_hi
+        self.log_n = np.log(np.arange(1, n + 1, dtype=float))
         self.beta = math.log(n) / 2
         alpha = oversample * self.beta
         self.delta = math.pi / alpha
         self.taps = math.ceil(2 * math.log(1 / tol) / (math.pi * (1 - 1 / oversample)))
         self.eps2 = (alpha - self.beta) / (self.taps * self.delta)
-
-        half = math.ceil(max(-self.u_lo, self.u_hi) / self.delta) + self.taps + 1
+        half = math.ceil(max(-u_lo, u_hi) / self.delta) + self.taps + 1
         self.m = 2 * fft_size(half)
-        with mpmath.workdps(25 + int(math.log10(t_hi))):
-            t0 = mpmath.mpf(self.t0)
-            two_pi = 2 * mpmath.pi
-            phase = np.array([float(t0 * mpmath.log(k) % two_pi) for k in range(1, n + 1)])
-            th = mpmath.siegeltheta(t0)
-            self.n_ref = int(mpmath.nint(th / mpmath.pi))
-            self.theta_base = float(th - self.n_ref * mpmath.pi)
-
-        ks = np.arange(1, n + 1)
-        self.log_n = np.log(ks)
-        self.b = np.exp(-1j * phase) / np.sqrt(ks)
         j = np.arange(-self.m // 2, self.m // 2)
-        F = nufft(self.delta * self.log_n, self.b, self.m, tol / 10)
+        F = nufft(self.delta * self.log_n, a, self.m, tol / 10)
         self.samples = F * np.exp(1j * self.beta * self.delta * j)
 
-    def theta_offset(self, u: ArrayLike) -> np.ndarray:
-        u = np.asarray(u, dtype=float)
-        t0 = self.t0
-        t = t0 + u
-        return (
-            self.theta_base
-            + u / 2 * math.log(t0 / TWO_PI)
-            + t / 2 * np.log1p(u / t0)
-            - u / 2
-            + theta_tail(t)
-            - theta_tail(np.float64(t0))
-        )
-
-    def main_sum(self, u: ArrayLike) -> np.ndarray:
+    def __call__(self, u: ArrayLike) -> np.ndarray:
         u = np.atleast_1d(np.asarray(u, dtype=float))
         if np.any((u < self.u_lo) | (u > self.u_hi)):
             raise ValueError("u is outside the window")
@@ -109,7 +83,56 @@ class ZWindow:
             d = us[:, None] - js * self.delta
             w = np.sinc(d / self.delta) * np.exp(-self.eps2 * d * d / 2)
             out[i : i + rows] = (self.samples[js + self.m // 2] * w).sum(axis=1)
-        out *= np.exp(-1j * self.beta * u)
+        return out * np.exp(-1j * self.beta * u)
+
+
+def log_phases(t0: float, n: int) -> np.ndarray:
+    with mpmath.workdps(25 + int(math.log10(t0))):
+        t = mpmath.mpf(t0)
+        two_pi = 2 * mpmath.pi
+        return np.array([float(t * mpmath.log(k) % two_pi) for k in range(1, n + 1)])
+
+
+def theta_reference(t0: float) -> tuple[int, float]:
+    with mpmath.workdps(25 + int(math.log10(t0))):
+        th = mpmath.siegeltheta(mpmath.mpf(t0))
+        n = int(mpmath.nint(th / mpmath.pi))
+        return n, float(th - n * mpmath.pi)
+
+
+def theta_shift(t0: float, base: float, u: ArrayLike) -> np.ndarray:
+    u = np.asarray(u, dtype=float)
+    t = t0 + u
+    return (
+        base
+        + u / 2 * math.log(t0 / TWO_PI)
+        + t / 2 * np.log1p(u / t0)
+        - u / 2
+        + theta_tail(t)
+        - theta_tail(np.float64(t0))
+    )
+
+
+class ZWindow:
+    def __init__(self, t_lo: float, t_hi: float, oversample: float = 2.0, tol: float = 1e-12):
+        if not 8 * math.pi <= t_lo < t_hi:
+            raise ValueError("need 8π <= t_lo < t_hi")
+        self.t0 = float(round((t_lo + t_hi) / 2))
+        self.u_lo, self.u_hi = t_lo - self.t0, t_hi - self.t0
+        self.n_min = math.isqrt(int(t_lo / TWO_PI))
+        self.n = n = math.isqrt(int(t_hi / TWO_PI))
+        self.n_ref, self.theta_base = theta_reference(self.t0)
+        ks = np.arange(1, n + 1)
+        self.log_n = np.log(ks)
+        self.b = np.exp(-1j * log_phases(self.t0, n)) / np.sqrt(ks)
+        self.sum = BandSum(self.b, self.u_lo, self.u_hi, oversample, tol)
+
+    def theta_offset(self, u: ArrayLike) -> np.ndarray:
+        return theta_shift(self.t0, self.theta_base, u)
+
+    def main_sum(self, u: ArrayLike) -> np.ndarray:
+        u = np.atleast_1d(np.asarray(u, dtype=float))
+        out = self.sum(u)
         if self.n_min < self.n:
             N = np.sqrt((self.t0 + u) / TWO_PI).astype(np.int64)
             for k in range(self.n_min + 1, self.n + 1):
