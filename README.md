@@ -96,6 +96,14 @@ two independent GUE spectra instead of one. Blocks of Platt's zeros near the
 10⁹th, 10¹⁰th and 10¹¹th zero are proved to be zeros, complete and correctly
 numbered in ball arithmetic.
 
+The zeros also settle two old conjectures about primes, both against.
+Mertens' |M(x)| < √x fails: 4,521 zeros computed to 2048 bits in ball
+arithmetic, with ζ′(ρ) at each, feed an LLL lattice that finds a y with
+h(y) = 1.2989 and another with h(y) = −1.3072, and Ingham's theorem turns each into
+a bound on lim sup and lim inf of M(x)/√x. And with two million zeros, Lehman's
+theorem reproduces Chao and Plymen's proof that π(x) > li(x) somewhere in
+[1.39792136·10³¹⁶, 1.39847567·10³¹⁶].
+
 The same numerics also run in the browser at
 [louisbelot.github.io/zeta-explorer](https://louisbelot.github.io/zeta-explorer/):
 a phase portrait you can pan and zoom, a Z(t) explorer that marks zeros and Gram
@@ -1829,6 +1837,171 @@ it starts Newton from their midpoint with an imaginary part of half their old ga
 then follows the complex zero by Newton. Over t ∈ [−0.2, 0.2] the other five zeros
 in the window stay real and the pair reaches Im z = 0.545 at t = −0.2. Each of the
 81 frames takes about 1.6 s.
+
+### The Mertens conjecture
+
+![M(x)/√x from a sieve and from 4,521 zeros, the smoothed sum near the y found by LLL, and the bound against lattice size](docs/mertens.png)
+
+The Mertens function M(x) = Σ_{n ≤ x} μ(n) moves like a random walk with steps
+−1, 0, +1, and for every x anyone has computed, |M(x)| < √x. Mertens conjectured in 1897
+that this holds for all x > 1. It would imply RH, and Odlyzko and te Riele showed
+in 1985 that it is false, without ever exhibiting an x.
+
+Two ways to compute M are in `mertens.py`. `mertens_table(n)` sieves μ up to n
+and takes a cumulative sum. `mertens(x)` uses the identity Σ_{d ≤ x} M(x/d) = 1:
+values of M below u ≈ x^(2/3)/4 come from the sieve, the x/u large values
+M(x/k) are filled in from k = x/u down to 1, and each one splits its sum at √v
+into a direct part and a part grouped by the quotient q = v/d, all vectorized in
+numpy. Every power of ten agrees with OEIS A084237:
+
+| x     | M(x)    | time   |
+|-------|---------|--------|
+| 10⁹   | −222    | 0.10 s |
+| 10¹⁰  | −33722  | 0.37 s |
+| 10¹¹  | −87856  | 1.45 s |
+| 10¹²  | 62366   | 6.6 s  |
+| 10¹³  | 599582  | 36 s   |
+
+Under RH with simple zeros, the explicit formula gives
+
+```
+M(x)/√x = 2 Σ_{γ > 0} cos(γ log x − ψ_γ) / |ρ ζ′(ρ)| + O(x^(−1/2)),   ψ_γ = arg(ρ ζ′(ρ))
+```
+
+plus a −2 and a rapidly convergent sum over the trivial zeros. The top panel
+overlays this sum over the first 4,521 zeros on the sieve up to 10⁷. For
+x > 1000 the two differ by 0.006 rms and 0.024 at worst, most of it the Gibbs
+ringing a truncated sum has at each jump of M.
+
+Ingham's theorem turns this into a disproof strategy. With the kernel
+f(u) = (1 − u) cos πu + sin(πu)/π, which is nonnegative on [0, 1],
+
+```
+h(y) = 2 Σ_{γ ≤ T} f(γ/T) cos(γ y − ψ_γ) / |ρ ζ′(ρ)|
+```
+
+satisfies lim inf M(x)/√x ≤ h(y) ≤ lim sup M(x)/√x for every real y. The
+theorem does not assume RH: if RH fails, or a zero is multiple, M(x)/√x is
+unbounded anyway. So it is enough to find one y with |h(y)| > 1, which means
+making the phases γy − ψ_γ of the zeros with the largest weights all close to
+multiples of 2π at once. That is an inhomogeneous simultaneous Diophantine
+approximation problem, and LLL solves it approximately. Following Odlyzko-te
+Riele and Hurst's 2018 setup, the basis has one row per chosen zero with entry
+⌊2π √a_i 2^ν⌋, one row with ⌊√a_i γ_i 2^(ν−10)⌋ (whose coefficient becomes the
+integer z with y = z/2¹⁰), and one row with −⌊√a_i ψ_i 2^ν⌋ and a huge marker. A
+short vector containing the marker has small entries √a_i (γ_i y − ψ_i − 2πm_i),
+so the heavy cosines are near 1. Shifting ψ by π looks for large negative h.
+
+The weights need many digits: y comes out near 2^ν, so γ_i y mod 2π is only
+meaningful if γ_i is known to well over ν bits. `certified_zeros(T, bits)` gets
+every zero below T from the Turing-certified Gram blocks of `certified.py`, refines
+each one by Newton on ζ(s) with the precision doubling up to `bits`, proves the
+zero lies in a ball of radius 2^(−bits)·γ by a certified sign change of Z at both
+ends, and then evaluates ζ′(ρ) on that ball with `acb_series`, so a_γ and ψ_γ come
+with rigorous error bounds. With 4,521 zeros to t = 5000 at 2048 bits (7 minutes),
+h(y) itself is an Arb ball:
+
+| zeros in the lattice | ν   | h(y₊)  | h(y₋)   | log₁₀ abs(y) | LLL + h |
+|----------------------|-----|--------|---------|-------------|---------|
+| 20                   | 60  | 0.7099 | −0.6846 | 13          | 0.02 s  |
+| 40                   | 120 | 0.9444 | −0.8509 | 30          | 0.1 s   |
+| 70                   | 210 | 1.0598 | −1.0858 | 57          | 0.5 s   |
+| 100                  | 300 | 1.0843 | −1.1321 | 84          | 2.7 s   |
+| 140                  | 420 | 1.1685 | −1.1841 | 120         | 7.7 s   |
+| 180                  | 540 | 1.1874 | −1.2075 | 156         | 20 s    |
+| 220                  | 660 | 1.2283 | −1.2395 | 191         | 42 s    |
+| 260                  | 780 | 1.2801 | −1.2882 | 224         | 70 s    |
+| 300                  | 900 | 1.2989 | −1.3072 | 263         | 125 s   |
+
+The 70-zero lattice already gives 1.0598 and −1.0858. Odlyzko and te Riele also
+used 70 zeros (the ones with the largest weights among the first 400) and 2,000
+zeros in h, and got 1.06 and −1.009; FLINT's LLL does that size in half a second.
+Their paper has a sanity check worth reproducing: 2 Σ a_γ over those 70 weights is
+1.0787, the most any h could reach with them, and the running sum first passes 1 at
+the 54th weight. Both come out the same here and are in the tests.
+
+Each h in the table is a ball of radius below 1e−35, so both bounds are proofs,
+given that the list of zeros is complete, which Turing's method supplies. Hurst
+got 1.826 and −1.838 with 800 zeros in the lattice, 14,400 in h and 35 days of
+fplll. The y's come out negative or positive at random, and that is fine: h is
+almost periodic, so a value it takes near y it takes again near arbitrarily large
+y. The bottom left panel shows h around y± for the 300-zero lattice. The peak is
+about 0.01 wide in log x, set by the height of the last zero (t = 5000), and more
+than 0.005 away from y± the sum stays below 1.04 in absolute value.
+
+```python
+from zeta_explorer import mertens
+
+mertens.mertens(10**12)                 # 62366
+zs = mertens.certified_zeros(200, 256)  # 79 zeros, balls of radius ~1e-75
+r = mertens.search(zs, 20)
+float(r.h.mid()), float(r.h.rad())      # (0.58149694297398, 1.42e-37)
+```
+
+### Where π(x) first beats li(x)
+
+![Lehman's sum over the first 1000 zeros, and H(ω) near ω = 727.952 with two million zeros](docs/skewes.png)
+
+π(x) < li(x) for every x anyone has checked, but Littlewood proved in 1914 that
+the difference changes sign infinitely often. Lehman's 1966 theorem makes this
+computable. With a Gaussian K of variance 1/α,
+
+```
+I(ω, η) = ∫_{ω−η}^{ω+η} K(u − ω) u e^(−u/2) (π(e^u) − li(e^u)) du
+        = −1 − Σ_{0 < |γ| ≤ T} e^(iγω) e^(−γ²/2α) / ρ + R
+```
+
+where |R| ≤ s₁ + … + s₆ is fully explicit as long as RH has been verified up to
+some height A and α, η, ω satisfy 4A/ω ≤ α ≤ A² and 2A/α ≤ η ≤ ω/2. If the zero
+sum H beats 1 + |R|, then I > 0, and because K > 0 there is an x in
+[e^(ω−η), e^(ω+η)] with π(x) > li(x).
+
+`skewes.py` has the pieces: `lehman_sum` evaluates the sum (vectorized over a
+grid of ω in blocks), `lehman_errors` the six error terms in mpmath, with Chao and
+Plymen's sharper s₁ = 2.1457/(ω − η) from Panaitopol's bounds on π(x), and
+`zero_error` a mean-value bound on how much H moves if every γ is off by δ.
+
+Without the Gaussian, the sum over the first 1000 zeros (left panel) has a few
+spikes close to 1. Lehman found 727.952, 853.853 and 2682.977 this way. The scan
+over ω ∈ [400, 2800] in steps of 4·10⁻⁴ finds exactly those three, at 727.951
+(0.980), 853.853 (0.984) and 2682.977 (0.973), and nothing else above 0.92. At
+the two values near 10¹⁹⁰ in Chao and Plymen's table 3 the sum is 0.88258736 and
+0.88873670, against their 0.88258736 and 0.88873669.
+
+Chao and Plymen's proof near e^727.952 needs the first two million zeros, which
+`zeros_fast` computes in 4 minutes in windows of 20,000 Gram intervals.
+γ₂₀₀₀₀₀₀ = 1131944.4718248623, and they list 1131944.4718. With their parameters ω = 727.952074, η = 0.000198219, α = 7.86·10¹⁰, A = 7.79·10⁶:
+
+|                        | here                       | Chao and Plymen          |
+|------------------------|----------------------------|--------------------------|
+| H                      | 1.0031960526               | 1.0031960183             |
+| bound on abs(H − H*)   | 2.69·10⁻⁵ (δ = 2·10⁻⁹)     | 2.06·10⁻⁵ (δ = 10⁻⁹)     |
+| s₁                     | 0.0029476                  | 0.0030163                |
+| s₂                     | 5.93·10⁻⁵⁰                 | 5.93·10⁻⁵⁰               |
+| s₅                     | 6.8205·10⁻⁵                | 6.8205·10⁻⁵              |
+| s₆                     | 9.7500·10⁻⁵                | 9.7500·10⁻⁵              |
+| abs(R)                 | 0.0031133                  | 0.0031207                |
+| I(ω, η) >              | 5.58·10⁻⁵                  | 6.21·10⁻⁵                |
+
+The two values of H differ by 3.4·10⁻⁸, well inside either error bound. So
+I(ω, η) > 5.58·10⁻⁵, and since K integrates to 1, some x in
+[1.39792136·10³¹⁶, 1.39847567·10³¹⁶] has π(x) − li(x) > 5.58·10⁻⁵ · e^(u/2)/u,
+which is more than 9.07·10¹⁵⁰. The right panel shows H(ω) around their ω with the
+threshold. H clears it for ω between 727.952016 and 727.952104 and peaks at 1.0178
+near 727.95209, so their ω sits inside a window about 9·10⁻⁵ wide.
+
+Two small things in the paper. Their Theorem 3.1 has s₁ = 2.1457/(ω − η), but
+the number they plug in, 0.003016271, is 2.1957/(ω − η). The smaller constant is
+the right one (3·0.71523279), so their bound was a little pessimistic. And their
+"s₃ < 10⁻⁶⁷⁴, s₄ < 10⁻⁶⁶⁷" are really 3.6·10⁻⁶⁷³ and 5.6·10⁻⁶⁶⁷, which changes
+nothing. A = 7.8·10⁶, the value written in their s₆ line, would violate
+2A/α ≤ η; 7.79·10⁶ satisfies it and reproduces their s₆ to six digits.
+
+The float zeros from `zeros_fast` are not certified, so this is a reproduction
+rather than a new proof. `polish` moves each one by a secant step on Z between
+γ ± 10⁻⁷ (and refuses a zero without a sign change there). Against 256-bit Arb
+zeros at 840 random indices the largest error is then 1.2·10⁻⁹, against 2.9·10⁻⁹
+before polishing, so the table uses δ = 2·10⁻⁹.
 
 ### In the browser
 
