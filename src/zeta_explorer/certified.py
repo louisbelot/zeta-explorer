@@ -126,7 +126,9 @@ class Certificate:
         }
 
 
-def _block(j: int, k: int, gf: np.ndarray, sg: list[int], max_level: int) -> Block:
+def gram_block(
+    j: int, k: int, gf: np.ndarray, sg: list[int], max_level: int, first: int = -1
+) -> Block:
     need = k - j
     pieces = max(need, 1)
     for _ in range(max_level):
@@ -135,7 +137,7 @@ def _block(j: int, k: int, gf: np.ndarray, sg: list[int], max_level: int) -> Blo
         signs = [sg[j], *(z_sign(t) for t in inner), sg[k]]
         if count_sign_changes(signs) >= need:
             break
-    return Block(j - 1, k - 1, [float(gf[j]), *inner, float(gf[k])], signs)
+    return Block(j + first, k + first, [float(gf[j]), *inner, float(gf[k])], signs)
 
 
 def certify(T: float, max_level: int = 8) -> Certificate:
@@ -159,7 +161,7 @@ def certify(T: float, max_level: int = 8) -> Certificate:
         margin *= 2
     p, used = found
     pairs = [(j, k) for j, k in zip(good[:-1], good[1:], strict=True) if k <= p]
-    cert = Certificate(p - 1, g[p], [_block(j, k, gf, sg, max_level) for j, k in pairs], used)
+    cert = Certificate(p - 1, g[p], [gram_block(j, k, gf, sg, max_level) for j, k in pairs], used)
     if cert.zeros != p:
         raise RuntimeError(f"found {cert.zeros} sign changes below g_{p - 1}, expected {p}")
     return cert
@@ -174,7 +176,7 @@ def _turing(
             continue
         if start is None:
             start = j
-        if k - j > 1 and _block(j, k, gf, sg, max_level).changes < k - j:
+        if k - j > 1 and gram_block(j, k, gf, sg, max_level).changes < k - j:
             start, run = None, 0
             continue
         run += 1
