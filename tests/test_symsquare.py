@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 
 from zeta_explorer.elliptic import Curve, EllipticL
+from zeta_explorer.selfdual import turing
 from zeta_explorer.symsquare import MU, SymSquare, coefficients, smoothed
 from zeta_explorer.zeta import zeta
 
@@ -81,3 +82,13 @@ def test_derivative_against_cauchy_integral(s):
 def test_needs_semistable_curve():
     with pytest.raises(ValueError):
         SymSquare(Curve(0, 0, 0, -1, 0))
+
+
+def test_zeros_of_sym2_11a_are_complete_by_turing():
+    L = SymSquare(E11)
+    z = L.zeros(22.0)
+    r = turing(L, z, 12.0, 22.0)
+    assert z[:3] == pytest.approx([3.899281495, 4.734595458, 6.189477388], abs=1e-8)
+    assert r.found == 7
+    assert r.complete
+    assert not turing(L, z[1:], 12.0, 22.0).complete
