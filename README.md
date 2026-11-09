@@ -48,7 +48,12 @@ flow backwards, the close pair of zeros at γ = 564.161 and 564.506 collides at
 t = −0.0614041 and leaves the real line, 2·10⁻⁴ above the bound Csordas, Smith and
 Varga's criterion gives for that pair. The zeros move like charged particles: the
 velocity of each one, predicted from the positions of 4,000 others, matches the
-measured motion to 7·10⁻⁷.
+measured motion to 7·10⁻⁷. Past x ≈ 5600 the integral underflows, so
+Polymath 15's effective Riemann-Siegel formula for H_t takes over. It is checked
+against an independent heat-kernel average of ξ, stays inside the paper's error
+bounds at every point tested, and runs in an Odlyzko-Schönhage window out to
+x = 2·10¹². There the zeros of H_t for t > 0 line up on an arithmetic progression,
+as close as a random-phase model built from the primes predicts.
 
 The zeros also settle prime races. Under GRH and LI the share of log x where
 primes ≡ 3 (mod 4) lead primes ≡ 1 is 0.9959279, computed from 868 zeros of
@@ -182,6 +187,13 @@ quadratic_density([-100003, 100001], [0.1, 0.5, 1.0])   # [0.1216, 1.4173, 0.824
 
 from zeta_explorer.rmt import gap, first_density, symplectic, symplectic_n
 gap(symplectic, 0.5), gap(symplectic_n(2), 0.5)   # 0.79479, 0.65935: P(no angle in (0, 1/2))
+
+from zeta_explorer.effective import HtWindow, error, ratio
+ratio(1e6 + 0.1, 0.2, 0.2)   # H_t/B_t at x + iy: (1.16407368-2.39967030j)
+error(1e6 + 0.1, 0.2, 0.2)   # Polymath 15's bound on that: 7.0e-5
+w = HtWindow(2e12, 2e12 + 100, 0.4)
+u = w.zeros()                # 205 zeros of H_0.4, as offsets from w.t0 = x/2
+w.displacement(u[:3])        # indices 3945951430273.., displacements 0.034, 0.031, 0.027
 ```
 
 ## The math
@@ -1837,6 +1849,127 @@ it starts Newton from their midpoint with an imaginary part of half their old ga
 then follows the complex zero by Newton. Over t ∈ [−0.2, 0.2] the other five zeros
 in the window stay real and the pair reaches Im z = 0.545 at t = −0.2. Each of the
 81 frames takes about 1.6 s.
+
+### Polymath 15's effective approximation
+
+![Error of the A + B and A + B − C approximations against their bounds, the rms displacement of the zeros of H_t from 10³ to 10¹², and the displacement histograms near 10¹⁰](docs/effective.png)
+
+The contour integral in `heat.ht` costs O(x) nodes and underflows past x ≈ 5600,
+where H_t is below 10⁻³⁰⁸. Polymath 15 (Res. Math. Sci. 2019) replaced it with a
+Riemann-Siegel formula for H_t. Write s = (1 + y − ix)/2 and
+
+```
+M_0(s) = (1/8) (s(s−1)/2) π^(−s/2) √(2π) exp((s/2 − 1/2) log(s/2) − s/2)
+α(s)   = 1/(2s) + 1/(s−1) + (1/2) log(s/2π)
+B_t(x + iy) = exp((t/4) α(s)²) M_0(s)
+s*     = s + (t/2) α(s),   b_n = exp((t/4) log² n),   N = ⌊√(x/4π + t/16)⌋
+f_t    = Σ_{n≤N} b_n n^(−s*) + γ Σ_{n≤N} n^y b_n n^(−conj(s*) − κ)
+```
+
+with γ the ratio of M_t at the reflected point and κ a small correction. Their
+Theorem 1.3 says H_t/B_t = f_t + O(e_A + e_B + e_C,0) for 0 < t ≤ 1/2, 0 ≤ y ≤ 1,
+x ≥ 200, with every constant explicit. B_t carries the whole e^(−πx/8) decay, so
+`effective.ratio` returns H_t/B_t, which is of size 1 at any height. Subtracting
+their C term (the C_0(p) correction of Riemann-Siegel, moved through the heat
+flow) gives A + B − C with a smaller bound e_C.
+
+The approximation needs a check that does not share its derivation, and the heat
+equation gives one. ∂H/∂t = −∂²H/∂z² is solved by a Gaussian average in the
+imaginary direction:
+
+```
+H_t(z) = E[H_0(z + iv)],   v ~ N(0, 2t)
+```
+
+since averaging cos((z + iv)u) over v gives e^(tu²) cos(zu). `kernel_ratio`
+evaluates ξ off the critical line with mpmath at 48 Gauss-Hermite nodes. At
+x = 300 it agrees with the contour integral to 3e−14 for five (t, y) pairs, and
+at x = 10⁴ it changes by less than 1e−14 between 32 and 64 nodes. Against it, with
+t = y = 0.2:
+
+| x | A + B error | its bound | A + B − C error | its bound |
+|---|---|---|---|---|
+| 250 | 0.144 | 0.778 | 1.85e−3 | 0.236 |
+| 10⁴ | 4.21e−2 | 8.54e−2 | 7.47e−5 | 7.63e−3 |
+| 10⁵ | 1.35e−2 | 2.54e−2 | 1.31e−5 | 7.78e−4 |
+| 10⁶ | 4.97e−3 | 6.96e−3 | 1.29e−6 | 7.01e−5 |
+| 10⁷ | 1.33e−3 | 1.69e−3 | 1.99e−7 | 5.58e−6 |
+
+Every bound holds at every point tested, for t from 0.05 to 0.5 and y from 0 to 1.
+The C,0 bound is tight to within a factor of 2 at large x. The C term buys a factor
+of 80 at x = 250 and 6,700 at 10⁷, and its bound is 30 to 130 times loose. At t = 0 the same code is
+the Riemann-Siegel formula with its first correction: H_0(x)/|B_0(x)| = −Z(x/2) to
+1.5e−4 at x = 2·10⁴.
+
+Two numerical details. The C term's phase is the difference of two numbers of
+size x log x, so in floats it carries an error of 10⁻³ at x = 10¹². Written out,
+everything cancels except 3π/2 − arctan T′ + arg C_0(p), and the amplitude
+simplifies the same way, so `c_amplitude` never forms a large number. C_0 has
+removable singularities at p = ±1/2 where it equals (1 − i)/4.
+
+On the real axis γ = e^(2iϑ_t) and κ = 0, so H_t(x)/|B_t(x)| = 2 Re(e^(−iϑ_t)A) − C,
+with A = Σ b_n n^(−s*) and ϑ_t = −arg B_t. That is a Hardy Z function for H_t.
+`effective.zt` evaluates it directly; `HtWindow` evaluates it the way
+`multieval.ZWindow` evaluates Z. The coefficients of A depend on x only through
+s*, and inside a window s*(x) = s*(x_0) − i(x − x_0)/2 + ε(x) with
+ε = (t/2)(α(s) − α(s_0)) of order t(x − x_0)/x. Expanding n^(−ε) to the order where
+(ε ln N)^K/K! drops below 10⁻¹⁶ turns A into K band-limited sums (two at 10¹², five
+for a window of width 400 at 3·10⁴), each one nonuniform FFT. The phases t_0 log n
+come from mpmath and ϑ_t is assembled from Riemann-Siegel θ, the Stirling tail and
+(t/4) α², never from a float of size 10¹³. `multieval.BandSum` is the interpolator
+that ZWindow used inline, now shared. Against `zt` the window agrees to 7e−9 at
+10⁶ (where the direct sum is still accurate), and at t = 0 near the 10¹²th zero it
+finds Odlyzko's ten zeros to 2.2e−9, inside his stated 3e−9. A window of 2,000
+zeros at x = 2·10¹² takes 4 s to build, mostly the 400,000 mpmath phases, and 0.2 s
+to search.
+
+### Crystallization
+
+For t > 0 the sum A tends to 1 as x grows: Re s* ≈ 1/2 + (t/4) log(x/4π), so every
+term past n = 1 decays like a power of x. Then H_t ≈ 2|B_t| cos ϑ_t and the zeros
+sit at the ideal points ϑ_t = (n − 1/2)π, an arithmetic progression in ϑ. Ki, Kim
+and Lee proved that for t > 0 all but finitely many zeros are real and simple;
+numerically they also line up. The phase ϑ_t − ϑ_0 tends to (t/16)π log(x/4π),
+which is the t/16 log x term in the zero count of H_t.
+
+`displacement` measures how far each zero sits from its ideal point, in units of
+the local gap, and up to the C term the result is arg(A)/π at the zero. That suggests a
+model: by Kronecker's theorem the phases x/2 · log p are equidistributed for
+distinct primes, so A behaves like Σ b_n n^(−Re s*) e^(iθ_n) with independent
+uniform θ_p and θ_n additive over the factorization of n. `phase_model` samples
+that sum. Weighting by zeros instead of by x adds only a boundary term, so the
+model's arg/π should match the displacement law. The window searches give, for
+2,000 zeros at each height (183 at 10³):
+
+| x | t = 0 | t = 0.05 (model) | t = 0.1 (model) | t = 0.2 (model) | t = 0.4 (model) |
+|---|---|---|---|---|---|
+| 10³ | 0.251 | 0.241 (0.246) | 0.230 (0.241) | 0.211 (0.228) | 0.176 (0.196) |
+| 10⁴ | 0.261 | 0.248 (0.252) | 0.233 (0.241) | 0.201 (0.213) | 0.147 (0.153) |
+| 10⁵ | 0.268 | 0.247 (0.253) | 0.226 (0.235) | 0.181 (0.189) | 0.118 (0.119) |
+| 10⁶ | 0.273 | 0.245 (0.252) | 0.215 (0.224) | 0.159 (0.163) | 0.094 (0.095) |
+| 10⁷ | 0.272 | 0.241 (0.247) | 0.202 (0.206) | 0.139 (0.140) | 0.076 (0.076) |
+| 10⁸ | 0.278 | 0.236 (0.241) | 0.188 (0.191) | 0.123 (0.123) | 0.063 (0.063) |
+| 10⁹ | 0.278 | 0.227 (0.230) | 0.174 (0.174) | 0.109 (0.109) | 0.052 (0.052) |
+| 10¹⁰ | 0.278 | 0.221 (0.221) | 0.161 (0.161) | 0.098 (0.097) | 0.044 (0.043) |
+| 10¹¹ | 0.281 | 0.210 (0.212) | 0.150 (0.150) | 0.088 (0.088) | 0.037 (0.037) |
+| 10¹² | 0.280 | 0.202 (0.204) | 0.140 (0.141) | 0.080 (0.080) | 0.031 (0.031) |
+
+At t = 0 the displacement stays near the uniform value 1/√12 = 0.289, and about 30%
+of consecutive zeros do not get consecutive indices: that is Gram's law failing,
+seen from the midpoints of the Gram intervals. For t > 0 the model and the
+measurement agree to 0.003 or better in every column from 10⁹ up. Below that the
+zeros sit up to 0.02 closer than the model says, at heights where the C term,
+which the model leaves out, is still of size 10⁻². At t = 0.4 every Gram interval of
+H_t holds exactly one zero in all ten windows, and no zero is more than 0.43 gaps
+from its ideal point. At t = 0.05 there are still 22 exceptions among 2,000 zeros
+at 10¹². The convergence is slow: the n = 2 term shrinks like (x/4π)^(−(t/4) ln 2),
+so from 10⁶ to 10¹² the rms halves at t = 0.2 and falls by three at t = 0.4.
+
+The right panel has a feature the rms hides. Near 10¹⁰ at t = 0.4 the n = 2 term
+has r = 0.18 and the next one 0.07, and arg(1 + r e^(iθ)) with θ uniform piles up
+at its extremes ±arcsin r, which is ±0.057 after dividing by π. The smaller terms
+blur that into two peaks near ±0.035 with a dip at zero, in the data and in the
+model alike.
 
 ### The Mertens conjecture
 
