@@ -1545,28 +1545,31 @@ def plot_skewes(omega: ArrayLike, s: ArrayLike, peaks: ArrayLike, w: ArrayLike, 
 
     omega, s, w, H = (np.asarray(v, dtype=float) for v in (omega, s, w, H))
     fig, (left, right) = plt.subplots(1, 2, figsize=(13, 4.8), facecolor=SURFACE)
-    left.plot(omega, s, color=SERIES, linewidth=0.7)
+    left.plot(omega, s, color=SERIES, linewidth=0.6)
     left.axhline(1, color=INK_SECONDARY, linewidth=0.8, linestyle="--")
-    for p in peaks:
-        left.annotate(f"{p:.3f}", (p, np.interp(p, omega, s)), textcoords="offset points",
-                      xytext=(0, 6), ha="center", fontsize=9, color=ACCENT)
+    for k, p in enumerate(peaks):
+        i = int(np.argmin(np.abs(omega - p)))
+        left.plot(omega[i], s[i], "o", color=ACCENT, markersize=5)
+        left.annotate(f"{p:.3f}", (omega[i], s[i]), textcoords="offset points",
+                      xytext=(-6 if k % 2 == 0 else 6, 14), ha="right" if k % 2 == 0 else "left",
+                      fontsize=9, color=ACCENT)
     left.set_xlim(omega[0], omega[-1])
-    left.set_ylim(top=1.12)
+    left.set_ylim(top=1.16)
     left.set_xlabel("ω = log x", color=INK)
     left.set_ylabel("S(ω)", color=INK)
-    left.set_title("Lehman's sum over the first 1,000 zeros, max per bin", color=INK, fontsize=12,
-                   loc="left")
+    left.set_title("Lehman's sum over the first 1,000 zeros, max per unit of ω", color=INK,
+                   fontsize=12, loc="left")
 
-    right.plot(w, H, color=SERIES, linewidth=1.2, label=f"H(ω) with {zeros:,} zeros")
+    base = round(best, 2)
+    right.plot(w - base, H, color=SERIES, linewidth=1.2, label=f"H(ω) with {zeros:,} zeros")
     right.axhline(bar, color=ACCENT, linewidth=1.2, linestyle="--", label="1 + |R| + |H − H*|")
-    right.fill_between(w, bar, H, where=H > bar, color=ACCENT, alpha=0.25, linewidth=0)
-    right.axvline(best, color=INK_SECONDARY, linewidth=0.8)
-    right.set_xlim(w[0], w[-1])
-    right.set_xlabel("ω", color=INK)
-    right.set_title("Above the dashed line, π(x) > li(x) near e^ω", color=INK, fontsize=12,
-                    loc="left")
-    right.legend(frameon=False, fontsize=9, loc="lower left")
-    right.ticklabel_format(axis="x", useOffset=727.95, style="plain")
+    right.fill_between(w - base, bar, H, where=H > bar, color=ACCENT, alpha=0.25, linewidth=0)
+    right.axvline(best - base, color=INK_SECONDARY, linewidth=0.8)
+    right.set_xlim(w[0] - base, w[-1] - base)
+    right.set_xlabel(f"ω − {base:g}", color=INK)
+    right.set_title("Above the dashed line, π(x) > li(x) somewhere near $e^ω$", color=INK,
+                    fontsize=12, loc="left")
+    right.legend(frameon=False, fontsize=9, loc="upper left")
     for ax in (left, right):
         ax.set_facecolor(SURFACE)
         _style(ax)
