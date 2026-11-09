@@ -1217,3 +1217,82 @@ Design notes:
 Next: the lower-order terms of the one-level density for the odd twists of 11a,
 or Polymath 15's effective approximation of H_t to push the heat flow to much
 larger x.
+
+## 2026-11-09: Polymath 15's approximation of H_t, and zeros that crystallize
+
+Built:
+
+- `effective.py`: M_0, α, M_t and B_t from Polymath 15 (arXiv:1904.12438),
+  f_t from Theorem 1.3 grouped by the number of terms N, the C_0(p) correction
+  (Corollary 6.4) and the error bounds e_A + e_B (eq. 23), e_C,0 (eq. 24) and
+  e_C. `kernel_ratio` computes H_t/B_t from H_t(z) = E[H_0(z + iv)], v ~ N(0, 2t),
+  with Gauss-Hermite nodes and mpmath's ξ. On the real axis: ϑ_t = −arg B_t and
+  its derivative, `zt` (the Hardy Z of H_t), the ideal points ϑ_t = (n − 1/2)π,
+  `displacement`, and `real_zeros` by sign changes and Illinois steps.
+- `phase_model`: the random-phase version of A = Σ b_n n^(−s*), with uniform
+  independent phases at the primes, additive over factorizations (filled in
+  dyadic blocks so that n/p is always done before n), truncated where the L2 tail
+  of the weights falls below 1e−7.
+- `HtWindow`: the Odlyzko-Schönhage evaluator for H_t. n^(−s*(x)) is split into
+  a pure frequency and n^(−ε(x)), and the second factor is Taylor-expanded to the
+  order its remainder drops below 1e−16, one band-limited sum per order.
+- `multieval.BandSum`, `log_phases`, `theta_reference` and `theta_shift`, pulled
+  out of `ZWindow` so both windows share them. ZWindow's tests are unchanged.
+- `plot_effective` and docs/effective.png.
+
+Checks:
+
+- The heat-kernel average against the contour integral at x = 300: under 3e−14
+  for five (t, y) pairs. Nodes 32 against 64 at x = 10⁴: under 1e−14.
+- Both approximations inside their bounds at x = 200 to 10⁴ for (t, y) from
+  (0.05, 0.1) to (0.5, 1), and at 10⁶. At t = y = 0.2: A + B is off by 0.144 at
+  x = 250 and 1.33e−3 at 10⁷; A + B − C by 1.85e−3 and 1.99e−7.
+- ϑ_0 = θ(x/2) + π to 1/(3x), ϑ_t − ϑ_0 = (t/16)π log(x/4π) to 10/x, ϑ_t′ against
+  central differences, and zt at t = 0 against −Z(x/2) from `z_rs`.
+- `real_zeros` at t = 0 returns 2γ_n for n = 101 to 200 to 0.02.
+- HtWindow against `zt` to 2e−8 at 10⁶ for t = 0 and 0.2, with five Taylor orders
+  at 3·10⁴, and Odlyzko's ten zeros after the 10¹²th to 3e−9 (worst 2.2e−9).
+- At x = 2·10¹² and t = 0.4: consecutive indices, |d| < 0.1, rms within 10% of the
+  model.
+
+Results:
+
+- Bounds against truth at t = y = 0.2: A + B within a factor of 1.3 to 2 of its
+  bound from 10⁴ up; A + B − C 30 to 130 times inside its bound, and 80 to 6,700
+  times more accurate than A + B.
+- rms displacement of the zeros from the ideal points, 2,000 zeros per height,
+  measured (model): at 10⁶, 0.215 (0.224) for t = 0.1, 0.159 (0.163) for t = 0.2,
+  0.094 (0.095) for t = 0.4; at 10¹², 0.140 (0.141), 0.080 (0.080), 0.031 (0.031).
+  t = 0 stays at 0.27 to 0.28 throughout, close to uniform.
+- At t = 0.4 every Gram interval of H_t holds one zero in all ten windows from
+  10³ to 10¹². At t = 0.05 the exceptions fall from 219 per 2,000 at 10⁴ to 22 at
+  10¹².
+- At t = 0.4 near 10¹⁰ the displacement law is bimodal, peaks near ±0.035: the
+  arcsine law of arg(1 + r e^(iθ)) from the n = 2 term (r = 0.18), blurred by
+  n = 3. The model has the same two peaks.
+- Speed: a 2,000-zero window at 2·10¹² builds in about 4 s and is searched in
+  0.2 s. The direct sum needed 27 s for the same count at 10⁹.
+
+Design notes:
+
+- The first version of the C term formed log M_0(iT′) and the phase of U
+  separately. Both are of size x log x and their sum is 11π/8 − arctan T′, so in
+  floats the phase was already off by 3e−11 at 5·10⁴, heading for 1e−3 at 10¹².
+  The closed form costs nothing. The amplitude has the same issue (two copies of −πx/8), fixed by a reduced
+  log M_0 with that term taken out analytically.
+- The direct `ft` carries a phase error of about 3e−7 rad at 10⁹, which is fine for
+  zero statistics there and useless at 10¹². The window gets its phases t_0 log n
+  from mpmath and builds ϑ_t from Riemann-Siegel θ, which is why it can match
+  Odlyzko to 2.2e−9 at 10¹².
+- Indices from rounding ϑ_t/π + 1/2 are exact once the zeros crystallize, and
+  off by one near Gram's law failures at t = 0. The tests use them only where
+  that is guaranteed.
+- First try at `displacement` in the window rounded ϑ/π + n_ref, a float near
+  10¹², so displacements came out in steps of 1.2e−4. It now rounds the small part
+  and adds n_ref as an integer.
+- `phase_model` at 2·10¹² first allocated 1.6 GB per batch; batches are now capped
+  at 2²⁴ entries.
+
+Next: the lower-order terms of the one-level density for the odd twists of 11a,
+or a zero-free region for H_t at t = y = 0.4 from the triangle inequality on f_t
+plus the barrier argument, which is how Polymath turned these bounds into Λ ≤ 0.22.
