@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import functools
 import math
 
 import numpy as np
 from numpy.typing import ArrayLike
 
-from zeta_explorer.elliptic import Curve, EllipticL
+from zeta_explorer.characters import kronecker
+from zeta_explorer.elliptic import Curve, EllipticL, t_of_x
 from zeta_explorer.explicit import primes
+from zeta_explorer.symsquare import SymSquare
 from zeta_explorer.zeta import digamma, loggamma, zeta
 
 _CHUNK = 1 << 21
@@ -131,3 +134,54 @@ def quadratic_density(
             out += np.interp(xs, np.r_[0.0, th / math.pi], np.r_[0.0, rho])
     return out / len(ds)
 
+
+@functools.cache
+def twist_r1(E: Curve, eta: int, P: int = 10**5) -> float:
+    a1, _ = twist_arithmetic(E, 0.0, eta, P)
+    value, dvalue = SymSquare(E).with_derivative(1.0)
+    return float(np.euler_gamma - (dvalue[0] / value[0]).real - a1[0].real)
+
+
+def twist_effective_n(L: EllipticL, P: int = 10**5) -> float:
+    r1 = twist_r1(L.E, kronecker(L.d, L.E.conductor), P)
+    return (math.log(L.A) - np.euler_gamma) / (2 * r1)
+
+
+def twist_profile(
+    E: Curve, t: ArrayLike, etas: tuple[int, ...] = (1, -1), P: int = 10**5
+) -> dict[int, tuple[np.ndarray, np.ndarray]]:
+    t = np.asarray(t, dtype=float)
+    s = 1 + 2j * t
+    L2 = SymSquare(E)
+    sym, dsym = L2.with_derivative(s)
+    smooth = -zeta_logderiv(s) + dsym / sym
+    twist = zeta(s) * np.conj(sym) / L2(1.0)
+    out = {}
+    for eta in etas:
+        a1, a = twist_arithmetic(E, t, eta, P)
+        out[eta] = smooth + a1, twist * a
+    return out
+
+
+def twist_rho(
+    t: np.ndarray, b1: np.ndarray, k: np.ndarray, log_a: float, root_number: int
+) -> tuple[np.ndarray, np.ndarray]:
+    th = t * log_a + np.imag(loggamma(1 + 1j * t))
+    b = b1 - root_number * np.exp(-2j * th) * k
+    return th / math.pi, 1 + b.real / (log_a + np.real(digamma(1 + 1j * t)))
+
+
+def twist_density(
+    E: Curve, ds: ArrayLike, x: ArrayLike, P: int = 10**5, n: int = 800
+) -> np.ndarray:
+    Ls = [EllipticL(E, int(d)) for d in np.atleast_1d(ds)]
+    xs = np.asarray(x, dtype=float)
+    t_max = 1.01 * t_of_x(float(xs.max()), min(Ls, key=lambda L: L.conductor))
+    t = np.linspace(0, t_max, n + 1)[1:]
+    etas = {L: kronecker(L.d, E.conductor) for L in Ls}
+    profile = twist_profile(E, t, tuple(set(etas.values())), P)
+    out = np.zeros_like(xs)
+    for L, eta in etas.items():
+        x, rho = twist_rho(t, *profile[eta], math.log(L.A), L.root_number)
+        out += np.interp(xs, x, rho)
+    return out / len(Ls)

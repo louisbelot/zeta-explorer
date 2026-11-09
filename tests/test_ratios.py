@@ -12,6 +12,11 @@ from zeta_explorer.ratios import (
     arithmetic,
     quadratic_density,
     twist_arithmetic,
+    twist_density,
+    twist_effective_n,
+    twist_profile,
+    twist_r1,
+    twist_rho,
     zeta_logderiv,
 )
 from zeta_explorer.zeta import digamma
@@ -166,3 +171,50 @@ def test_twist_constants_cancel_at_the_center(eta):
     slope = (np.log(A[1]) - np.log(A[2])) / 2e-4
     assert (-1j * slope).real == pytest.approx(-2 * a1[0].real, abs=1e-7)
 
+
+def test_twist_r1_matches_dhkms():
+    r1 = twist_r1(E11, 1, 2**14) + np.euler_gamma + 1
+    assert r1 == pytest.approx(2.8600, abs=1e-3)
+    assert math.log(math.sqrt(11) * 400_000 / (2 * math.pi)) / (2 * r1) == pytest.approx(
+        2.14, abs=5e-3)
+
+
+def test_twist_effective_n():
+    for d, eta in ((89, 1), (1201, -1)):
+        L = EllipticL(E11, d)
+        assert kronecker(d, 11) == eta
+        expect = (math.log(L.A) - np.euler_gamma) / (2 * twist_r1(E11, eta, 2**14))
+        assert twist_effective_n(L, 2**14) == pytest.approx(expect, rel=1e-14)
+
+
+@pytest.mark.parametrize("w", [1, -1])
+def test_twist_rho_expansion(w):
+    r1 = {1: 1.283598747733984, -1: 0.8439846143876162}
+    for la in (60.0, 400.0):
+        L1 = la - np.euler_gamma
+        t = np.linspace(1e-4, 3.5 * math.pi / L1, 60)
+        prof = twist_profile(E11, t, P=2**14)
+        for eta in (1, -1):
+            x, rho = twist_rho(t, *prof[eta], la, w)
+            first = 1 + w * np.sinc(2 * x)
+            pred = first - r1[eta] * (1 + w * np.cos(2 * math.pi * x)) / L1
+            assert np.max(np.abs(rho - pred)) < 100 / L1**2
+            assert np.max(np.abs(rho - first)) > r1[eta] / L1
+
+
+def test_twist_density_ends():
+    t = np.linspace(1e-5, 0.5, 30)
+    prof = twist_profile(E11, t, P=2**14)
+    la = math.log(math.sqrt(11) * 2000 / (2 * math.pi))
+    x, rho = twist_rho(t, *prof[-1], la, -1)
+    assert rho[0] == pytest.approx(0, abs=1e-3)
+    x, rho = twist_rho(t, *prof[1], la, 1)
+    r1 = twist_r1(E11, 1, 2**14)
+    assert rho[0] == pytest.approx(2 - 2 * r1 / (la - np.euler_gamma), abs=1e-3)
+
+
+def test_twist_density_is_the_family_mean():
+    x = np.linspace(0, 2, 41)
+    one = [twist_density(E11, [d], x, P=2**12, n=150) for d in (89, 1201)]
+    both = twist_density(E11, [89, 1201], x, P=2**12, n=150)
+    assert np.allclose(both, (one[0] + one[1]) / 2, atol=2e-3)
