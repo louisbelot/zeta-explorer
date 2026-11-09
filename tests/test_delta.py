@@ -113,3 +113,39 @@ def test_period_ratios():
 def test_completed_strip_check():
     with pytest.raises(ValueError):
         D.completed(7.0)
+
+
+def test_sato_tate_small():
+    st = D.sato_tate(1 << 15)
+    assert np.all(np.abs(st.x) < 1)
+    assert st.moment(2) == pytest.approx(D.catalan(1), abs=0.05)
+    assert st.moment(4) == pytest.approx(D.catalan(2), abs=0.15)
+    assert abs(st.moment(1)) < 0.05
+    assert st.ks() * math.sqrt(len(st.p)) < 1.36
+
+
+def test_st_cdf_and_density():
+    th = np.linspace(0.1, 3.0, 9)
+    h = 1e-6
+    assert np.allclose((D.st_cdf(th + h) - D.st_cdf(th - h)) / (2 * h), D.st_density(th))
+    assert D.st_cdf(np.pi) == pytest.approx(1.0)
+    assert [D.catalan(k) for k in range(6)] == [1, 1, 2, 5, 14, 42]
+
+
+def test_psi_against_prime_powers():
+    X = 5000
+    st = D.sato_tate(X)
+    lam = D.lam(X)
+    total = 0.0
+    for p in primes(X):
+        s0, s1 = 2.0, lam[p]
+        q = p
+        while q <= X:
+            total += s1 * math.log(p)
+            s0, s1 = s1, lam[p] * s1 - s0
+            q *= p
+    assert st.psi(1, X + 0.5) == pytest.approx(total, rel=1e-12)
+
+
+def test_root_numbers():
+    assert [D.root_number(m) for m in range(1, 9)] == [1, 1, -1, 1, -1, 1, 1, 1]

@@ -3,6 +3,7 @@ from __future__ import annotations
 import cmath
 import functools
 import math
+from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -146,3 +147,69 @@ def zeros(T: float, per_gap: int = 8, rtol: float = 1e-14) -> np.ndarray:
     z = hardy_z(ts)
     i = np.flatnonzero(z[:-1] * z[1:] < 0)
     return illinois_many(hardy_z, ts[i], ts[i + 1], z[i], z[i + 1], rtol)
+
+
+def _u(m: int, x: np.ndarray) -> np.ndarray:
+    u0, u1 = np.ones_like(x), 2 * x
+    if m == 0:
+        return u0
+    for _ in range(m - 1):
+        u0, u1 = u1, 2 * x * u1 - u0
+    return u1
+
+
+@dataclass(frozen=True)
+class SatoTate:
+    p: np.ndarray
+    x: np.ndarray
+
+    @property
+    def angle(self) -> np.ndarray:
+        return np.arccos(self.x)
+
+    def moment(self, k: int) -> float:
+        return float(np.mean((2 * self.x) ** k))
+
+    def psi(self, m: int, x: ArrayLike) -> np.ndarray:
+        xs = np.asarray(x, dtype=float)
+        logp = np.log(self.p)
+        out = np.zeros_like(xs)
+        k = 1
+        while 2.0**k <= xs.max():
+            c = np.concatenate([[0.0], np.cumsum(_u(m, np.cos(k * self.angle)) * logp)])
+            out += c[np.searchsorted(self.p, xs ** (1 / k), side="right")]
+            k += 1
+        return out
+
+    def ks(self) -> float:
+        a = np.sort(self.angle)
+        F = st_cdf(a)
+        n = len(a)
+        i = np.arange(1, n + 1)
+        return float(max(np.max(i / n - F), np.max(F - (i - 1) / n)))
+
+
+def sato_tate(X: int) -> SatoTate:
+    p = primes(X)
+    x = lam(X)[p] / 2
+    return SatoTate(p, x)
+
+
+def st_density(theta_: ArrayLike) -> np.ndarray:
+    return 2 / math.pi * np.sin(np.asarray(theta_, dtype=float)) ** 2
+
+
+def st_cdf(theta_: ArrayLike) -> np.ndarray:
+    th = np.asarray(theta_, dtype=float)
+    return (th - np.sin(th) * np.cos(th)) / math.pi
+
+
+def catalan(k: int) -> int:
+    return math.comb(2 * k, k) // (k + 1)
+
+
+def root_number(m: int, k: int = 12) -> int:
+    e = sum((m - 2 * j) * (k - 1) + 1 for j in range((m + 1) // 2))
+    if m % 2 == 0:
+        e += (m // 2) * (k - 1) % 2
+    return {0: 1, 2: -1}[e % 4]
