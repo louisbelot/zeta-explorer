@@ -1067,3 +1067,71 @@ Design notes:
 
 Next: Platt's zeros from the LMFDB cross-checked at high precision, then the
 L-function of Ramanujan's Δ and the Sato-Tate law for τ(p).
+
+## 2026-11-08: Ramanujan's Δ, Dedekind zeta of quadratic fields, and Platt's zeros
+
+Built:
+
+- `delta.py`: exact τ(n) from (η³)⁸ with Jacobi's sparse series, done modulo
+  31-bit primes and put back together with Garner's algorithm; L(s, Δ) through the
+  smoothed functional equation with a rotated split point; Hardy Z, zeros, the
+  completed Λ on −11/2 < Re s < 13/2; Sato-Tate angles, moments, a Kolmogorov
+  distance, the Chebyshev function Ψ_m of Sym^m L(s, Δ) including prime powers,
+  and the root number of Sym^m from its gamma factors.
+- `dedekind.py`: ideal counts, ζ_K = ζ·L(s, χ_D), representation counts of
+  reduced definite forms, reduced indefinite forms with Gauss's ρ and their
+  cycles (narrow and wide class numbers), regulators, ζ_K(−1) from Siegel's
+  formula and from B₂,χ, zeros of ζ_K as the union of two families, and the
+  spacing law of two independent GUE spectra.
+- `platt.py`: LMFDB fetch and parse, isolation of each listed zero at ±10⁻²⁵ in
+  256-bit balls, and a Turing window around a block with Rosser blocks on both
+  sides, so the block is proved complete and correctly numbered.
+- `characters.reduced_forms` (class_number now counts it) and
+  `certified.gram_block` with a Gram offset, both shared with the new modules.
+- Charts: `docs/delta.png`, `docs/dedekind.png`.
+
+Checks:
+
+- τ against FLINT's power series for ∏(1 − qⁿ)²⁴ to n = 1500, the 691 congruence
+  to 3,000, Hecke relations, Deligne's bound in exact integers below 2¹⁵, and the
+  CRT moduli product against the 4N⁶ bound.
+- Zeros of L(s, Δ) against LMFDB to 1e−13, L(1/2) = 0.79212283864603 against
+  0.7921228386, Z against a 110 digit mpmath evaluation (3e−14 at t = 100), the
+  split point and the functional equation to 1e−12, and the period ratios
+  36/691 : 1 : 3 : 3 : 1 and 4 : 25 : 42 to 1e−12.
+- Real class numbers from cycles against √D·L(1)/(2 log ε) for all fundamental
+  D < 3000 (D < 1000 in the tests), Siegel against Bernoulli exactly below 1500,
+  form counts against w·a_n, r₂(n) by brute force for Q(i), ζ_K(0) and ζ_K′(0).
+- Platt blocks at 10⁹, 10¹⁰, 10¹¹: all 150 zeros isolated, roots within 2.3e−31 of
+  the listed values, 51 sign changes = b − a in each window, indices match. A
+  changed digit fails to isolate and a silently dropped zero breaks the indices.
+
+Results:
+
+- Sato-Tate for p < 10⁶: moments 0.9987, 1.9939, 4.9772, 13.9204, 41.725 against
+  1, 2, 5, 14, 42; KS 0.0023 (√n·D = 0.65). No τ(n) = 0 for n ≤ 10⁶.
+- Ψ_m(x)/√x on [10³, 10⁶] averages −0.005, −0.013, −1.957, −0.068, −1.841 for
+  m = 1..5. Root numbers are +1, +1, −1, +1, −1, so the −2 for m = 3 and 5 is the
+  forced central zero. The prime-only sums average +1.02 (m = 1) and −1.30 (m = 2).
+- Q(i) to t = 10,000: 10,142 + 12,349 zeros, KS 0.018 to the superposition law
+  against 0.139 to GUE; ζ and L(s, χ₋₄) alone are 0.029 and 0.035 from GUE.
+
+Design notes:
+
+- The sparse product beats an FFT here: η³ has 1,448 terms below 2²⁰, the
+  residues stay below 2⁶³ without intermediate reductions, and nothing has to be
+  rounded. 2¹⁸ takes 6 s, 2²⁰ about 55 s.
+- The first Ψ_m chart used primes only and the m = 3 curve sat at −1 where I had
+  predicted +1. Writing out the prime-square term (Frobenius-Schur indicator −1
+  for odd m) and the root number of Sym³ explained it; summing prime powers into
+  Ψ_m leaves only the central zero term, which is the cleaner picture.
+- l_zeros with 8 points per mean spacing missed 4 zeros of L(s, χ₋₄) between
+  3000 and 9000. The drift of N(T) − θ(T)/π to −3.6 gave it away.
+- Brent's Turing theorem gives both directions from one run of Rosser blocks:
+  for the union [g_n, g_p), N(g_n) ≤ n + 1 and N(g_p) ≥ p + 1. The window check
+  uses the run ending at g_a for the lower bound and the run starting at g_b for
+  the upper bound.
+
+Next: the Mertens function from the zeros (ρζ′(ρ) for a few thousand zeros, M(x)
+rebuilt against a sieve, and the Odlyzko-te Riele lattice search with FLINT's
+LLL), then the first sign change of π(x) − li(x).
