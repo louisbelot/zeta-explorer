@@ -15,7 +15,9 @@ from zeta_explorer.characters import (
     reduced_forms,
     unit_count,
 )
-from zeta_explorer.lfunction import dirichlet_l
+from zeta_explorer.lfunction import dirichlet_l, l_theta, l_zeros
+from zeta_explorer.riemann_siegel import theta
+from zeta_explorer.spacing import _gap_interpolant, first_zeros
 from zeta_explorer.zeta import zeta
 
 Form = tuple[int, int, int]
@@ -157,3 +159,33 @@ def zeta_minus_one_bernoulli(D: int) -> Fraction:
     b2 = sum(kronecker(D, a) * (Fraction(a, q) ** 2 - Fraction(a, q) + Fraction(1, 6))
              for a in range(1, q + 1))
     return q * b2 / 24
+
+
+def zeros(D: int, T: float, per_gap: int = 32) -> tuple[np.ndarray, np.ndarray]:
+    _check(D)
+    n = math.ceil(theta(T) / math.pi + 1)
+    gz = first_zeros(n + 8)
+    gl = l_zeros(quadratic(D), 0.0, T, per_gap)
+    return gz[gz < T], gl[gl > 0]
+
+
+def unfold(D: int, gamma: ArrayLike) -> np.ndarray:
+    g = np.asarray(gamma, dtype=float)
+    return (np.asarray(theta(g)) + np.asarray(l_theta(g, quadratic(D)))) / math.pi
+
+
+def superposition_gap(s: ArrayLike) -> np.ndarray:
+    E = _gap_interpolant()
+    return E(np.asarray(s, dtype=float) / 2) ** 2
+
+
+def superposition_spacing(s: ArrayLike) -> np.ndarray:
+    E = _gap_interpolant()
+    h = np.asarray(s, dtype=float) / 2
+    return (E.deriv(1)(h) ** 2 + E(h) * E.deriv(2)(h)) / 2
+
+
+def superposition_cdf(s: ArrayLike) -> np.ndarray:
+    E = _gap_interpolant()
+    h = np.asarray(s, dtype=float) / 2
+    return 1 + E(h) * E.deriv(1)(h)

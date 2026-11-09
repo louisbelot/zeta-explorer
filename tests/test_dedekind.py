@@ -84,6 +84,26 @@ def test_zeta_minus_one():
     assert K.zeta_minus_one_bernoulli(-23) == 0
 
 
+def test_superposition_law():
+    s = np.linspace(0, 6, 6001)
+    p = K.superposition_spacing(s)
+    assert p[0] == pytest.approx(0.5, abs=1e-6)
+    assert np.trapezoid(p, s) == pytest.approx(1, abs=1e-4)
+    assert np.trapezoid(s * p, s) == pytest.approx(1, abs=1e-3)
+    F = K.superposition_cdf(s)
+    assert np.allclose(np.gradient(F, s)[1:-1], p[1:-1], atol=1e-4)
+    assert np.allclose((1 - F)[1:-1], -np.gradient(K.superposition_gap(s), s)[1:-1], atol=1e-4)
+
+
+def test_gaussian_field_zeros():
+    gz, gl = K.zeros(-4, 200.0)
+    assert gz[0] == pytest.approx(14.134725141734693)
+    assert gl[0] == pytest.approx(6.020948904697597, abs=1e-9)
+    u = np.sort(np.concatenate([K.unfold(-4, gz), K.unfold(-4, gl)]))
+    assert abs(len(u) - K.unfold(-4, 200.0) - 1) < 2
+    assert np.mean(np.diff(u)) == pytest.approx(1, abs=0.05)
+
+
 def test_needs_fundamental():
     with pytest.raises(ValueError):
         K.ideal_counts(-12, 10)
