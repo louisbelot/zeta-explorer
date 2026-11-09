@@ -42,12 +42,14 @@ from zeta_explorer.plot import (
     plot_mertens,
     plot_moments,
     plot_multieval,
+    plot_odd_effective,
     plot_odd_excision,
     plot_race,
     plot_rs_error,
     plot_skewes,
     plot_spacing,
     plot_spiral,
+    plot_twist_density,
     plot_twist_zeros,
     plot_z,
     sweep_sigma,
@@ -372,3 +374,25 @@ def test_plot_effective_panels():
     assert fig.axes[2].get_title(loc="left") == "Displacements near x = 10⁸"
     assert [t.get_text() for t in fig.axes[1].get_legend().get_texts()] == [
         "t = 0", "t = 0.2", "random phase model"]
+
+
+def test_plot_twist_density_scores_both_curves(tmp_path):
+    rng = np.random.default_rng(2)
+    x = np.linspace(0, 3, 301)
+    fams = {"even": (1, rng.uniform(0, 3, 900), 300, np.ones_like(x)),
+            "odd": (-1, rng.uniform(0, 3, 900), 300, np.ones_like(x))}
+    fig = plot_twist_density(x, fams)
+    fig.savefig(tmp_path / "density.png")
+    labels = [t.get_text() for t in fig.axes[1].get_legend().get_texts()]
+    assert labels[1].startswith("SO(odd)")
+    assert float(labels[0].split("= ")[1]) < float(labels[1].split("= ")[1])
+
+
+def test_plot_odd_effective(tmp_path):
+    thetas = {n: so_angles(n, 4000, seed=n, odd=True) for n in (2, 3)}
+    first = 3.5 * thetas[3][:400, 0] / np.pi
+    fig = plot_odd_effective(first, np.full(400, 3.0), thetas, 0.01)
+    fig.savefig(tmp_path / "effective.png")
+    labels = [t.get_text() for t in fig.axes[1].get_legend().get_texts()]
+    assert labels[-1] == "Gross-Zagier floor: drops 1.00%"
+    assert float(labels[1].split("= ")[1]) < float(labels[0].split("= ")[1])

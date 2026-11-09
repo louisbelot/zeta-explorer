@@ -27,8 +27,10 @@ from zeta_explorer.rmt import (
     even_orthogonal,
     even_orthogonal_n,
     first_density,
+    first_density_mix,
     fit_n,
     gap,
+    odd_orthogonal_half,
     odd_orthogonal_n,
     symplectic,
     symplectic_n,
@@ -1007,6 +1009,102 @@ def plot_odd_excision(
                  bbox_to_anchor=(0.42, 0.02))
     for ax in (left, right):
         ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig
+
+
+def plot_twist_density(
+    x: ArrayLike, families: dict[str, tuple[int, ArrayLike, int, ArrayLike]], x_max: float = 3.0,
+    bins: int = 30,
+) -> Figure:
+    import matplotlib.pyplot as plt
+
+    x = np.asarray(x, dtype=float)
+    edges = np.linspace(0, x_max, bins + 1)
+    mid = (edges[1:] + edges[:-1]) / 2
+    width = edges[1] - edges[0]
+    fig, axes = plt.subplots(1, len(families), figsize=(12, 4.8), facecolor=SURFACE)
+    for ax, (title, (sign, zeros, count, pred)) in zip(axes, families.items(), strict=True):
+        z = np.asarray(zeros, dtype=float)
+        obs = np.histogram(z, edges)[0]
+        limit = 1 + sign * np.sinc(2 * x)
+        chi = {}
+        for key, curve in (("ratios", pred), ("limit", limit)):
+            expect = np.interp(mid, x, curve) * width * count
+            chi[key] = float(np.sum((obs - expect) ** 2 / expect))
+        ax.bar(mid, obs / (width * count), width=width, color=ORDINAL[0], alpha=0.55,
+               label=f"{len(z)} zeros of {count} twists")
+        ax.plot(x, pred, color=SERIES, linewidth=1.8,
+                label=f"ratios conjecture (HKS), χ² = {chi['ratios']:.1f}")
+        ax.plot(x, limit, color=INK_SECONDARY, linewidth=1.3, linestyle=":",
+                label=f"{'SO(even)' if sign == 1 else 'SO(odd)'}, N → ∞, χ² = {chi['limit']:.1f}")
+        ax.set_facecolor(SURFACE)
+        ax.set_xlim(0, x_max)
+        ax.set_ylim(0, max(2.2, ax.get_ylim()[1]) * 1.18)
+        ax.set_xlabel("x = θ(t)/π, zeros above the center", color=INK)
+        ax.set_title(title, color=INK, fontsize=11, loc="left")
+        ax.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right")
+        _style(ax)
+    axes[0].set_ylabel(f"one-level density ({bins} bins, χ² over all of them)", color=INK)
+    fig.tight_layout()
+    return fig
+
+
+def plot_odd_effective(
+    first: ArrayLike, n_eff: ArrayLike, thetas: dict[int, np.ndarray], arithmetic: float,
+    s_max: float = 1.8, bins: int = 18,
+) -> Figure:
+    import matplotlib.pyplot as plt
+
+    x = np.sort(np.asarray(first, dtype=float))
+    n_eff = np.asarray(n_eff, dtype=float)
+    edges = np.linspace(0, s_max, bins + 1)
+    drops = np.linspace(0, 0.12, 49)
+    s = np.linspace(0, s_max, 181)
+    mix = first_density_mix(n_eff, s, odd_orthogonal_half)
+    expect = np.diff(np.interp(edges, s, np.r_[0, np.cumsum((mix[1:] + mix[:-1]) / 2
+                                                         * np.diff(s))])) * len(x)
+    chi_mix = float(np.sum((np.histogram(x, edges)[0] - expect) ** 2 / expect))
+    fig, (left, right) = plt.subplots(
+        1, 2, figsize=(12, 4.8), facecolor=SURFACE, gridspec_kw={"width_ratios": [1.3, 1]}
+    )
+    left.hist(x, bins=edges, density=True, histtype="stepfilled", color=ORDINAL[0], alpha=0.55,
+              label=f"odd twists, rank 1 ({len(x)})")
+    left.plot(s, mix, color=SERIES, linewidth=1.8,
+              label=f"SO(2N + 1), N_eff per twist (mean {n_eff.mean():.2f}), χ² = {chi_mix:.1f}")
+    n0 = int(round(n_eff.mean()))
+    styles = dict(zip(sorted(thetas), (":", "-", "--"), strict=False))
+    for n, angles in sorted(thetas.items()):
+        lam = char_poly_at_one(angles)
+        eig = (n + 0.5) * angles[:, 0] / np.pi
+        cuts = np.quantile(lam, drops)
+        chi = np.array([binned_chi2(x, eig[lam >= c], edges) for c in cuts])
+        right.plot(drops, chi, color=ACCENT if n == n0 else INK_SECONDARY,
+                   linewidth=1.8 if n == n0 else 1.2, linestyle=styles[n],
+                   label=f"SO({2 * n + 1}), best χ² = {chi.min():.1f}")
+        if n == n0:
+            best = cuts[np.argmin(chi)]
+            left.hist(eig[lam >= best], bins=edges, density=True, histtype="step",
+                      color=ACCENT, linewidth=1.8,
+                      label=f"SO({2 * n + 1}) excised, best cut drops "
+                            f"{drops[np.argmin(chi)]:.0%}")
+    right.axvline(arithmetic, color=SERIES, linewidth=1.4,
+                  label=f"Gross-Zagier floor: drops {arithmetic:.2%}")
+    left.set_xlim(0, s_max)
+    left.set_ylim(0, left.get_ylim()[1] * 1.35)
+    left.set_xlabel("x of the lowest zero above the central one", color=INK)
+    left.set_ylabel("density", color=INK)
+    left.set_title("Odd twists of 11a3 at the effective matrix size", color=INK, fontsize=11,
+                   loc="left")
+    right.set_xlim(0, drops[-1])
+    right.set_ylim(0, 250)
+    right.set_xlabel("fraction of matrices excised (smallest |Λ'(1)| first)", color=INK)
+    right.set_ylabel(f"χ² on {bins} bins of (0, {s_max})", color=INK)
+    right.set_title("Excision at N near N_eff", color=INK, fontsize=11, loc="left")
+    for ax in (left, right):
+        ax.set_facecolor(SURFACE)
+        ax.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right")
         _style(ax)
     fig.tight_layout()
     return fig
