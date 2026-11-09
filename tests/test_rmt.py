@@ -10,9 +10,11 @@ from zeta_explorer.rmt import (
     even_orthogonal_n,
     excised_first,
     first_density,
+    first_density_mix,
     fit_n,
     fredholm_det,
     gap,
+    odd_orthogonal_half,
     odd_orthogonal_n,
     sine,
     small_value_law,
@@ -233,3 +235,28 @@ def test_binned_chi2():
     model = np.array([0.1, 0.3, 0.6, 0.9])
     assert binned_chi2(x, model, edges) == pytest.approx(2.0)
     assert binned_chi2(np.array([0.3]), np.array([0.1]), edges) == math.inf
+
+
+def test_odd_orthogonal_half_unfolds_by_n_plus_half():
+    n = 3
+    x = np.sort((n + 0.5) * so_angles(n, 20_000, seed=12, odd=True)[:, 0] / np.pi)
+    s = np.linspace(0, x[-1], 400)
+    cdf = 1 - gap(odd_orthogonal_half(n), s)
+    ks = np.abs(np.interp(x, s, cdf) - np.arange(1, len(x) + 1) / len(x)).max()
+    assert ks < 1.6 / np.sqrt(len(x))
+
+
+def test_odd_orthogonal_half_mean_density_is_one():
+    k = odd_orthogonal_half(4)
+    y = np.linspace(0, 4.5, 4001)
+    assert np.trapezoid(k(y, y), y) == pytest.approx(4, abs=1e-6)
+
+
+def test_first_density_mix():
+    s = np.linspace(0, 1.5, 7)
+    same = first_density_mix(np.full(10, 3.0), s, odd_orthogonal_half)
+    assert same == pytest.approx(first_density(odd_orthogonal_half(3.0), s), abs=1e-14)
+    two = first_density_mix([2.0, 2.0, 5.0], s, even_orthogonal_n, groups=2)
+    expect = (2 * first_density(even_orthogonal_n(2.0), s)
+              + first_density(even_orthogonal_n(5.0), s)) / 3
+    assert two == pytest.approx(expect, abs=1e-14)

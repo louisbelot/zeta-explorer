@@ -51,6 +51,12 @@ def odd_orthogonal_n(n: float) -> Kernel:
     return lambda x, y: _dirichlet(x - y, m, n) - _dirichlet(x + y, m, n)
 
 
+def odd_orthogonal_half(n: float) -> Kernel:
+    k = odd_orthogonal_n(n)
+    c = n / (n + 0.5)
+    return lambda x, y: c * k(c * x, c * y)
+
+
 @functools.cache
 def _legendre(m: int) -> tuple[np.ndarray, np.ndarray]:
     return np.polynomial.legendre.leggauss(m)
@@ -90,6 +96,23 @@ def first_density(kernel: Kernel, s: ArrayLike, m: int = 40) -> float | np.ndarr
     ss = np.atleast_1d(np.asarray(s, dtype=float))
     out = np.array([_gap_and_density(kernel, si, m)[1] for si in ss])
     return float(out[0]) if np.ndim(s) == 0 else out
+
+
+def first_density_mix(
+    ns: ArrayLike, s: ArrayLike, family: Callable[[float], Kernel], groups: int = 12,
+    m: int = 40,
+) -> np.ndarray:
+    ns = np.asarray(ns, dtype=float)
+    ss = np.asarray(s, dtype=float)
+    edges = np.linspace(ns.min(), ns.max(), groups + 1)
+    idx = np.minimum(np.searchsorted(edges, ns, side="right") - 1, groups - 1)
+    out = np.zeros_like(ss)
+    for k in np.unique(idx):
+        sel = idx == k
+        n = float(ns[sel].mean())
+        inside = ss < 0.98 * n
+        out[inside] += sel.sum() * first_density(family(n), ss[inside], m)
+    return out / len(ns)
 
 
 def fit_n(
