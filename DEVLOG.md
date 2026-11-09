@@ -1135,3 +1135,85 @@ Design notes:
 Next: the Mertens function from the zeros (ρζ′(ρ) for a few thousand zeros, M(x)
 rebuilt against a sieve, and the Odlyzko-te Riele lattice search with FLINT's
 LLL), then the first sign change of π(x) − li(x).
+
+## 2026-11-09: The Mertens conjecture fails, and π(x) beats li(x) near 1.398·10³¹⁶
+
+Built:
+
+- `mertens.py`: a Möbius sieve and M(n) table; M(x) for one large x from
+  Σ_{d ≤ x} M(x/d) = 1 with a sieve below u ≈ x^(2/3)/4 and the x/u large values
+  filled in from the top, split at √v and vectorized over quotient blocks.
+  `certified_zeros(T, bits)`: every zero below T from the Turing-certified Gram
+  blocks, Newton on ζ(s) with doubling precision, a certified sign change of Z at
+  γ ± 2^(−bits)γ, and ζ′(ρ) evaluated on that ball, so a_γ = 1/|ρζ′(ρ)| and
+  ψ_γ = arg ρζ′(ρ) are balls too. Ingham's kernel and h(y) in Arb, the explicit
+  formula for M(x)/√x with the trivial-zero series, the Odlyzko-te Riele / Hurst
+  lattice, `search` with FLINT's LLL, and `phases` / `profile`, which reduce
+  γy − ψ mod 2π once in high precision so h near y can be evaluated in floats.
+- `skewes.py`: `first_zeros(n)` in padded `zeros_fast` windows, Lehman's sum vectorized over a grid of ω in blocks, the six error
+  terms of Lehman's theorem in mpmath with Chao and Plymen's sharper s₁, a
+  mean-value bound for how far H moves when every γ is off by δ, `polish` (one
+  bracketed secant step on Z per zero, refusing any zero without a sign change
+  within 10⁻⁷), and `crossing`, which puts it together and prints the x interval
+  rounded outward.
+- Charts: `docs/mertens.png`, `docs/skewes.png`.
+
+Checks:
+
+- μ against trial division to 3000, M(10^k) against OEIS A084237 for k ≤ 13
+  (k ≤ 10 in the tests), and the hyperbola method with the smallest possible table
+  against the sieve.
+- Certified zeros against Arb's own `acb_dirichlet_zeta_zeros` (all 79 below 200
+  overlap; all 2,081 below 2600 agree to 6e−238 at 800 bits), ζ′(ρ₁) against
+  mpmath to 1e−15.
+- Odlyzko and te Riele's sanity numbers: 2 Σ a_γ over the 25 and 70 largest
+  weights among the first 400 zeros is 0.780108 and 1.0787, and passes 1 at the
+  54th weight.
+- The explicit formula with 4,521 zeros against the sieve to 10⁷: rms 0.006,
+  worst 0.024 for x > 1000.
+- h(y) as a float profile agrees with the Arb ball to 1e−10. The lattice refuses
+  zeros that are not precise enough for its ν instead of rounding silently.
+- Lehman's sum over the first 1000 zeros at Chao and Plymen's two ω near 10¹⁹⁰:
+  0.88258736 and 0.88873670 against 0.88258736 and 0.88873669. The error terms
+  against their printed s₂, s₅, s₆; their parameter conditions hold for
+  A = 7.79·10⁶ and fail for 7.8·10⁶.
+- γ₂₀₀₀₀₀₀ = 1131944.4718248623 against their 1131944.4718, and indices against
+  Arb at 10⁶ and 2·10⁶. Polished zeros against 256-bit Arb zeros at 840 random
+  indices: worst 1.2e−9 (2.9e−9 before polishing), so δ = 2e−9.
+
+Results:
+
+- Mertens: |h| > 1 from 70 zeros in the lattice (1.0598, −1.0858), up to
+  1.2989 and −1.3072 with 300 zeros and y near 10²⁶³. Every h is a ball of radius
+  below 1e−35.
+- Lehman's scan over ω ∈ [400, 2800] finds exactly his three candidates 727.951,
+  853.853, 2682.977 (sums 0.980, 0.984, 0.973); the next is 0.919 at 1772.26.
+- Chao-Plymen with two million zeros: H = 1.0031960526 against their
+  1.0031960183 (3.4e−8 apart), |H − H*| < 2.69e−5, |R| < 0.0031133, so
+  I(ω, η) > 5.58e−5 and π(x) − li(x) > 9.07·10¹⁵⁰ somewhere in
+  [1.39792136·10³¹⁶, 1.39847567·10³¹⁶]. With their η and α, H clears the bar for
+  ω in [727.952016, 727.952104].
+
+Design notes:
+
+- The first lattice runs gave balls of radius 0.8 around h. y = z/2¹⁰ was being
+  formed at the default 53 bits, so γy mod 2π was noise. Everything that touches y
+  now runs at a precision sized from y itself, and a, ψ are stored as balls
+  computed at the zero's own precision.
+- Chao and Plymen's s₁ constant is 3·0.71523279 = 2.1457 in their theorem, but
+  the value they plug in is 2.1957/(ω − η). Their s₃ and s₄ are printed one and
+  two orders of magnitude too small. None of it matters for the conclusion.
+- `zeros_fast` returns zeros relative to the window center t₀, and only between
+  the first and last good Gram points of its window. My first chunked run cut
+  windows exactly at the chunk edges and lost 20 zeros sitting in Gram blocks that
+  straddle an edge (the first pair at 342563.28 and 342563.53, just below
+  g₅₄₀₁₀₀). Bisecting the index against Arb found it. `skewes.first_zeros` pads
+  each window by 50 and 200 Gram intervals and keeps only [g_lo, g_hi); two
+  million zeros take 225 s.
+- The spot checks set δ but do not prove it, so the crossing is a reproduction,
+  not a new proof. The Mertens side is rigorous: complete zero list from Turing's
+  method, every zero and ζ′(ρ) as a ball, h(y) as a ball.
+
+Next: the lower-order terms of the one-level density for the odd twists of 11a,
+or Polymath 15's effective approximation of H_t to push the heat flow to much
+larger x.
