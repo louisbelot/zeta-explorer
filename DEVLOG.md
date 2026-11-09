@@ -1296,3 +1296,78 @@ Design notes:
 Next: the lower-order terms of the one-level density for the odd twists of 11a,
 or a zero-free region for H_t at t = y = 0.4 from the triangle inequality on f_t
 plus the barrier argument, which is how Polymath turned these bounds into Λ ≤ 0.22.
+
+## 2026-11-09: The symmetric square, the ratios conjecture for twists, and an effective N
+
+Built:
+
+- `symsquare.py`: L(sym² E, s) for semistable E. Coefficients from the local
+  factors (λ² − 1 for p ∤ M, λ(M)² = 1/M at the bad prime), conductor M², gamma
+  factor Γ_R(s + 1)Γ_C(s + 1), and a smoothed approximate functional equation
+  `smoothed` for any self-dual Dirichlet series with Γ_R factors: weight
+  e^(u²/b − iβu) on one half and its reflection on the other, trapezoid sums on a
+  vertical contour, the derivative from the same sums.
+- `ratios.twist_arithmetic`, `twist_profile`, `twist_rho`, `twist_density`: the
+  Huynh-Keating-Snaith one-level density for quadratic twists, rederived for both
+  root numbers. `twist_r1` is the 1/log coefficient and `twist_effective_n` the
+  matrix size it implies.
+- `rmt.odd_orthogonal_half` (the SO(2N + 1) kernel unfolded by N + 1/2) and
+  `rmt.first_density_mix` (a first-eigenvalue law averaged over a spread of N).
+- Plots: the one-level densities of both twist families against the ratios
+  prediction, and the odd first zero against SO(2N_eff + 1) with an excision scan
+  at N = 3, 4, 5. Both rendered and checked by eye.
+
+Checks:
+
+- sym²: weight changes move L by 1e-15 to 1e-11 up to height 40, wrong gamma
+  factors break that by 6e-3 to 0.4; Euler product at s = 2 to 2e-9; Rankin-Selberg
+  sum of λ(n)² e^(−n/500) against the residue at w = 1, the w = 0 term and the
+  poles of 1/(1 + 11^(−w)) on Re w = 0, to 1.3e-6; L' against a Cauchy integral to
+  1e-11.
+- The closed forms for ∂ log G_p and A(−r, r) against the raw double sums
+  Σ λ(p^m)μ(p^h)x^m y^h at real r, to 1e-8 and 1e-12. A(0, 0) = 1 and
+  A₁(0) = −½ d/dr A(−r, r) to 1e-7, which is what makes the odd density vanish at 0.
+- The expansion 1 ± S − r₁(1 ± cos 2πx)/(log A − γ) at log A = 60 and 400 for all
+  four combinations of root number and χ_d(11), remainder under 76/log² A.
+- r₁ + γ + 1 = 2.8608 against DHKMS's 2.8600, and their N_eff = 2.14.
+
+Results (the 1,674 twists of 11a3 with 5 ≤ d ≤ 6000, zeros to x = 3.5, 330 s on
+14 processes):
+
+- One-level density on 30 bins of [0, 3]: odd twists χ² 25.0 against the ratios
+  prediction, 270.1 against SO(odd). Even twists 126.1 against 387.1, and 30.8
+  against 250.2 above x = 0.2; the ratios density says 1.59 at the origin, the data
+  0.26.
+- r₁ = 1.28360 (χ_d(11) = +1) and 0.84398 (−1). N_eff for the rank 1 odd twists:
+  mean 3.84, median 4.02. Matching the whole ratios density instead gives 4.00.
+- First zero of the odd twists, 18 bins of (0, 1.8): SO(2N_eff + 1) mixture χ²
+  145.4, KS 0.121, mean 0.881 against 0.840. SO(9) with the best cut (6% excised)
+  111.5. The data put 3.0% of their mass above 1.3, the models 11.6 to 13.4%.
+- Even side, for comparison: the SO(2N_eff) mixture gets the mean lowest zero
+  (0.3949 against 0.3941), as DHKMS found, while the shape near 0 still needs the
+  excision.
+
+Design notes:
+
+- The first version of the AFE rotated the weight by the full 3π/4 at every
+  height. Near the real axis that rotation turns the exp(−c·y^(2/3)) decay of V(n)
+  into pure oscillation, and L lost five digits for |Im s| < 1. β is now
+  3π/4 − 2/|Im s|, floored at 0. The contour also sat further right than needed, which cost
+  (√q)^c in cancellation; it now sits at max(Re s, 1 − Re s) + 1/2.
+- My first Rankin-Selberg check was 1.4e-3 off at X = 500 and 4e-6 at X = 2000,
+  which looked like an error in L(sym², 1). It was the bad prime: λ(11^k)² = 11^(−k)
+  makes the local factor of Σ λ(n)² n^(−w) differ from ζ L(sym²)/ζ(2w) by
+  1/(1 + 11^(−w)), whose poles sit on Re w = 0 and contribute an oscillating O(1).
+- Unfolding SO(2N + 1) by N leaves its one-level density with no 1/N term, so no
+  N can match the ratios correction. By N + 1/2, which counts the eigenvalue at 1
+  the way θ_d counts the central zero, the correction is −(1 − cos 2πy)/(2N), the
+  mirror of the SO(2N) case.
+- DHKMS unfold by the family top log X instead of each twist's log A_d. Converting
+  between the two moves r₁ by γ + 1, which is why their 2.86 and my 1.28 describe
+  the same curve.
+- The sym² profile on the t grid is the slow part (800 points, about 0.05 s each);
+  it is computed once per family and both values of χ_d(11) reuse it.
+
+Next: elliptic curves in the browser (pick a curve, Z(t), the central order, the
+twist central values), or the two-level density of the odd twists from the ratios
+conjecture, which is where the first zero should get its narrowness from.
