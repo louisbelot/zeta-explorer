@@ -1727,3 +1727,45 @@ def plot_effective(x: ArrayLike, err: dict[str, ArrayLike], bound: dict[str, Arr
         _style(ax)
     fig.tight_layout()
     return fig
+
+
+def plot_sympower(
+    curves: dict[str, tuple[ArrayLike, ArrayLike, ArrayLike]], t: ArrayLike, phi: ArrayLike,
+    zeros: ArrayLike, window: tuple[float, float], name: str,
+) -> Figure:
+    import matplotlib.pyplot as plt
+
+    fig = plt.figure(figsize=(12, 6.4), facecolor=SURFACE)
+    grid = fig.add_gridspec(len(curves), 2, width_ratios=[1.25, 1])
+    left = [fig.add_subplot(grid[i, 0]) for i in range(len(curves))]
+    for ax, (label, (ts, z, g)), color in zip(left, curves.items(), ORDINAL, strict=False):
+        ax.axhline(0, color=INK_SECONDARY, linewidth=0.6)
+        ax.plot(ts, z, color=color, linewidth=1.3)
+        ax.plot(g, np.zeros(len(g)), "o", color=INK, markersize=2.8)
+        ax.set_xlim(ts[0], ts[-1])
+        ax.set_ylabel(label, color=INK)
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    for ax in left[:-1]:
+        ax.tick_params(labelbottom=False)
+    left[0].set_title("Z(t) for symmetric powers of Δ, zeros marked", color=INK, fontsize=11,
+                      loc="left")
+    left[-1].set_xlabel("t", color=INK)
+    right = fig.add_subplot(grid[:, 1])
+    t = np.asarray(t, dtype=float)
+    g = np.sort(np.asarray(zeros, dtype=float))
+    s = np.searchsorted(g, t, side="right") - np.asarray(phi, dtype=float)
+    right.axvspan(*window, color=ACCENT, alpha=0.12, label="Turing window")
+    right.axhline(0, color=INK_SECONDARY, linewidth=0.6)
+    right.plot(t, s, color=SERIES, linewidth=1.1, label="zeros found − Φ(t)")
+    right.plot(t, s - (t > g[len(g) // 3]), color=INK_SECONDARY, linewidth=0.9, linestyle=":",
+               label="the same with one zero left out")
+    right.set_xlim(t[0], t[-1])
+    right.set_ylim(-2.4, 2.2)
+    right.set_xlabel("t", color=INK)
+    right.set_title(f"S(t) for {name}", color=INK, fontsize=11, loc="left")
+    right.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper left")
+    right.set_facecolor(SURFACE)
+    _style(right)
+    fig.tight_layout()
+    return fig

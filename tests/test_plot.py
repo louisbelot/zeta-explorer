@@ -49,6 +49,7 @@ from zeta_explorer.plot import (
     plot_skewes,
     plot_spacing,
     plot_spiral,
+    plot_sympower,
     plot_twist_density,
     plot_twist_zeros,
     plot_z,
@@ -396,3 +397,13 @@ def test_plot_odd_effective(tmp_path):
     labels = [t.get_text() for t in fig.axes[1].get_legend().get_texts()]
     assert labels[-1] == "Gross-Zagier floor: drops 1.00%"
     assert float(labels[1].split("= ")[1]) < float(labels[0].split("= ")[1])
+
+
+def test_plot_sympower_panels():
+    t = np.linspace(0, 10, 60)
+    g = np.array([2.0, 4.5, 7.0])
+    curves = {"sym² Δ": (t, np.sin(t), g), "sym³ Δ": (t, np.cos(t), g)}
+    fig = plot_sympower(curves, t, t / 3, g, (6.0, 10.0), "sym² of 11a")
+    assert [ax.get_ylabel() for ax in fig.axes[:2]] == ["sym² Δ", "sym³ Δ"]
+    assert fig.axes[2].get_title(loc="left") == "S(t) for sym² of 11a"
+    assert len(fig.axes[2].get_lines()) == 3
