@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 
 import mpmath
 import numpy as np
@@ -48,3 +49,66 @@ def lehman_errors(
             "s6": A * mpmath.log(A) * mpmath.exp(-(A**2) / (2 * alpha) + hi / 2)
             * (4 / mpmath.sqrt(alpha) + 15 * eta),
         }
+
+
+def zero_error(omega: float, alpha: float, gamma: ArrayLike, delta: float) -> float:
+    g = np.asarray(gamma, dtype=float) - delta
+    q = 0.25 + g**2
+    w = np.exp(-(g**2) / (2 * alpha))
+    slope = ((g / alpha) * (1 + 2 * g) + omega + 2 + 2 * g * omega) / q + 2 * g * (1 + 2 * g) / q**2
+    return float(delta * np.sum(w * slope))
+
+
+def outward(x: mpmath.mpf, direction: int, digits: int = 9) -> str:
+    e = int(mpmath.floor(mpmath.log10(x)))
+    m = x / mpmath.mpf(10) ** (e - digits + 1)
+    m = int(mpmath.floor(m) if direction < 0 else mpmath.ceil(m))
+    s = str(m)
+    return f"{s[0]}.{s[1:]}e+{e}"
+
+
+@dataclass(frozen=True)
+class Crossing:
+    omega: float
+    eta: float
+    alpha: float
+    T: float
+    H: float
+    dH: float
+    errors: dict[str, mpmath.mpf]
+
+    @property
+    def R(self) -> float:
+        return math.nextafter(float(sum(self.errors.values())), math.inf)
+
+    @property
+    def lower(self) -> float:
+        return -1 + self.H - self.dH - self.R
+
+    @property
+    def interval(self) -> tuple[str, str]:
+        with mpmath.workdps(30):
+            w = mpmath.mpf(self.omega)
+            return outward(mpmath.exp(w - self.eta), -1), outward(mpmath.exp(w + self.eta), 1)
+
+    @property
+    def excess(self) -> float:
+        return self.lower * math.exp((self.omega - self.eta) / 2) / (self.omega + self.eta)
+
+
+def crossing(
+    omega: float,
+    eta: float,
+    alpha: float,
+    gamma: ArrayLike,
+    A: float,
+    delta: float,
+    improved: bool = True,
+) -> Crossing:
+    g = np.asarray(gamma, dtype=float)
+    T = float(g[-1])
+    H = float(lehman_sum(omega, g, alpha)[0])
+    return Crossing(
+        omega, eta, alpha, T, H, zero_error(omega, alpha, g, delta),
+        lehman_errors(omega, eta, alpha, T, A, improved),
+    )

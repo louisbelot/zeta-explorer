@@ -57,3 +57,21 @@ def test_lehman_conditions():
     with pytest.raises(ValueError):
         skewes.lehman_errors(437.4, 0.000198219, 7.86e10, 1131944.4718, 7.79e6)
     assert skewes.lehman_errors(437.4, 0.000198219, 7.86e10, 1131944.4718, 7.79e6, False)
+
+
+def test_zero_error_is_linear_in_delta(first_thousand):
+    a = skewes.zero_error(727.952, 1e8, first_thousand, 1e-9)
+    b = skewes.zero_error(727.952, 1e8, first_thousand, 2e-9)
+    assert b == pytest.approx(2 * a, rel=1e-6)
+    t = first_thousand[:50]
+    h = 1e-7
+    slope = (skewes.lehman_sum(727.952, t + h, 1e8) - skewes.lehman_sum(727.952, t, 1e8)) / h
+    assert abs(slope[0]) * 1e-9 <= skewes.zero_error(727.952, 1e8, t, 1e-9) * 50
+
+
+def test_crossing_interval_and_excess():
+    c = skewes.Crossing(727.952074, 0.000198219, 7.86e10, 1131944.4718, 1.00319601829755,
+                        2.05971416e-5, skewes.lehman_errors(**CHAO_PLYMEN))
+    assert c.interval == ("1.39792136e+316", "1.39847567e+316")
+    assert c.lower > 6e-5
+    assert c.excess > 1e150
