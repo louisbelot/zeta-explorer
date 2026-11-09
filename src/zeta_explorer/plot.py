@@ -1484,3 +1484,91 @@ def plot_dedekind(D: int, gz: ArrayLike, gl: ArrayLike, t0: float = 100.0, width
         _style(ax)
     fig.tight_layout()
     return fig
+
+
+def plot_mertens(x: ArrayLike, q: ArrayLike, qz: ArrayLike, t: ArrayLike,
+                 profiles: list[tuple[str, np.ndarray]], ns: ArrayLike, h_pos: ArrayLike,
+                 h_neg: ArrayLike, zeros: int) -> Figure:
+    import matplotlib.pyplot as plt
+
+    x, q, qz, t = (np.asarray(v, dtype=float) for v in (x, q, qz, t))
+    fig = plt.figure(figsize=(13, 8.4), facecolor=SURFACE)
+    grid = fig.add_gridspec(2, 2, height_ratios=[1, 1.05])
+    top = fig.add_subplot(grid[0, :])
+    left, right = fig.add_subplot(grid[1, 0]), fig.add_subplot(grid[1, 1])
+
+    top.plot(x, q, color=SERIES, linewidth=2.2, label="M(x)/√x from the sieve")
+    top.plot(x, qz, color=ACCENT, linewidth=0.6, label=f"explicit formula, {zeros:,} zeros")
+    for v in (1, -1):
+        top.axhline(v, color=INK_SECONDARY, linewidth=0.8, linestyle="--")
+    top.set_xscale("log")
+    top.set_xlim(x[0], x[-1])
+    top.set_ylim(-1.15, 1.45)
+    top.set_xlabel("x", color=INK)
+    top.set_title("Mertens: |M(x)| < √x as far as anyone can sieve", color=INK, fontsize=12,
+                  loc="left")
+    top.legend(frameon=False, fontsize=9, ncol=2, loc="upper left")
+
+    for (label, p), color in zip(profiles, (ACCENT, SERIES), strict=False):
+        left.plot(t, p, color=color, linewidth=1.1, label=label)
+    for v in (1, -1):
+        left.axhline(v, color=INK_SECONDARY, linewidth=0.8, linestyle="--")
+    left.set_xlim(t[0], t[-1])
+    left.set_xlabel("log x − y±", color=INK)
+    left.set_ylabel("h(log x)", color=INK)
+    left.set_title("Near the y found by LLL the smoothed sum passes ±1", color=INK, fontsize=12,
+                   loc="left")
+    lo, hi = left.get_ylim()
+    left.set_ylim(lo, hi + 0.3 * (hi - lo))
+    left.legend(frameon=False, fontsize=9, loc="upper left")
+
+    ns = np.asarray(ns, dtype=float)
+    right.plot(ns, h_pos, "o-", color=ACCENT, linewidth=1.4, markersize=4,
+               label="lim sup M(x)/√x ≥ h(y₊)")
+    right.plot(ns, -np.asarray(h_neg, dtype=float), "s-", color=SERIES, linewidth=1.4,
+               markersize=4, label="lim inf M(x)/√x ≤ h(y₋), sign flipped")
+    right.axhline(1, color=INK_SECONDARY, linewidth=0.8, linestyle="--")
+    right.set_xlabel("zeros in the lattice", color=INK)
+    right.set_ylabel("|h(y)|", color=INK)
+    right.set_title("Bigger lattices, bigger values", color=INK, fontsize=12, loc="left")
+    right.legend(frameon=False, fontsize=9, loc="lower right")
+    for ax in (top, left, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig
+
+
+def plot_skewes(omega: ArrayLike, s: ArrayLike, peaks: ArrayLike, w: ArrayLike, H: ArrayLike,
+                bar: float, best: float, zeros: int) -> Figure:
+    import matplotlib.pyplot as plt
+
+    omega, s, w, H = (np.asarray(v, dtype=float) for v in (omega, s, w, H))
+    fig, (left, right) = plt.subplots(1, 2, figsize=(13, 4.8), facecolor=SURFACE)
+    left.plot(omega, s, color=SERIES, linewidth=0.7)
+    left.axhline(1, color=INK_SECONDARY, linewidth=0.8, linestyle="--")
+    for p in peaks:
+        left.annotate(f"{p:.3f}", (p, np.interp(p, omega, s)), textcoords="offset points",
+                      xytext=(0, 6), ha="center", fontsize=9, color=ACCENT)
+    left.set_xlim(omega[0], omega[-1])
+    left.set_ylim(top=1.12)
+    left.set_xlabel("ω = log x", color=INK)
+    left.set_ylabel("S(ω)", color=INK)
+    left.set_title("Lehman's sum over the first 1,000 zeros, max per bin", color=INK, fontsize=12,
+                   loc="left")
+
+    right.plot(w, H, color=SERIES, linewidth=1.2, label=f"H(ω) with {zeros:,} zeros")
+    right.axhline(bar, color=ACCENT, linewidth=1.2, linestyle="--", label="1 + |R| + |H − H*|")
+    right.fill_between(w, bar, H, where=H > bar, color=ACCENT, alpha=0.25, linewidth=0)
+    right.axvline(best, color=INK_SECONDARY, linewidth=0.8)
+    right.set_xlim(w[0], w[-1])
+    right.set_xlabel("ω", color=INK)
+    right.set_title("Above the dashed line, π(x) > li(x) near e^ω", color=INK, fontsize=12,
+                    loc="left")
+    right.legend(frameon=False, fontsize=9, loc="lower left")
+    right.ticklabel_format(axis="x", useOffset=727.95, style="plain")
+    for ax in (left, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig

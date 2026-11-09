@@ -38,11 +38,13 @@ from zeta_explorer.plot import (
     plot_low_lying,
     plot_low_lying_scales,
     plot_maxima,
+    plot_mertens,
     plot_moments,
     plot_multieval,
     plot_odd_excision,
     plot_race,
     plot_rs_error,
+    plot_skewes,
     plot_spacing,
     plot_spiral,
     plot_twist_zeros,
@@ -336,3 +338,21 @@ def test_plot_dedekind_counts():
     zero_marks = [ln for ln in fig.axes[0].lines if ln.get_marker() == "o"]
     assert sum(len(ln.get_xdata()) for ln in zero_marks) == int(
         np.sum((gz > 100) & (gz < 112)) + np.sum((gl > 100) & (gl < 112)))
+
+
+def test_plot_mertens_panels():
+    x = np.geomspace(10, 1e4, 50)
+    t = np.linspace(-1, 1, 21)
+    fig = plot_mertens(x, np.zeros_like(x), np.zeros_like(x), t, [("y+", t), ("y-", -t)],
+                       [10, 20], [0.5, 0.7], [-0.4, -0.6], 79)
+    assert len(fig.axes) == 3
+    assert fig.axes[0].get_xscale() == "log"
+    assert fig.axes[0].get_legend().get_texts()[1].get_text() == "explicit formula, 79 zeros"
+    assert list(fig.axes[2].lines[1].get_ydata()) == [0.4, 0.6]
+
+
+def test_plot_skewes_shades_the_proof():
+    w = np.linspace(0, 1, 101)
+    fig = plot_skewes(w * 10, np.sin(w), [5.0], w, w, 0.5, 0.75, 1000)
+    assert fig.axes[0].texts[0].get_text() == "5.000"
+    assert len(fig.axes[1].collections) == 1
