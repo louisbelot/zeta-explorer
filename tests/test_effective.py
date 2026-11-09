@@ -155,3 +155,52 @@ def test_phase_model_small_terms():
     d = E.phase_model(x, t, 4000)
     assert np.std(d) == pytest.approx(math.sqrt(np.sum(w * w) / 2) / math.pi, rel=0.1)
     assert np.array_equal(d, E.phase_model(x, t, 4000))
+
+
+ODLYZKO_BASE = 267653395647
+ODLYZKO_1E12 = [
+    1.8475231278, 2.3623669687, 2.6816309165, 2.8619899438, 3.1576654790,
+    3.4342666839, 3.5808912999, 3.8344795320, 4.0584820011, 4.3570661334,
+]
+
+
+@pytest.mark.parametrize("t", [0.0, 0.2])
+def test_window_matches_direct(t):
+    w = E.HtWindow(1e6, 1e6 + 400, t)
+    u = np.linspace(w.u_lo, w.u_hi, 301)
+    x = 2 * (w.t0 + u)
+    assert np.abs(w.z(u) - E.zt(x, t)).max() < 2e-8
+    assert np.abs(w.theta(u) + w.n_ref * math.pi - E.theta_t(x, t)).max() < 1e-8
+
+
+def test_window_taylor_orders():
+    w = E.HtWindow(3e4, 3.2e4, 0.1)
+    assert len(w.sums) > 2
+    u = np.linspace(w.u_lo, w.u_hi, 301)
+    assert np.abs(w.z(u) - E.zt(2 * (w.t0 + u), 0.1)).max() < 1e-9
+
+
+def test_window_rejects_bad_ranges():
+    with pytest.raises(ValueError):
+        E.HtWindow(1e4, 1e4, 0.2)
+    with pytest.raises(ValueError):
+        E.HtWindow(100.0, 1e4, 0.2)
+
+
+def test_window_reproduces_odlyzko():
+    w = E.HtWindow(2 * (ODLYZKO_BASE + 1.7), 2 * (ODLYZKO_BASE + 4.5), 0.0)
+    u = w.zeros(per_gap=32)
+    gamma = w.t0 - ODLYZKO_BASE + u
+    assert gamma == pytest.approx(ODLYZKO_1E12, abs=3e-9)
+    n, _ = w.displacement(u)
+    assert np.all(np.abs(n - (10**12 + 1 + np.arange(10))) <= 1)
+
+
+def test_window_crystal_at_2e12():
+    t = 0.4
+    w = E.HtWindow(2e12, 2e12 + 400, t)
+    n, d = w.displacement(w.zeros())
+    assert np.array_equal(np.diff(n), np.ones(len(n) - 1, dtype=int))
+    assert np.abs(d).max() < 0.1
+    model = E.phase_model(2e12, t, 2000)
+    assert np.sqrt(np.mean(d * d)) == pytest.approx(np.sqrt(np.mean(model**2)), rel=0.1)

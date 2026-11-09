@@ -6,6 +6,7 @@ import mpmath
 import numpy as np
 from numpy.typing import ArrayLike
 
+from zeta_explorer.multieval import BandSum, log_phases, theta_reference, theta_shift
 from zeta_explorer.zeros import illinois_many
 
 _LOG_16 = math.log(16)
@@ -265,3 +266,73 @@ def phase_model(x: float, t: float, samples: int = 20_000, seed: int = 0, batch:
         out.append(np.angle(w @ np.exp(1j * theta[1:])) / math.pi)
     d = np.concatenate(out)
     return d - np.rint(d)
+
+
+def _stirling_tail_im(T: np.ndarray) -> np.ndarray:
+    z = (0.5 + 1j * T) / 2
+    return np.imag(1 / (12 * z) - 1 / (360 * z**3) + 1 / (1260 * z**5))
+
+
+class HtWindow:
+    def __init__(self, x_lo: float, x_hi: float, t: float, oversample: float = 2.0,
+                 tol: float = 1e-12):
+        if not x_lo < x_hi:
+            raise ValueError("need x_lo < x_hi")
+        _check(np.array([x_lo]), 0.0, t)
+        self.t = t
+        self.t0 = float(round((x_lo + x_hi) / 4))
+        self.u_lo, self.u_hi = x_lo / 2 - self.t0, x_hi / 2 - self.t0
+        self.n_min, self.n = int(n_terms(x_lo, t)), int(n_terms(x_hi, t))
+        self.alpha0 = complex(alpha((1 - 2j * self.t0) / 2))
+        self.n_ref, self.theta_base = theta_reference(self.t0)
+        ln = self.log_n = np.log(np.arange(1, self.n + 1, dtype=float))
+        self.a = np.exp(t / 4 * ln * ln - (0.5 + t / 2 * self.alpha0) * ln
+                        + 1j * log_phases(self.t0, self.n))
+        eps = float(np.max(np.abs(self._eps(np.array([self.u_lo, self.u_hi]))))) * ln[-1]
+        K, term = 1, eps
+        while term >= 1e-16:
+            K += 1
+            term *= eps / K
+        self.sums = [BandSum(np.conj(self.a * (-ln) ** k / math.factorial(k)), self.u_lo,
+                             self.u_hi, oversample, tol) for k in range(K)]
+
+    def _eps(self, u: np.ndarray) -> np.ndarray:
+        return self.t / 2 * (alpha((1 - 2j * (self.t0 + u)) / 2) - self.alpha0)
+
+    def main_sum(self, u: ArrayLike) -> np.ndarray:
+        u = np.atleast_1d(np.asarray(u, dtype=float))
+        e = self._eps(u)
+        out = np.zeros(len(u), dtype=complex)
+        for S in reversed(self.sums):
+            out = out * e + np.conj(S(u))
+        if self.n_min < self.n:
+            N = n_terms(2 * (self.t0 + u), self.t)
+            for k in range(self.n_min + 1, self.n + 1):
+                extra = N < k
+                ln = self.log_n[k - 1]
+                out[extra] -= self.a[k - 1] * np.exp((1j * u[extra] - e[extra]) * ln)
+        return out
+
+    def theta(self, u: ArrayLike) -> np.ndarray:
+        u = np.asarray(u, dtype=float)
+        T = self.t0 + u
+        shift = -(self.t / 4 * alpha((1 - 2j * T) / 2) ** 2).imag
+        return theta_shift(self.t0, self.theta_base, u) + math.pi - _stirling_tail_im(T) + shift
+
+    def z(self, u: ArrayLike) -> np.ndarray:
+        u = np.atleast_1d(np.asarray(u, dtype=float))
+        sign = -1.0 if self.n_ref % 2 else 1.0
+        main = 2 * sign * (np.exp(-1j * self.theta(u)) * self.main_sum(u)).real
+        return main - c_amplitude(2 * (self.t0 + u), 0.0, self.t)
+
+    def displacement(self, u: ArrayLike) -> tuple[np.ndarray, np.ndarray]:
+        k = self.theta(u) / math.pi + 0.5
+        m = np.rint(k)
+        return self.n_ref + m.astype(np.int64), k - m
+
+    def zeros(self, per_gap: int = 8) -> np.ndarray:
+        step = math.pi / float(theta_t_prime(2 * (self.t0 + self.u_hi), self.t)) / 2 / per_gap
+        u = np.linspace(self.u_lo, self.u_hi, math.ceil((self.u_hi - self.u_lo) / step) + 1)
+        f = self.z(u)
+        i = np.flatnonzero(f[:-1] * f[1:] < 0)
+        return illinois_many(self.z, u[i], u[i + 1], f[i], f[i + 1], rtol=0.0, atol=1e-12)
