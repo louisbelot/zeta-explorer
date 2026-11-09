@@ -236,10 +236,10 @@ def quadratic(d: int) -> Character:
     return Character(q, num, 2)
 
 
-def class_number(d: int) -> int:
+def reduced_forms(d: int) -> list[tuple[int, int, int]]:
     if d >= 0 or d % 4 not in (0, 1):
-        raise ValueError("class_number counts forms of negative discriminant")
-    h = 0
+        raise ValueError("reduced_forms lists forms of negative discriminant")
+    out = []
     a = 1
     while 3 * a * a <= -d:
         for b in range(-a + 1, a + 1):
@@ -248,9 +248,13 @@ def class_number(d: int) -> int:
             c = (b * b - d) // (4 * a)
             if c < a or (c == a and b < 0) or math.gcd(math.gcd(a, b), c) != 1:
                 continue
-            h += 1
+            out.append((a, b, c))
         a += 1
-    return h
+    return out
+
+
+def class_number(d: int) -> int:
+    return len(reduced_forms(d))
 
 
 def unit_count(d: int) -> int:
