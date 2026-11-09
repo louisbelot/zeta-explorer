@@ -134,3 +134,24 @@ def test_displacement_of_ideal_points():
     m, d = E.displacement(E.ideal_points(n, 0.3), 0.3)
     assert np.array_equal(m, n)
     assert np.abs(d).max() < 1e-9
+
+
+def test_zeros_crystallize():
+    X = 1e6
+    x = E.real_zeros(0.4, X, X + 300)
+    n, d = E.displacement(x, 0.4)
+    assert np.array_equal(np.diff(n), np.ones(len(n) - 1, dtype=int))
+    assert np.abs(d).max() < 0.35
+    model = E.phase_model(X, 0.4, 4000)
+    assert np.sqrt(np.mean(d * d)) == pytest.approx(np.sqrt(np.mean(model**2)), rel=0.15)
+
+
+def test_phase_model_small_terms():
+    x, t = 1e8, 0.5
+    s = (1 - 1j * x) / 2
+    sigma = (s + t / 2 * E.alpha(s)).real
+    ln = np.log(np.arange(2, int(E.n_terms(x, t)) + 1))
+    w = np.exp(t / 4 * ln * ln - sigma * ln)
+    d = E.phase_model(x, t, 4000)
+    assert np.std(d) == pytest.approx(math.sqrt(np.sum(w * w) / 2) / math.pi, rel=0.1)
+    assert np.array_equal(d, E.phase_model(x, t, 4000))

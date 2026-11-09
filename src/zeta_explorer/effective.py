@@ -222,3 +222,46 @@ def real_zeros(t: float, lo: float, hi: float, per_gap: int = 8) -> np.ndarray:
     if len(i) == 0:
         return np.empty(0)
     return illinois_many(lambda q: zt(q, t), x[i], x[i + 1], f[i], f[i + 1], rtol=1e-15)
+
+
+def _smallest_factor(N: int) -> np.ndarray:
+    spf = np.zeros(N + 1, dtype=np.int64)
+    for p in range(2, math.isqrt(N) + 1):
+        if spf[p] == 0:
+            block = spf[p * p :: p]
+            block[block == 0] = p
+    rest = np.flatnonzero(spf == 0)
+    spf[rest] = rest
+    return spf
+
+
+def phase_model(x: float, t: float, samples: int = 20_000, seed: int = 0, batch: int = 500,
+                tail: float = 1e-7) -> np.ndarray:
+    N = int(n_terms(x, t))
+    s = (1 - 1j * x) / 2
+    sigma = float((s + t / 2 * alpha(s)).real)
+    ln = np.log(np.arange(1, N + 1, dtype=float))
+    w = np.exp(t / 4 * ln * ln - sigma * ln)
+    rest = np.sqrt(np.cumsum(w[::-1] ** 2)[::-1])
+    if rest[-1] < tail:
+        w = w[: max(2, int(np.argmax(rest < tail)))]
+    N = len(w)
+    batch = max(1, min(batch, (1 << 24) // N))
+    spf = _smallest_factor(N)
+    n = np.arange(N + 1)
+    rng = np.random.default_rng(seed)
+    out = []
+    for m in np.diff(np.r_[0:samples:batch, samples]):
+        theta = np.zeros((N + 1, m))
+        lo = 2
+        while lo <= N:
+            k = n[lo : min(2 * lo, N + 1)]
+            p = spf[k]
+            prime = p == k
+            theta[k[prime]] = rng.uniform(0, 2 * math.pi, (int(prime.sum()), m))
+            c = k[~prime]
+            theta[c] = theta[c // spf[c]] + theta[spf[c]]
+            lo *= 2
+        out.append(np.angle(w @ np.exp(1j * theta[1:])) / math.pi)
+    d = np.concatenate(out)
+    return d - np.rint(d)
