@@ -9,6 +9,7 @@ from zeta_explorer.afe import afe_length, l_afe
 from zeta_explorer.bias import Race, prime_race, race
 from zeta_explorer.characters import conrey, primitive_characters, totient
 from zeta_explorer.continuation import dirichlet_sums, em_sums, eta_sums
+from zeta_explorer.delta import SatoTate
 from zeta_explorer.elliptic import Curve, EllipticL, hardy_z, zeros_below
 from zeta_explorer.explicit import chebyshev_psi, pi_from_zeros, prime_pi, psi_from_zeros, riemann_r
 from zeta_explorer.gram import good_gram, z_values
@@ -1379,6 +1380,59 @@ def plot_davenport(off: ArrayLike, line: ArrayLike, sigma0: float, T: float) -> 
     share.set_ylabel("share of zeros with 0 < t < T off the line", color=INK)
     share.set_title("Share of zeros off the line", color=INK, fontsize=12, loc="left")
     for ax in (zp, zmap, share):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig
+
+
+def plot_delta(st: SatoTate, zeros: ArrayLike, x: ArrayLike, ms: tuple[int, ...] = (1, 2, 3),
+               bins: int = 60) -> Figure:
+    import matplotlib.pyplot as plt
+
+    from zeta_explorer import delta
+
+    zeros = np.asarray(zeros, dtype=float)
+    x = np.asarray(x, dtype=float)
+    fig, (zp, hist, bias) = plt.subplots(1, 3, figsize=(15, 4.8), facecolor=SURFACE)
+
+    t = np.linspace(0, 40, 1601)
+    zp.plot(t, delta.hardy_z(t), color=SERIES, linewidth=1.5)
+    zp.axhline(0, color=INK_SECONDARY, linewidth=0.8)
+    near = zeros[zeros <= t[-1]]
+    zp.plot(near, np.zeros_like(near), "o", color=ACCENT, markersize=4)
+    zp.set_xlim(t[0], t[-1])
+    zp.set_xlabel("t", color=INK)
+    zp.set_ylabel("Z_Δ(t)", color=INK)
+    zp.set_title(f"Z for L(s, Δ), first zero {zeros[0]:.6f}", color=INK, fontsize=12, loc="left")
+
+    hist.hist(st.angle, bins=bins, range=(0, np.pi), density=True, color=ORDINAL[0],
+              edgecolor=SURFACE, linewidth=0.4)
+    th = np.linspace(0, np.pi, 400)
+    hist.plot(th, delta.st_density(th), color=ACCENT, linewidth=1.8)
+    hist.set_xlim(0, np.pi)
+    hist.set_xlabel("θ_p, with τ(p) = 2 p^(11/2) cos θ_p", color=INK)
+    hist.set_ylabel("density", color=INK)
+    hist.set_title(f"{len(st.p):,} primes against (2/π) sin²θ", color=INK, fontsize=12,
+                   loc="left")
+
+    shades = iter(ORDINAL[1::2])
+    for m in ms:
+        odd = delta.root_number(m) == -1
+        bias.plot(x, st.psi(m, x) / np.sqrt(x), linewidth=1.1,
+                  color=ACCENT if odd else next(shades),
+                  label=f"Sym^{m}, ε = {delta.root_number(m):+d}")
+    for level in (0, -2):
+        bias.axhline(level, color=INK_SECONDARY, linewidth=1, linestyle="--")
+    bias.set_xscale("log")
+    bias.set_xlim(x[0], x[-1])
+    bias.set_xlabel("x", color=INK)
+    bias.set_ylabel("Ψ_m(x) / √x", color=INK)
+    bias.set_title("Central zeros of Sym^m L show up in the primes", color=INK, fontsize=12,
+                   loc="left")
+    bias.set_ylim(-4.5, 2.5)
+    bias.legend(frameon=False, fontsize=8, ncol=3, loc="upper center")
+    for ax in (zp, hist, bias):
         ax.set_facecolor(SURFACE)
         _style(ax)
     fig.tight_layout()

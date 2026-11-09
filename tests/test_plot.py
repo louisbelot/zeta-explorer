@@ -7,6 +7,7 @@ from matplotlib.animation import PillowWriter
 from PIL import Image
 
 from zeta_explorer.bias import race
+from zeta_explorer.delta import sato_tate, zeros
 from zeta_explorer.li import li_trend
 from zeta_explorer.lowlying import OneLevel, w_symplectic
 from zeta_explorer.moments import EULER_GAMMA, polynomial_integral
@@ -18,6 +19,7 @@ from zeta_explorer.plot import (
     plot_central_values,
     plot_continuation,
     plot_davenport,
+    plot_delta,
     plot_domain,
     plot_ec_z,
     plot_explicit,
@@ -313,3 +315,12 @@ def test_plot_davenport_counts():
     share = fig.axes[2].lines[0].get_ydata()
     assert np.all((share > 0) & (share < 0.05))
     assert "0.8000" in fig.axes[0].texts[0].get_text()
+
+
+def test_plot_delta_panels():
+    st = sato_tate(1 << 12)
+    fig = plot_delta(st, zeros(20), np.geomspace(100, 4000, 50))
+    assert fig.axes[0].get_title(loc="left").endswith("9.222379")
+    assert fig.axes[1].get_title(loc="left").startswith(f"{len(st.p):,} primes")
+    labels = [t.get_text() for t in fig.axes[2].get_legend().get_texts()]
+    assert labels == ["Sym^1, ε = +1", "Sym^2, ε = +1", "Sym^3, ε = -1"]
