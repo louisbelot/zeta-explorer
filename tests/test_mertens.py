@@ -71,6 +71,31 @@ def test_explicit_formula_rebuilds_m(zeros):
     assert np.max(np.abs(m.q_from_zeros(x, zeros) - q)) < 0.04
 
 
+def test_search_aligns_the_heavy_phases(zeros):
+    r = m.search(zeros, 20)
+    assert float(r.h.mid()) > 0.55
+    assert float(r.h.rad()) < 1e-30
+    a = np.array([float(z.a.mid()) for z in zeros])
+    heavy = np.argsort(-a)[:20]
+    phi = m.phases(r.y, zeros)[heavy]
+    assert np.sum(a[heavy] * np.cos(phi)) > 0.9 * np.sum(a[heavy])
+
+
+def test_negative_search(zeros):
+    r = m.search(zeros, 20, sign=-1)
+    assert float(r.h.mid()) < -0.55
+
+
+def test_profile_agrees_with_the_ball(zeros):
+    r = m.search(zeros, 15)
+    assert m.profile(r.y, zeros, [0.0])[0] == pytest.approx(float(r.h.mid()), abs=1e-10)
+
+
+def test_lattice_refuses_imprecise_zeros(zeros):
+    with pytest.raises(ValueError):
+        m.lattice(zeros, 10, 400)
+
+
 def test_top_weights_match_odlyzko_te_riele():
     a = np.sort(m.arrays(m.certified_zeros(600, bits=64))[1][:400])[::-1]
     total = 2 * np.cumsum(a)

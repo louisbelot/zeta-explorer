@@ -4,12 +4,14 @@ import math
 from dataclasses import dataclass
 
 import numpy as np
-from flint import acb, acb_series, arb
+from flint import acb, acb_series, arb, fmpz_mat
 from numpy.typing import ArrayLike
 
 from zeta_explorer.certified import Certificate, certify, precision, z_sign
 from zeta_explorer.riemann_siegel import z_rs
 from zeta_explorer.zeros import illinois
+
+Y_SHIFT = 10
 
 
 def mobius_sieve(n: int) -> np.ndarray:
@@ -174,3 +176,76 @@ def q_from_zeros(x: ArrayLike, zeros: list[Zero], smooth: bool = False) -> np.nd
     y = np.log(x)
     q = 2 * (np.cos(np.outer(y, g) - psi) @ (a * w))
     return q + trivial(x) / np.sqrt(x)
+
+
+@dataclass(frozen=True)
+class Search:
+    sign: int
+    n: int
+    nu: int
+    z: int
+    h: arb
+
+    @property
+    def y(self) -> arb:
+        return exact_y(self.z)
+
+
+def exact_y(z: int) -> arb:
+    with precision(abs(z).bit_length() + 64):
+        return arb(z) / 2**Y_SHIFT
+
+
+def _floor(x: arb) -> int:
+    v = x.floor().unique_fmpz()
+    if v is None:
+        raise ValueError("the zeros are not precise enough for this lattice")
+    return int(v)
+
+
+def lattice(zeros: list[Zero], n: int, nu: int, sign: int = 1) -> list[list[int]]:
+    best = sorted(range(len(zeros)), key=lambda i: -float(zeros[i].a.mid()))[:n]
+    with precision(nu + 128):
+        scale = arb(2) ** nu
+        shift = arb(0) if sign > 0 else arb.pi()
+        c = [zeros[i].a.sqrt() * scale for i in best]
+        rows = [
+            [-_floor(ci * (zeros[i].psi + shift)) for ci, i in zip(c, best, strict=True)]
+            + [2**nu * n**4, 0],
+            [_floor(ci * zeros[i].gamma / 2**Y_SHIFT) for ci, i in zip(c, best, strict=True)]
+            + [0, 1],
+        ]
+        for j, ci in enumerate(c):
+            row = [0] * (n + 2)
+            row[j] = _floor(2 * arb.pi() * ci)
+            rows.append(row)
+    return rows
+
+
+def search(zeros: list[Zero], n: int, nu: int | None = None, sign: int = 1) -> Search:
+    nu = 3 * n if nu is None else nu
+    B = fmpz_mat(lattice(zeros, n, nu, sign)).lll()
+    marker = 2**nu * n**4
+    for k in range(B.nrows()):
+        if abs(int(B[k, n])) == marker:
+            z = int(B[k, n + 1]) * (1 if int(B[k, n]) > 0 else -1)
+            return Search(sign, n, nu, z, ingham(exact_y(z), zeros))
+    raise RuntimeError("no reduced vector carries the inhomogeneous row")
+
+
+def phases(y: arb, zeros: list[Zero]) -> np.ndarray:
+    with precision(work_bits(y)):
+        two_pi = 2 * arb.pi()
+        out = []
+        for z in zeros:
+            p = z.gamma * y - z.psi
+            out.append(float((p - two_pi * (p / two_pi).floor()).mid()))
+        return np.array(out)
+
+
+def profile(y: arb, zeros: list[Zero], t: ArrayLike) -> np.ndarray:
+    g, a, _ = arrays(zeros)
+    w = a * kernel_np(g / g[-1])
+    phi = phases(y, zeros)
+    t = np.asarray(t, dtype=float)
+    return 2 * (np.cos(phi + np.outer(t, g)) @ w)
