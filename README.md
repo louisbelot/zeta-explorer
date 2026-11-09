@@ -1803,6 +1803,88 @@ st.moment(4)                    # 1.9939
 delta.root_number(3)            # -1
 ```
 
+### Symmetric powers, Turing's method, and a whole line from one transform
+
+![Z(t) for sym², sym³ and sym⁴ of Δ with zeros marked, and S(t) for sym² of 11a with the Turing window](docs/sympower.png)
+
+`selfdual.py` is the smoothed functional equation from the symmetric square section
+with the curve taken out: any L-function with real coefficients, conductor q, gamma
+factor ∏ Γ_R(s + μ_j) and sign ε. `sympower.py` feeds it the symmetric powers of Δ.
+At a prime with τ(p) = 2p^(11/2) cos θ_p the local factor of sym^m is
+∏ (1 − e^(i(m − 2j)θ_p) p^(−s))^(−1) over j = 0..m, and the gamma shifts come from
+pairing the Hodge types: (1, 11, 12) for sym², (5.5, 6.5, 16.5, 17.5) for sym³,
+(0, 11, 12, 22, 23) for sym⁴. Level 1 means q = 1, and the sign is +1, −1, +1.
+Automorphy is known up to m = 4 (Gelbart-Jacquet, Kim-Shahidi, Kim), so those are
+the ones the module offers.
+
+The check that the data is right is that the functional equation holds: two
+different smoothing weights agree to 1e−11 for every m, and flipping ε or moving one
+shift by 1 breaks that at the 1e−4 level. Then the zeros against Yoshida's 1994
+tables (arXiv:math/9411213), who summed the Dirichlet series with an experimental
+acceleration: his ten zeros of sym³ below 19 (4.1558656464, 5.5491219562, ...) agree
+to his ten digits, his fourteen of sym⁴ (2.3864500, 4.3752457, ..., 18.874) to the
+three to seven digits he gives. L(sym³ Δ, 1/2) = 0 to machine precision, as the sign
+forces.
+
+For sym² there are exact values. Rankin's method gives
+L(sym² Δ, 1) = 2²³ π¹³ (Δ, Δ)/11!, and Zagier showed
+L(sym² Δ, s)/(π^(2s + 11) (Δ, Δ)) is rational at s = 1, 3, ..., 11. The Petersson
+norm is computed here from the q-expansion over the fundamental domain
+(1.03536205680432e−6, 30 digits against the published value). The values at 1 and 3
+agree to 12 digits through the functional equation, and those at 5 to 11 are
+recognized blind by continued fractions from 30 digit Euler products. The rationals
+run from 2¹⁵/(3⁴·5²·7·11) at s = 1 to 2²⁴/(3⁹·5⁴·7²·11·13·17·19·23·691) at s = 11,
+with Ramanujan's 691 in the last denominator.
+
+A sign-change scan can miss a close pair of zeros, and nothing in the scan says so.
+Turing's method does. With N(t) = Φ(t) + S(t), where Φ comes from the gamma factor
+and the conductor, the integral of S over a window [t₁, t₂] is bounded (Booker 2006,
+arXiv:math/0507502, for a general L-function). A list that misses k zeros below t₁
+overestimates that integral by k(t₂ − t₁), so a window longer than the bound rules
+out k ≥ 1. On [30, 40] the bound allows at most 0.53, 0.79 and 0.97 missing zeros for
+sym², sym³ and sym⁴ of Δ, so the 13, 19 and 27 zeros below 30 are all of them, and
+deleting any one of those pushes the figure past 1. For sym² of 11a (conductor 121) the
+window [18, 30] gives 0.56 with 15 zeros below 18. The right panel shows why it
+works: S(t) hovers around 0 for the full list and sits a whole unit low once a zero
+is left out. This runs in floating point, so it is a check and not a proof.
+
+The pointwise code is slow: one value of sym⁴ Δ near t = 40 is a 579 node contour
+integral over about 2,100 coefficients, and the 41 zeros below 40 take 30 seconds. `mellin.py`
+gets the whole line at once. Λ(1/2 + it) is the Fourier transform of
+g(u) = e^(u/2) Σ a_n K(n e^u/√q), where K is the inverse Mellin transform of the
+gamma factor, and g itself is one FFT of the Dirichlet polynomial times the gamma
+factor along Re s = 1. Sample g once and every Z(t) is a dot product. The catch is
+that Λ decays like e^(−πdt/4), so in double precision the values drown. Booker's
+fix is to move the u contour to u + iθ, which multiplies the transform by e^(θt).
+Here θ is chosen per window as the slope of log|γ(1/2 + it)| at the window's peak,
+so that e^(θt)|γ| stays within e⁸ of its maximum across the window; two windows
+cover [0, 40] for sym⁴. The functional equation g(−u) = ε g(u) supplies the negative
+half, so the truncated Dirichlet sum only has to be right for u ≥ 0.
+
+| L-function | T | zeros | pointwise | one transform | terms |
+| --- | --- | --- | --- | --- | --- |
+| sym² Δ | 40 | 22 | 4.5 s | 0.04 s | 81 |
+| sym³ Δ | 40 | 31 | 11.4 s | 0.07 s | 621 |
+| sym⁴ Δ | 40 | 41 | 32.1 s | 0.14 s | 2,239 |
+| sym² 11a | 30 | 31 | 26.0 s | 0.09 s | 1,228 |
+| sym² Δ | 200 | 240 | | 0.33 s | 804 |
+| sym² 11a | 150 | 271 | | 2.5 s | 13,302 |
+
+The two methods agree on every zero in the first four rows to 8e−12 or better, and
+each list in the table passes the Turing check on its last 12 units.
+
+```python
+from zeta_explorer.mellin import MellinLine
+from zeta_explorer.selfdual import turing
+from zeta_explorer.sympower import critical_ratio, delta_power
+
+L = delta_power(3)
+L(0.5)                               # 0j
+z = MellinLine(L, 100.0).zeros()     # 122 zeros, 4.15586565, 5.54912196, ...
+turing(L, z, 88.0, 100.0).missing    # 0.627
+critical_ratio(1)                    # 0.210152316818984 = 2^15/(3^4 5^2 7 11)
+```
+
 ### Dedekind zeta of quadratic fields
 
 ![Zeros of zeta and L(s, χ₋₄), and the spacing distribution of their union](docs/dedekind.png)
