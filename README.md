@@ -39,7 +39,11 @@ random matrices with the matching cut on det(I − A) fit the even twists with �
 first zero too, but the analogous cut on the central derivative, sized by Gross
 and Zagier's height formula and the CFKRS arithmetic factor, removes 0.13% of the
 matrices and changes nothing. Fitting the cut instead lands at 50 times that size
-and still misses.
+and still misses. With the symmetric square L-function of 11a computed from
+scratch on the line Re s = 1, the ratios conjecture gives the one-level density of
+the odd twists with χ² of 25.0 on 30 bins (270.1 for the SO(odd) limit), and its
+1/log term sets an effective matrix size near 4. At that size excised SO(9) still
+misses the first zero.
 
 Heat flow came next. H_t(z), the heat-flow deformation of ξ behind the
 de Bruijn-Newman constant, is computed from its defining integral on a shifted
@@ -1515,6 +1519,143 @@ L'(E_d, 1/2) explains, and part of the mismatch is in the bulk. DHKMS handle the
 bulk on the even side with an effective N from the lower-order terms of the
 one-level density (their r₁ = 2.86 for this curve). The odd family needs the same
 computation before an excised model can be judged fairly.
+
+### The ratios conjecture for twists, and an effective N
+
+![One-level density of the even and odd twists of 11a3 against the ratios conjecture](docs/twist_density.png)
+
+Huynh, Keating and Snaith ([arXiv:0811.2304](https://arxiv.org/abs/0811.2304))
+ran the ratios recipe on the even quadratic twists of an elliptic curve with prime
+conductor M. I redid it for both parities, because the root number only changes
+one sign. Replace L(1/2 + α, d) by both halves of its approximate functional
+equation, 1/L(1/2 + γ, d) by its Dirichlet series, and average χ_d over the family.
+With x = p^(−1/2−α), y = p^(−1/2−γ) and λ(p) = a_p/√p, the Euler factor for p ∤ M
+is
+
+```
+G_p(α, γ) = 1 + p/(p + 1) · ( [F(x)H(y) + F(−x)H(−y)]/2 − 1 )
+F(x) = 1/(1 − λx + x²),   H(y) = 1 − λy + y²
+```
+
+(the even part, since χ_d(p^(m+h)) averages to p/(p + 1) when m + h is even and to
+0 otherwise), and at p = M it is (1 − ηλy)/(1 − ηλx) with η = χ_d(M), which is
+fixed across the family. The conjecture is R(α, γ) ≈ G(α, γ) + w·X(1/2 + α)·G(−α, γ),
+and the log derivative at α = γ = it gives the density per unit x = θ_d(t)/π as
+
+```
+ρ_d(x) = 1 + Re B(t) / θ_d'(t)
+B(t) = −ζ'/ζ(1 + 2it) + L'/L(sym² E, 1 + 2it) + A₁(it)
+       − w·e^(−2iθ_d(t)) ζ(1 + 2it) L(sym² E, 1 − 2it)/L(sym² E, 1) A(−it, it)
+```
+
+with w the root number of the twist. A₁ and A are what is left of the Euler
+product after ζ and the symmetric square take out the parts that only converge
+conditionally on Re s = 1. Both converge like Σ 1/p². For the odd family the
+two terms of B carry poles 1/(2it) with the same sign, so B has a pole with
+residue 1: the forced central zero falls out of the recipe on its own, as a purely
+imaginary term that drops out of Re B. For the even family the poles cancel.
+
+All of that needs L(sym² E, s) on the 1-line, where its Euler product does not
+converge. `symsquare.py` builds it from scratch: coefficients from the local
+factors 1/(1 − (λ² − 1)X + (λ² − 1)X² − X³) and 1/(1 − X/M) at the bad prime,
+conductor M², gamma factor Γ_R(s + 1)Γ_C(s + 1), and a smoothed approximate
+functional equation
+
+```
+L(s) = Σ a_n n^(−s) V₁(n) + q^(1/2−s) Σ a_n n^(s−1) V₂(n)
+V₁(n) = (1/2πi) ∫ (n/√q)^(−u) G(u) γ(s + u)/γ(s) du/u,   G(u) = e^(u²/b − iβu)
+```
+
+with V₂ the same using G(−u) and γ(1 − s + u). Nothing requires G to be even. The
+rotation β cancels the e^(3π|v|/4) that the degree 3 gamma ratio would otherwise
+pick up along the contour, and shrinks to 0 near the real axis, where the full
+rotation would kill the decay of V in n. The integrals are trapezoid sums on
+Re u = max(Re s, 1 − Re s) + 1/2, and L'(s) comes from the same sums with one more
+factor. Checks:
+
+- Changing the weight (b = 14, 30, 60) moves L by 1e-15 at the real axis and at
+  most 1e-11 at height 40. A wrong gamma factor or conductor breaks that by 6e-3
+  to 0.4, so this pins the functional equation.
+- The Euler product at s = 2 agrees to 2e-9 (truncation at 2^16).
+- Rankin-Selberg: Σ λ(n)² e^(−n/X) with X = 500 is 295.38109. The main term
+  X·L(sym², 1)·(6/π²)·(11/12) + L(sym², 0)/2 gives 294.97700, and the 0.40371 left
+  over comes from poles I did not expect at first: the factor 1/(1 + 11^(−w)) from
+  the bad prime has poles at w = iπ(2k + 1)/log 11 on Re w = 0. With those residues
+  the two sides agree to 1.3e-6, the size of the terms from the zeros of ζ(2w).
+- L'(s) against a 32-point Cauchy integral to 1e-11.
+
+L(sym² 11a, 1) = 1.0575992446 and L'/L(sym², 1) = 0.19741.
+
+As the conductor grows at fixed x,
+
+```
+ρ_d(x) = 1 ± sin(2πx)/(2πx) − r₁(1 ± cos 2πx) / (log A_d − γ) + O(1/log² A_d)
+r₁ = γ − L'/L(sym² E, 1) − A₁(0)
+```
+
+with + for the even twists and − for the odd ones, using A₁(0) = −½ d/dr A(−r, r) at
+0. The tests check that identity between the two Euler products to 1e-7, and the
+expansion at log A = 60 and 400, where the remainder stays under 76/log² A. For
+11a, r₁ = 1.28360 when χ_d(11) = +1 (the even twists with d > 0) and 0.84398 when
+χ_d(11) = −1 (the odd ones). DHKMS scale every zero by the top of the family,
+L = log(√11·X/2π), instead of by each twist's own log A_d − γ. That adds γ plus the
+average of log(X/d), which is 1, so their constant is 1.28360 + 1.57722 = 2.8608,
+against their printed 2.8600. Their N_eff = 2.14 at X = 400,000 follows.
+
+The zeros are the 1,674 twists from before, recomputed up to x = 3.5 (330 s on 14
+processes); the predictions average ρ_d over the actual discriminants (47 s and
+29 s). On 30 bins of [0, 3]:
+
+| family | zeros | χ² ratios | χ² N → ∞ limit | χ² ratios, x ≥ 0.2 | χ² limit, x ≥ 0.2 |
+|---|---|---|---|---|---|
+| even, 832 twists | 2346 | 126.1 | 387.1 | 30.8 | 250.2 |
+| odd, 842 twists | 2063 | 25.0 | 270.1 | 22.2 | 256.8 |
+
+The odd family is fit everywhere, including the wide empty zone near the center
+and the peaks near x = 0.85 and 1.9. On the even side the ratios density gets the
+oscillations right but predicts 1.59 at the origin where the data have 0.26 in the
+first bin. That is the gap HKS and DHKMS describe: the discreteness of
+L(E_d, 1/2) is invisible to the ratios conjecture, and it is what the excised
+ensemble is for.
+
+![Lowest zero of the odd twists against SO(2N + 1) at the effective size, and χ² against the excised fraction](docs/odd_effective.png)
+
+For the matrices, SO(2N + 1) has to be unfolded by N + 1/2, not N. Its
+characteristic polynomial has 2N + 1 zeros on the circle, the one at 1 included,
+and θ_d(t)/π counts the central zero of L(E_d, s) the same way. Scaling by N would
+also leave the one-level density 1 − sin(2πN y/N)/(2N sin(πy/N)) with no 1/N term at
+all, so there would be nothing to match. With y = (N + 1/2)θ/π,
+
+```
+SO(2N + 1):  1 − sin(2πy)/(2πy) − (1 − cos 2πy)/(2N) + O(1/N²)
+```
+
+and matching the 1/log term gives N_eff = (log A_d − γ)/(2r₁), the same formula as
+DHKMS's SO(2N) case. `rmt.odd_orthogonal_half` is that kernel, checked against
+Haar SO(7) and against ∫ρ = N. For the 840 rank 1 odd twists N_eff runs from 2.65
+to 4.40 (5% to 95%, median 4.02, mean 3.84; the twists d = 8, 13 and 17 fall under
+1 and are clipped). Fitting N to the whole ratios density instead of only its 1/log
+term gives 4.00, so the two agree.
+
+Then the first zero, on 18 bins of (0, 1.8) (5% KS critical value 0.047):
+
+| model for the 840 rank 1 odd twists | χ² | KS | mean |
+|---|---|---|---|
+| SO(2N_eff + 1), N_eff per twist, Fredholm | 145.4 | 0.121 | 0.881 |
+| SO(9), N + 1/2 | 144.5 | 0.113 | 0.875 |
+| SO(9), best cut, drops 6% | 111.5 | 0.129 | 0.911 |
+| SO(11), best cut | 100.2 | | |
+| data | | | 0.840 |
+
+Matching probabilities, the Gross-Zagier floor removes the same 0.13% of the
+matrices at any N, so the arithmetic cut still does nothing. The fitted cuts help a
+little and push the mean further off. The effective size does what it should for
+the mean on the even side (SO(2N_eff) gives 0.3949 against 0.3941 for the 713 rank 0
+even twists), but for the odd twists the first zero is much narrower than any
+SO(2N + 1) law: the data put 3.0% of their mass above 1.3, the models 11.6 to 13.4%.
+The one-level density is a sum over all zeros; the first zero depends on all the
+correlation functions, and here the arithmetic that the ratios conjecture puts into
+ρ(x) does not reach them through a single N.
 
 ### Chebyshev's bias
 
