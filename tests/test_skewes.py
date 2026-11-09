@@ -75,3 +75,11 @@ def test_crossing_interval_and_excess():
     assert c.interval == ("1.39792136e+316", "1.39847567e+316")
     assert c.lower > 6e-5
     assert c.excess > 1e150
+
+
+def test_polish_recovers_perturbed_zeros(first_thousand):
+    t = first_thousand[600:]
+    noisy = t + np.random.default_rng(0).uniform(-3e-8, 3e-8, len(t))
+    assert np.max(np.abs(skewes.polish(noisy) - t)) < 1e-10
+    with pytest.raises(ValueError):
+        skewes.polish(t + 1e-3)

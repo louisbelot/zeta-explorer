@@ -7,6 +7,8 @@ import mpmath
 import numpy as np
 from numpy.typing import ArrayLike
 
+from zeta_explorer.riemann_siegel import z_rs
+
 BLOCK = 1 << 22
 
 
@@ -49,6 +51,18 @@ def lehman_errors(
             "s6": A * mpmath.log(A) * mpmath.exp(-(A**2) / (2 * alpha) + hi / 2)
             * (4 / mpmath.sqrt(alpha) + 15 * eta),
         }
+
+
+def polish(gamma: ArrayLike, h: float = 1e-7, block: int = 1 << 16) -> np.ndarray:
+    g = np.asarray(gamma, dtype=float)
+    out = np.empty_like(g)
+    for i in range(0, len(g), block):
+        t = g[i : i + block]
+        a, b = z_rs(t - h), z_rs(t + h)
+        if np.any(np.signbit(a) == np.signbit(b)):
+            raise ValueError(f"no sign change within {h} of some zero in block {i}")
+        out[i : i + block] = t - h + 2 * h * a / (a - b)
+    return out
 
 
 def zero_error(omega: float, alpha: float, gamma: ArrayLike, delta: float) -> float:
