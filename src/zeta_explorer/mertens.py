@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from flint import acb, acb_series, arb
+from numpy.typing import ArrayLike
 
 from zeta_explorer.certified import Certificate, certify, precision, z_sign
 from zeta_explorer.riemann_siegel import z_rs
@@ -126,8 +127,50 @@ def certified_zeros(T: float, bits: int = 256) -> list[Zero]:
     return [z for z in out if z.gamma < T]
 
 
+def kernel(u: arb) -> arb:
+    return (1 - u) * (arb.pi() * u).cos() + (arb.pi() * u).sin() / arb.pi()
+
+
+def kernel_np(u: ArrayLike) -> np.ndarray:
+    u = np.asarray(u, dtype=float)
+    return (1 - u) * np.cos(np.pi * u) + np.sin(np.pi * u) / np.pi
+
+
+def work_bits(y: arb) -> int:
+    return int(float((abs(y) + 1).log()) / math.log(2)) + 128
+
+
+def ingham(y: arb, zeros: list[Zero]) -> arb:
+    with precision(work_bits(y)):
+        top = zeros[-1].gamma
+        total = arb(0)
+        for z in zeros:
+            total += z.a * kernel(z.gamma / top) * (z.gamma * y - z.psi).cos()
+        return 2 * total
+
+
 def arrays(zeros: list[Zero]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     g = np.array([float(z.gamma.mid()) for z in zeros])
     a = np.array([float(z.a.mid()) for z in zeros])
     psi = np.array([float(z.psi.mid()) for z in zeros])
     return g, a, psi
+
+
+def trivial(x: ArrayLike, terms: int = 30) -> np.ndarray:
+    x = np.asarray(x, dtype=float)
+    out = np.full_like(x, -2.0)
+    for n in range(1, terms + 1):
+        z = float(acb(2 * n + 1).zeta().real)
+        out += (-1) ** (n - 1) * np.exp(2 * n * np.log(2 * np.pi / x) - math.lgamma(2 * n + 1)) / (
+            n * z
+        )
+    return out
+
+
+def q_from_zeros(x: ArrayLike, zeros: list[Zero], smooth: bool = False) -> np.ndarray:
+    x = np.asarray(x, dtype=float)
+    g, a, psi = arrays(zeros)
+    w = kernel_np(g / g[-1]) if smooth else np.ones_like(g)
+    y = np.log(x)
+    q = 2 * (np.cos(np.outer(y, g) - psi) @ (a * w))
+    return q + trivial(x) / np.sqrt(x)

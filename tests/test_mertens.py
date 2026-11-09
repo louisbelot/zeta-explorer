@@ -56,6 +56,21 @@ def test_first_derivative_matches_mpmath(zeros):
     assert float(zeros[0].a.mid()) == pytest.approx(0.0891415213850345, rel=1e-12)
 
 
+def test_kernel_is_nonnegative_and_vanishes_at_one():
+    u = np.linspace(0, 1, 1001)
+    f = m.kernel_np(u)
+    assert f[0] == pytest.approx(1)
+    assert abs(f[-1]) < 1e-15
+    assert f.min() >= -1e-15
+
+
+def test_explicit_formula_rebuilds_m(zeros):
+    M = m.mertens_table(10**6)
+    x = np.array([1000.5, 9999.5, 100_000.5, 523_456.5, 999_999.5])
+    q = M[x.astype(int)] / np.sqrt(x)
+    assert np.max(np.abs(m.q_from_zeros(x, zeros) - q)) < 0.04
+
+
 def test_top_weights_match_odlyzko_te_riele():
     a = np.sort(m.arrays(m.certified_zeros(600, bits=64))[1][:400])[::-1]
     total = 2 * np.cumsum(a)
