@@ -85,6 +85,17 @@ four pairs are proved to exist with Krawczyk boxes in Arb. For ζ itself the zer
 count is redone in ball arithmetic, so RH up to t = 30,000 (35,673 zeros) comes
 with a proof that has no floating-point step in it.
 
+Ramanujan's τ(n) is computed exactly to
+n = 2²⁰, and L(s, Δ) reproduces LMFDB's zeros and Manin's period ratios
+36/691 : 1 : 3. The angles of τ(p) for the 78,498 primes below 10⁶ follow the
+Sato-Tate law, and the Chebyshev functions of Sym^m L(s, Δ) sit near −2√x
+exactly when the root number forces a central zero (m = 3 and 5). Dedekind zeta
+functions of quadratic fields get real class numbers from cycles of reduced
+indefinite forms, exact values of ζ_K(−1) two ways, and zero spacings that follow
+two independent GUE spectra instead of one. Blocks of Platt's zeros near the
+10⁹th, 10¹⁰th and 10¹¹th zero are proved to be zeros, complete and correctly
+numbered in ball arithmetic.
+
 The same numerics also run in the browser at
 [louisbelot.github.io/zeta-explorer](https://louisbelot.github.io/zeta-explorer/):
 a phase portrait you can pan and zoom, a Z(t) explorer that marks zeros and Gram
@@ -401,6 +412,44 @@ for T = 30,000 is 4 MB: 32,109 Gram blocks, 3,365 of them longer than one interv
 The balls also grade the float code. Over 13 points near each height, `z_rs`
 is off by at most 1.8e-9 at t = 250 (where the truncated Riemann-Siegel series is
 the limit), 3e-11 at 10³ and 10⁴, and 1.6e-10 at 10⁵ (rounding in the main sum).
+
+### Platt's zeros, checked in ball arithmetic
+
+Platt computed the first 10¹¹ zeros of ζ rigorously and LMFDB serves them to
+about 31 significant digits. `platt.py` takes a block of them (fetched once from
+`lmfdb.org/zeros/zeta/list`, saved under `tests/data`) and checks three things
+with Arb, none of which trusts the listed numbers:
+
+1. Each listed γ is a zero: Z(γ − 10⁻²⁵) and Z(γ + 10⁻²⁵) have opposite signs as
+   256-bit balls, and the secant through those two values gives the root to far
+   more digits than LMFDB prints.
+2. The block is complete: good Gram points g_a below the block and g_b above it,
+   with enough Rosser blocks below g_a and above g_b for Brent's form of Turing's
+   method, prove N(g_a) ≥ a + 1 and N(g_b) ≤ b + 1. Finding b − a sign changes in
+   between then pins both counts, so every zero in the window is simple and on the
+   line.
+3. The numbering is right: the k-th sign change after g_a is zero number a + 1 + k,
+   and each listed zero sits in the interval its LMFDB index says.
+
+| block | height | sign changes in window | largest root − listed | time |
+|---|---|---|---|---|
+| zeros 10⁹ to 10⁹ + 49 | 3.7·10⁸ | 51 = b − a | 2.3e−31 | 1.0 s |
+| zeros 10¹⁰ to 10¹⁰ + 49 | 3.3·10⁹ | 51 = b − a | 2.2e−31 | 2.1 s |
+| zeros 10¹¹ to 10¹¹ + 49 | 2.95·10¹⁰ | 51 = b − a | 1.9e−31 | 6.2 s |
+
+The differences of 2e−31 are the rounding of the listed values (Platt's
+accuracy is 2⁻¹⁰² ≈ 2e−31). The tests also change one digit near the 20th decimal
+place, which makes the zero fail to isolate at δ = 10⁻²⁸, and drop a zero from the
+middle of a block while keeping the numbering consecutive, which the index check
+catches.
+
+```python
+from zeta_explorer import platt
+
+c = platt.check(platt.fetch(10**11, 50))
+c.all_isolated, c.window.complete, c.indices_match   # (True, True, True)
+c.max_diff                                           # 1.87e-31
+```
 
 ### Many values of Z at once
 
@@ -1534,6 +1583,113 @@ over 200 ≤ x ≤ 10⁵ is at most 0.013 in E for the mod 4, 5, 8, 12 and 24 ra
 the 3,130 zeros below T = 3000 the rebuilt curve goes negative for x between
 about 26857 and 26876, around the actual first lead change at 26861 (the right panel
 of the first chart).
+
+### Ramanujan's Δ and the Sato-Tate law
+
+![Z for L(s, Δ), the Sato-Tate histogram for τ(p), and Chebyshev functions of Sym^m L](docs/delta.png)
+
+Δ(q) = q ∏(1 − qⁿ)²⁴ = Σ τ(n) qⁿ is the weight 12 cusp form of level 1, and its
+L-function L(s, Δ) = Σ τ(n) n^(−11/2) n^(−s) is the simplest degree 2 L-function
+that has nothing to do with elliptic curves. `delta.py` computes it from scratch.
+
+The coefficients are exact. Jacobi's identity η³ = Σ (−1)^k (2k + 1) q^(k(k+1)/2)
+has only √(2N) nonzero terms below q^N, so Δ/q = (η³)⁸ is one sparse square and six
+sparse products, each a few hundred shifted array additions. That runs modulo four
+primes just below 2³¹ (enough because |τ(n)| ≤ d(n) n^(11/2) < 2n⁶) and Garner's
+algorithm turns the residues back into integers. τ(n) for n ≤ 2²⁰ takes under a
+minute. The tests compare against FLINT's own power series for ∏(1 − qⁿ)²⁴, check
+Ramanujan's congruence τ(n) ≡ σ₁₁(n) (mod 691) up to 3,000, the Hecke relations
+τ(mn) = τ(m)τ(n) and τ(p²) = τ(p)² − p¹¹, and Deligne's bound τ(p)² < 4p¹¹ in
+exact integers for p < 2¹⁵. None of the first million τ(n) is zero (Lehmer's
+question).
+
+L(s, Δ) uses the same smoothed functional equation as the elliptic curves, with
+Λ(s) = (2π)^(−s) Γ(s + 11/2) L(s) = Λ(1 − s) and the split point rotated toward the
+imaginary axis at large t so the Γ(6 + it) decay doesn't eat the precision. Z(t)
+matches a 110 digit mpmath evaluation to 3e−14 at t = 100, the first ten zeros
+match LMFDB to 13 digits (9.2223793999211, 13.9075498613921, ...), and
+L(1/2, Δ) = 0.79212283864603 against LMFDB's 0.7921228386. The sharpest check is
+Manin's period theorem: the critical values C(10, n)·Λ(n − 9/2) for even n come out
+proportional to 36/691 : 1 : 3 : 3 : 1 : 36/691 and for odd n to 4 : 25 : 42 : 25 : 4,
+the coefficients of Δ's period polynomial, to 12 digits.
+
+Deligne's bound lets us write τ(p) = 2p^(11/2) cos θ_p. Sato-Tate (proved for Δ by
+Barnet-Lamb, Geraghty, Harris and Taylor) says θ_p is distributed like
+(2/π) sin²θ. For the 78,498 primes below 10⁶ the even moments of 2 cos θ_p are
+0.9987, 1.9939, 4.9772, 13.9204 and 41.725, against the Catalan numbers 1, 2, 5,
+14, 42, and the Kolmogorov distance to the Sato-Tate law is 0.0023
+(√n·D = 0.65, an unremarkable value for a true null).
+
+The right panel is the part I found most interesting. Sato-Tate is a statement
+about the symmetric power L-functions: Σ_p U_m(cos θ_p) log p is the prime part
+of the Chebyshev function of L(s, Sym^m Δ), and its explicit formula has a term
+−2r√x for a zero of order r at the center. Level 1 means the root number is the
+archimedean one, i^(Σ (w_j + 1)) over the gamma factors Γ_C(s + w_j/2) with
+w_j = (m − 2j)·11 (plus i^δ from a Γ_R factor when m is even), and that is −1 for
+m = 3 and m = 5. So L(s, Sym³ Δ) must vanish at the center. Summing over prime
+powers as well, Ψ_m(x)/√x between 10³ and 10⁶ averages −0.005, −0.013, −1.957,
+−0.068 and −1.841 for m = 1 to 5, against the predicted 0, 0, −2, 0, −2. The sum
+over primes alone is biased by the prime squares, with the sign of the
+Frobenius-Schur indicator: it averages +1.02 for m = 1 and −1.30 for m = 2.
+
+```python
+from zeta_explorer import delta
+
+delta.tau(6)                    # [0 1 -24 252 -1472 4830 -6048]
+delta.zeros(15.0)               # [ 9.2223794  13.90754986]
+st = delta.sato_tate(10**6)     # 78,498 primes
+st.moment(4)                    # 1.9939
+delta.root_number(3)            # -1
+```
+
+### Dedekind zeta of quadratic fields
+
+![Zeros of zeta and L(s, χ₋₄), and the spacing distribution of their union](docs/dedekind.png)
+
+For a quadratic field K of discriminant D, ζ_K(s) = ζ(s) L(s, χ_D), and the
+coefficient of n^(−s) counts ideals of norm n: a_n = Σ_{d | n} χ_D(d). For D < 0
+`form_counts` counts representations by each reduced form of discriminant D by
+brute force, and their total is w·a_n (Dirichlet's formula; for Q(i) it is
+Jacobi's r₂(n) = 4 Σ χ₋₄(d)). ζ_K(0) = −h/w for imaginary fields and
+ζ_K′(0) = −h·log ε/2 for real ones, both to 1e−8 or better.
+
+Real class numbers come from Gauss's reduction of indefinite forms. A form
+(a, b, c) with b² − 4ac = D is reduced when 0 < b < √D and
+√D − b < 2|a| < √D + b, all checked in integers. The reduction operator ρ
+permutes the finitely many reduced forms in cycles, one cycle per narrow class,
+and h = h⁺ when the fundamental unit has norm −1, h⁺/2 otherwise. For every
+fundamental D < 3000 this agrees with √D·L(1, χ_D)/(2 log ε) to 1e−8, including
+Q(√229), Q(√401), Q(√577) with h = 3, 5, 7 and Q(√1957) with h = 3, h⁺ = 6.
+ζ_K(−1) is a rational number. Siegel's formula
+ζ_K(−1) = (1/60) Σ_{b² < D, b ≡ D (2)} σ₁((D − b²)/4) and the generalized
+Bernoulli number B₂,χ/24 agree exactly as fractions for every D < 1500, and the
+complex-analytic ζ_K(−1) matches both to 1e−12 (1/30 for Q(√5), 1/12 for Q(√2)).
+
+The zeros of ζ_K are the zeros of ζ together with those of L(s, χ_D), and the two
+sets know nothing about each other. Rudnick and Sarnak proved, for test functions
+of restricted support, that the zeros of a product of distinct primitive
+L-functions correlate like independent GUE spectra laid on top of each other. If each half is a GUE
+spectrum at half the density, the gap probability of the union is E(s/2)², with E
+the sine-kernel Fredholm determinant, so the spacing density is
+(E′(s/2)² + E(s/2)E″(s/2))/2. It starts at 1/2 instead of 0: there is no
+repulsion between a zero of ζ and a zero of L. For Q(i) up to t = 10,000 (10,142
+zeros of ζ and 12,349 of L(s, χ₋₄)), the 22,490 spacings have Kolmogorov distance
+0.018 to that law and 0.139 to a single GUE. The 0.018 is the usual finite height
+effect: each family alone sits 0.029 and 0.035 from GUE at these heights. Among
+the first 2,000 zeros of each, the closest ζ zero and L zero are 0.00052 apart.
+
+Counting the L zeros caught a real bug. With 8 grid points per mean spacing the
+zero finder missed 4 close pairs between t = 3000 and 9000, visible as N(T) − θ(T)/π
+drifting to −3.6. With 16 and 32 points the counts agree and match the smooth
+count to within 0.5, so `dedekind.zeros` uses 32.
+
+```python
+from zeta_explorer import dedekind
+
+dedekind.real_class_number(229)        # 3
+dedekind.zeta_minus_one_siegel(5)      # Fraction(1, 30)
+dedekind.form_counts(-4, 10)[1:]       # [4 4 0 4 8 0 0 4 4 8]
+```
 
 ### Davenport-Heilbronn: when the functional equation isn't enough
 
