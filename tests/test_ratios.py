@@ -5,9 +5,15 @@ import numpy as np
 import pytest
 
 from zeta_explorer.characters import is_fundamental, kronecker
+from zeta_explorer.elliptic import Curve, EllipticL
 from zeta_explorer.explicit import primes
 from zeta_explorer.lowlying import w_symplectic
-from zeta_explorer.ratios import arithmetic, quadratic_density, zeta_logderiv
+from zeta_explorer.ratios import (
+    arithmetic,
+    quadratic_density,
+    twist_arithmetic,
+    zeta_logderiv,
+)
 from zeta_explorer.zeta import digamma
 
 
@@ -86,3 +92,77 @@ def test_leading_correction_is_closed_form():
 def test_density_rejects_small_conductors():
     with pytest.raises(ValueError):
         quadratic_density([105], [0.5])
+
+
+E11 = Curve(0, -1, 1, 0, 0)
+
+
+def raw_local(lam, x, y, p, terms=200):
+    hecke = [1.0, lam]
+    for _ in range(terms):
+        hecke.append(lam * hecke[-1] - hecke[-2])
+    mobius = [1.0, -lam, 1.0]
+    total = sum(hecke[m] * mobius[h] * x**m * y**h
+                for m in range(terms) for h in range(3) if (m + h) % 2 == 0 and m + h)
+    return 1 + p / (p + 1) * total
+
+
+def raw_log_g(alpha, gamma, eta, P):
+    a = EllipticL(E11).an(P)
+    out = 0.0
+    for p in primes(P).tolist():
+        x, y = p ** (-0.5 - alpha), p ** (-0.5 - gamma)
+        lam = a[p] / math.sqrt(p)
+        if p == 11:
+            out += math.log((1 - eta * lam * y) / (1 - eta * lam * x))
+        else:
+            out += math.log(raw_local(lam, x, y, p))
+    return out
+
+
+def euler_logderivs(r, P):
+    a = EllipticL(E11).an(P)
+    out = 0.0
+    for p in primes(P).tolist():
+        X = p ** (-1 - 2 * r)
+        lp = math.log(p)
+        out += lp * X / (1 - X)
+        lam2 = a[p] ** 2 / p
+        if p == 11:
+            out -= lp * lam2 * X / (1 - lam2 * X)
+        else:
+            e = lam2 - 1
+            out -= lp * X * (e - 2 * e * X + 3 * X * X) / (1 - e * X + e * X * X - X**3)
+    return out
+
+
+@pytest.mark.parametrize("eta", [1, -1])
+def test_twist_derivative_against_raw_sum(eta):
+    r, h, P = 0.3, 1e-5, 2000
+    fd = (raw_log_g(r + h, r, eta, P) - raw_log_g(r - h, r, eta, P)) / (2 * h)
+    a1, a = twist_arithmetic(E11, -1j * r, eta, P)
+    assert a1[0].real + euler_logderivs(r, P) == pytest.approx(fd, abs=1e-8)
+    assert raw_log_g(r, r, eta, P) == pytest.approx(0, abs=1e-12)
+
+
+@pytest.mark.parametrize("eta", [1, -1])
+def test_twist_ratio_factor_against_raw_sum(eta):
+    r, P = 0.2, 2000
+    a = EllipticL(E11).an(P)
+    log_y = 0.0
+    for p in primes(P).tolist():
+        lam2 = a[p] ** 2 / p
+        q = [1 - lam2 * z if p == 11 else 1 - (lam2 - 1) * z + (lam2 - 1) * z * z - z**3
+             for z in (p ** (-1 + 2 * r), 1 / p)]
+        log_y += math.log((1 - p ** (-1 - 2 * r)) * q[0] / ((1 - 1 / p) * q[1]))
+    _, A = twist_arithmetic(E11, -1j * r, eta, P)
+    assert A[0].real == pytest.approx(math.exp(raw_log_g(-r, r, eta, P) + log_y), rel=1e-12)
+
+
+@pytest.mark.parametrize("eta", [1, -1])
+def test_twist_constants_cancel_at_the_center(eta):
+    a1, A = twist_arithmetic(E11, np.array([0.0, 1e-4, -1e-4]), eta, 2**14)
+    assert A[0] == pytest.approx(1, abs=1e-12)
+    slope = (np.log(A[1]) - np.log(A[2])) / 2e-4
+    assert (-1j * slope).real == pytest.approx(-2 * a1[0].real, abs=1e-7)
+
