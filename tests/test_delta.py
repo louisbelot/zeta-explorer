@@ -1,5 +1,6 @@
 import math
 
+import mpmath as mp
 import numpy as np
 import pytest
 
@@ -8,7 +9,10 @@ from zeta_explorer.explicit import primes
 
 LMFDB_TAU = [1, -24, 252, -1472, 4830, -6048, -16744, 84480, -113643, -115920, 534612,
              -370944, -577738, 401856, 1217160, 987136, -6905934]
-
+LMFDB_ZEROS = [9.222379399921102522, 13.907549861392134406, 17.442776978234473314,
+               19.656513141954961000, 22.336103637209867276, 25.274636548112365354,
+               26.804391158350403033, 28.831682624186875445, 31.178209498360259064,
+               32.774875382231207442]
 
 
 def test_tau_lmfdb():
@@ -59,3 +63,53 @@ def test_moduli_cover_the_bound():
 def test_lam_is_normalized_tau():
     n = np.arange(1, 101)
     assert np.allclose(D.lam(100)[1:] * n**5.5, [float(x) for x in D.tau(100)[1:]], rtol=1e-15)
+
+
+def test_zeros_lmfdb():
+    assert np.allclose(D.zeros(33.5), LMFDB_ZEROS, rtol=1e-13)
+
+
+def test_zero_count_follows_theta():
+    z = D.zeros(200)
+    for T in (100, 200):
+        n = int(np.sum(z < T))
+        assert abs(n - D.theta(T) / math.pi) < 1
+    assert int(np.sum(z < 200)) == 159
+
+
+def test_central_value_lmfdb():
+    assert D.l_delta(0.5).real == pytest.approx(0.7921228386, abs=1e-10)
+
+
+def _z_mpmath(t, dps):
+    with mp.workdps(dps):
+        s = mp.mpf(0.5) + 1j * mp.mpf(t)
+        A = 1 / (2 * mp.pi)
+        tot = mp.mpc(0)
+        for n, tn in enumerate(D.tau(140)[1:], start=1):
+            tot += mp.mpf(int(tn)) / mp.mpf(n) ** 5.5 * (A / n) ** s * mp.gammainc(s + 5.5, n / A)
+        return float(2 * mp.re(tot) / (mp.sqrt(A) * abs(mp.gamma(6 + 1j * mp.mpf(t)))))
+
+
+@pytest.mark.parametrize("t, dps", [(5.0, 40), (50.0, 70), (100.0, 110)])
+def test_hardy_z_against_mpmath(t, dps):
+    assert D.hardy_z(t) == pytest.approx(_z_mpmath(t, dps), abs=1e-12)
+
+
+def test_split_point_and_functional_equation():
+    s = 0.3 + 7j
+    assert D.completed(s) == pytest.approx(D.completed(s, 1.3 + 0.4j), rel=1e-12)
+    assert D.completed(s) == pytest.approx(D.completed(1 - s), rel=1e-12)
+
+
+def test_period_ratios():
+    r = [math.comb(10, n) * D.completed(n - 4.5).real for n in range(11)]
+    even = np.array(r[0::2]) / r[2]
+    odd = np.array(r[1::2]) / r[1] * 4
+    assert np.allclose(even, [36 / 691, 1, 3, 3, 1, 36 / 691], rtol=1e-12)
+    assert np.allclose(odd, [4, 25, 42, 25, 4], rtol=1e-12)
+
+
+def test_completed_strip_check():
+    with pytest.raises(ValueError):
+        D.completed(7.0)
