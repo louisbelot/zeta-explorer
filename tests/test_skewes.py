@@ -88,8 +88,8 @@ def test_polish_recovers_perturbed_zeros(first_thousand):
         skewes.polish(t + 1e-3)
 
 
-def test_first_zeros_keep_their_indices():
-    g = skewes.first_zeros(45_000)
+def test_bulk_zeros_keep_their_indices():
+    g = skewes.bulk_zeros(45_000)
     assert len(g) == 45_000 and np.all(np.diff(g) > 0)
     with precision(128):
         for n in (1, 101, 102, 20_100, 20_101, 40_100, 45_000):

@@ -7,9 +7,9 @@ import mpmath
 import numpy as np
 from numpy.typing import ArrayLike
 
-from zeta_explorer.mertens import arrays, certified_zeros
 from zeta_explorer.multieval import zeros_fast
 from zeta_explorer.riemann_siegel import z_rs
+from zeta_explorer.spacing import first_zeros
 from zeta_explorer.zeros import gram_points
 
 BLOCK = 1 << 22
@@ -56,10 +56,11 @@ def lehman_errors(
         }
 
 
-def first_zeros(n: int, chunk: int = 20_000) -> np.ndarray:
+def bulk_zeros(n: int, chunk: int = 20_000) -> np.ndarray:
     edges = np.arange(100, n + chunk + 100, chunk)
     gs = gram_points(edges)
-    parts = [arrays(certified_zeros(float(gs[0]), bits=64))[0]]
+    low = first_zeros(150)
+    parts = [low[low < gs[0]]]
     for lo, hi, a, b in zip(edges[:-1], edges[1:], gs[:-1], gs[1:], strict=True):
         win, u = zeros_fast(int(lo) - 50, int(hi) + 200)
         u = u + win.t0

@@ -1969,7 +1969,7 @@ the two values near 10¹⁹⁰ in Chao and Plymen's table 3 the sum is 0.8825873
 0.88873670, against their 0.88258736 and 0.88873669.
 
 Chao and Plymen's proof near e^727.952 needs the first two million zeros.
-`first_zeros(2_000_000)` gets them in under 4 minutes from `zeros_fast` windows of
+`bulk_zeros(2_000_000)` gets them in under 4 minutes from `zeros_fast` windows of
 20,000 Gram intervals, each padded on both sides because a window only returns
 zeros between its first and last good Gram points. γ₂₀₀₀₀₀₀ = 1131944.4718248623,
 and they list 1131944.4718. With their parameters ω = 727.952074, η = 0.000198219, α = 7.86·10¹⁰, A = 7.79·10⁶:

@@ -1150,8 +1150,8 @@ Built:
   formula for M(x)/√x with the trivial-zero series, the Odlyzko-te Riele / Hurst
   lattice, `search` with FLINT's LLL, and `phases` / `profile`, which reduce
   γy − ψ mod 2π once in high precision so h near y can be evaluated in floats.
-- `skewes.py`: `first_zeros(n)` in padded `zeros_fast` windows, Lehman's sum vectorized over a grid of ω in blocks, the six error
-  terms of Lehman's theorem in mpmath with Chao and Plymen's sharper s₁, a
+- `skewes.py`: `bulk_zeros(n)` from padded `zeros_fast` windows, Lehman's sum
+  vectorized over a grid of ω in blocks, the six error terms of Lehman's theorem in mpmath with Chao and Plymen's sharper s₁, a
   mean-value bound for how far H moves when every γ is off by δ, `polish` (one
   bracketed secant step on Z per zero, refusing any zero without a sign change
   within 10⁻⁷), and `crossing`, which puts it together and prints the x interval
@@ -1207,7 +1207,7 @@ Design notes:
   the first and last good Gram points of its window. My first chunked run cut
   windows exactly at the chunk edges and lost 20 zeros sitting in Gram blocks that
   straddle an edge (the first pair at 342563.28 and 342563.53, just below
-  g₅₄₀₁₀₀). Bisecting the index against Arb found it. `skewes.first_zeros` pads
+  g₅₄₀₁₀₀). Bisecting the index against Arb found it. `skewes.bulk_zeros` pads
   each window by 50 and 200 Gram intervals and keeps only [g_lo, g_hi); two
   million zeros take 225 s.
 - The spot checks set δ but do not prove it, so the crossing is a reproduction,
