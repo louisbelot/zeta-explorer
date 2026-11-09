@@ -1,9 +1,12 @@
+import math
 
 import numpy as np
 import pytest
 
 from zeta_explorer import effective as E
 from zeta_explorer.heat import ht
+from zeta_explorer.riemann_siegel import theta, z_rs
+from zeta_explorer.spacing import first_zeros
 
 CASES = [(0.2, 0.0), (0.2, 0.2), (0.4, 0.4), (0.05, 0.1), (0.5, 1.0)]
 
@@ -74,3 +77,60 @@ def test_theorem_bounds_hold_high():
     x, y, t = 1e6 + 0.1, 0.2, 0.2
     k = E.kernel_ratio(x, y, t)
     assert abs(k - E.ratio(x, y, t)) <= E.error(x, y, t)
+
+
+def test_theta_t0_is_riemann_siegel_theta():
+    x = np.array([300.0, 1e4, 1e6])
+    assert np.all(np.abs(E.theta_t(x, 0.0) - theta(x / 2) - math.pi) < 1 / x)
+
+
+def test_theta_shift_is_t_over_16_log():
+    x = np.array([1e4, 1e6, 1e8])
+    for t in (0.1, 0.4):
+        shift = (E.theta_t(x, t) - E.theta_t(x, 0.0)) / math.pi
+        assert np.all(np.abs(shift - t / 16 * np.log(x / (4 * math.pi))) < 10 / x)
+
+
+def test_theta_prime():
+    x, h = 5e4, 1e-3
+    for t in (0.0, 0.3):
+        fd = (E.theta_t(x + h, t) - E.theta_t(x - h, t)) / (2 * h)
+        assert E.theta_t_prime(x, t) == pytest.approx(fd, rel=1e-8)
+
+
+def test_ideal_points():
+    n = np.array([100, 10_000, 10**7])
+    for t in (0.0, 0.2):
+        x = E.ideal_points(n, t)
+        assert np.allclose(E.theta_t(x, t), (n - 0.5) * math.pi, rtol=1e-14, atol=1e-6)
+
+
+def test_zt_at_t0_is_hardy_z():
+    x = np.array([2e4 + 0.37, 3e5 + 0.11, 4e6 + 0.9])
+    assert np.allclose(E.zt(x, 0.0), -z_rs(x / 2), atol=2e-3)
+
+
+def test_real_axis_is_real():
+    x = np.linspace(1e4, 1e4 + 30, 101)
+    for t in (0.0, 0.2):
+        im = np.imag(np.exp(-1j * E.theta_t(x, t)) * E.ratio(x, 0.0, t))
+        assert np.abs(im).max() < 1e-12
+
+
+def test_zeros_at_t0_are_twice_gamma():
+    g = first_zeros(200)[100:]
+    x = E.real_zeros(0.0, 2 * g[0] - 0.3, 2 * g[-1] + 0.3)
+    assert len(x) == len(g)
+    assert np.abs(x - 2 * g).max() < 0.02
+    n, d = E.displacement(2 * g, 0.0)
+    off = n - np.arange(101, 201)
+    assert np.all(np.abs(off) <= 1)
+    assert np.mean(off == 0) > 0.8
+    assert np.abs(d).max() <= 0.5
+
+
+def test_displacement_of_ideal_points():
+    n = np.arange(5000, 5010)
+    m, d = E.displacement(E.ideal_points(n, 0.3), 0.3)
+    assert np.array_equal(m, n)
+    assert np.abs(d).max() < 1e-9

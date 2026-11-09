@@ -6,6 +6,8 @@ import mpmath
 import numpy as np
 from numpy.typing import ArrayLike
 
+from zeta_explorer.zeros import illinois_many
+
 _LOG_16 = math.log(16)
 _LOG_PI = math.log(math.pi)
 _HALF_LOG_2PI = 0.5 * math.log(2 * math.pi)
@@ -178,3 +180,45 @@ def kernel_ratio(x: float, y: float, t: float, nodes: int = 48) -> complex:
                   + mpmath.loggamma(s / 2) - lb)
             acc += mpmath.mpf(wk) * mpmath.exp(lx) * mpmath.zeta(s)
         return complex(acc / mpmath.sqrt(mpmath.pi) if t > 0 else acc)
+
+
+def theta_t(x: ArrayLike, t: float) -> np.ndarray:
+    return -log_bt(x, 0.0, t).imag
+
+
+def theta_t_prime(x: ArrayLike, t: float) -> np.ndarray:
+    s = (1 - 1j * np.asarray(x, dtype=float)) / 2
+    a = alpha(s)
+    da = -1 / (2 * s * s) - 1 / (s - 1) ** 2 + 1 / (2 * s)
+    return (a + t / 2 * a * da).real / 2
+
+
+def zt(x: ArrayLike, t: float, corrected: bool = True) -> float | np.ndarray:
+    return np.real(np.exp(-1j * theta_t(x, t)) * ratio(x, 0.0, t, corrected))
+
+
+def ideal_points(n: ArrayLike, t: float, tol: float = 1e-13) -> np.ndarray:
+    target = (np.asarray(n, dtype=float) - 0.5) * math.pi
+    x = 4 * math.pi * np.asarray(n, dtype=float) + 200
+    for _ in range(100):
+        dx = (theta_t(x, t) - target) / theta_t_prime(x, t)
+        x = x - dx
+        if np.all(np.abs(dx) < tol * x):
+            return x
+    raise RuntimeError("Newton didn't converge for some ideal points")
+
+
+def displacement(x: ArrayLike, t: float) -> tuple[np.ndarray, np.ndarray]:
+    k = theta_t(x, t) / math.pi + 0.5
+    n = np.rint(k).astype(np.int64)
+    return n, k - n
+
+
+def real_zeros(t: float, lo: float, hi: float, per_gap: int = 8) -> np.ndarray:
+    step = math.pi / float(theta_t_prime(hi, t)) / per_gap
+    x = np.linspace(lo, hi, math.ceil((hi - lo) / step) + 1)
+    f = zt(x, t)
+    i = np.flatnonzero(f[:-1] * f[1:] < 0)
+    if len(i) == 0:
+        return np.empty(0)
+    return illinois_many(lambda q: zt(q, t), x[i], x[i + 1], f[i], f[i + 1], rtol=1e-15)
