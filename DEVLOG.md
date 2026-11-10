@@ -1432,3 +1432,70 @@ Next: the 119 rank 2 twists of 11a against SO(2N) conditioned on a double
 eigenvalue at 1, or the two-level density of the odd twists. With `MellinLine`
 the zeros of sym² of every twist are cheap, which opens the symplectic family of
 Iwaniec, Luo and Sarnak.
+
+## 2026-11-09: Rank 2 twists against SO(2N) with a forced pair
+
+- `rmt.jacobi_n`: the finite-N kernel for N − 1 eigenangles with Jacobi weight
+  (1 − x)^α (1 + x)^β, from the three-term recurrence of the orthonormal Jacobi
+  polynomials, unfolded by any scale. `rmt.bessel` is its hard-edge limit.
+  `independent_n`, `interaction_n` and `conditioned_n` are the three ways of putting
+  a double eigenvalue at 1 in SO(2N) (α = −1/2, 3/2, 1).
+- `rmt.jacobi_angles` samples those laws by resampling Haar SO(2N − 1) with weight
+  ∏(2 − 2cos θ_j)^(α − 1/2). `jacobi_moment` generalizes `so_moment`. `gap_chi2` and
+  `gap_ks` compare data with a Fredholm gap probability.
+- `elliptic.g2` and `elliptic.second_central`: L''(1/2) from the smoothed functional
+  equation, for root number +1.
+- `ranktwo.py`: collect the rank 2 even twists of a curve, their low zeros and
+  leading coefficients, compare them with the three models, and scan an excision
+  on Λ''(1)/2 with a two-sample KS test.
+- `plot.plot_rank_two` and docs/rank_two.png.
+
+Checks:
+
+- `jacobi_n` against the SO(even), SO(odd) and USp kernels for N = 1, 3, 8 to 1e-13.
+  `independent_n(5)` is SO(8) rescaled by 4/5. `bessel(1/2)` is the USp limit.
+- N = 2 closed forms for the interaction and conditioned gaps to 1e-13, and the
+  N = 3 interaction gap against a direct Weyl integral. The first-point density
+  goes like x^(2α+1). The gap at s = 1 approaches the Bessel value like 1/N.
+- Monte Carlo against Fredholm for all three models at N = 4 (KS on 20,000 draws),
+  and the resampled moments against `jacobi_moment`.
+- g₂ against mpmath quadrature to 1e-13 at six points across the series/quadrature
+  switch. 389a1 leading coefficient 0.759316500288427 to 1e-14. The twist d = 232
+  against −2Z(t)/t² with Richardson extrapolation, 1e-5.
+- The family code finds d = 232, 265, 273, 344, 364 as the rank 2 twists below 400.
+- `compare` picks the sampled model and N back out of synthetic data, and
+  `excision_scan` finds a planted 40% cut.
+
+Results (every even twist of 11a3 with 5 ≤ d ≤ 20,000, d > 0: 309 of rank 2, 2,676 s
+on 16 processes):
+
+- Lowest zero: mean 1.370, standard deviation 0.291, minimum 0.624. N = 8 from the
+  mean log A of 8.15.
+- KS distance (5% critical 0.077): independent SO(14) 0.894, conditioned 0.359,
+  interaction 0.182, interaction with the smallest 20% of Λ''(1)/2 removed 0.054.
+  Model means 0.395, 1.091, 1.268, 1.377.
+- Maximum likelihood N for the interaction model: 4.
+- L''(1/2)/2 ranges from 5.10 (d = 697) to 240.9 (d = 18,269). Rank correlation of
+  its log with the lowest zero: 0.59 in the data, 0.82 in the interaction model.
+- Halves by |d|: mean lowest zero 1.395 ± 0.023, then 1.345 ± 0.024. The
+  interaction model at N = 7 and 9 moves by 0.021.
+
+Design notes:
+
+- The note I left for myself said to get L''(1/2) as −2P'(0) from the Chebyshev
+  interpolant that `zeros_below` already builds. That couples the derivative to the
+  interpolation tolerance. The direct series has its own kernel g₂(x), the second
+  derivative in s of the gamma-weighted Mellin integral at the center, and it
+  converges as fast as `central`.
+- g₂ has a log² singularity at 0. Below x = 2 it is
+  (log x)²/2 + γ log x + γ²/2 + π²/12 + Σ (−x)ⁿ/(n²·n!), and above 2 the integral
+  e^(−x)/x ∫ e^(−v) log(1 + v/x)/(1 + v/x) dv is smooth enough for 60 Laguerre nodes.
+- Resampling with replacement from 4 times the target size is biased at order
+  1/pool, which the KS tests cannot see at these sample sizes. Rejection sampling
+  would be exact, but its acceptance rate falls exponentially in N.
+- The full suite failed once on the Bessel check: `test_heat` set mpmath to 30
+  digits globally and never reset it, and the Bessel kernel moved by 2e-14. The test
+  now uses `workdps`, and the Bessel check asks for 1e-13.
+
+Next: Polymath 15's barrier (the Euler-mollified lower bound on |f_t| along the
+bottom edge of the barrier rectangle), or the two-level density of the odd twists.
