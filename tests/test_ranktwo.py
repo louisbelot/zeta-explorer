@@ -4,8 +4,16 @@ import numpy as np
 import pytest
 
 from zeta_explorer.elliptic import Curve, EllipticL, low_zeros
-from zeta_explorer.ranktwo import compare, family, first_zeros, matrix_size, rank_two
-from zeta_explorer.rmt import rank_two_first
+from zeta_explorer.ranktwo import (
+    compare,
+    excision_scan,
+    family,
+    first_zeros,
+    ks2,
+    matrix_size,
+    rank_two,
+)
+from zeta_explorer.rmt import char_poly_at_one, jacobi_angles, rank_two_first
 
 E11 = Curve(0, -1, 1, 0, 0)
 
@@ -39,3 +47,20 @@ def test_compare_picks_the_sampled_model():
     ks = {name: row[1] for name, row in table.items()}
     assert min(ks, key=ks.get) == "interaction"
     assert table["interaction"][2] == 5
+
+
+def test_ks2():
+    assert ks2(np.array([1.0, 2.0]), np.array([1.0, 2.0])) == 0
+    assert ks2(np.array([0.0, 1.0]), np.array([2.0, 3.0, 4.0])) == 1
+    assert ks2(np.array([1.0, 3.0]), np.array([2.0, 4.0])) == 0.5
+
+
+def test_excision_scan_finds_the_planted_cut():
+    theta = jacobi_angles(4, 1.5, 40_000, seed=11)
+    v = char_poly_at_one(theta)
+    x = 5 * theta[v >= np.quantile(v, 0.4), 0][:4000] / np.pi
+    fractions = np.linspace(0, 0.8, 9)
+    cuts, ks = excision_scan(x, 5, fractions, size=40_000, seed=12)
+    assert np.all(np.diff(cuts) > 0)
+    assert fractions[np.argmin(ks)] == pytest.approx(0.4)
+    assert ks.min() < 1.36 / np.sqrt(4000)

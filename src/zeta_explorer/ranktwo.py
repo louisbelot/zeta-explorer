@@ -17,12 +17,14 @@ from zeta_explorer.elliptic import (
 )
 from zeta_explorer.rmt import (
     Kernel,
+    char_poly_at_one,
     conditioned_n,
     fit_n,
     gap_chi2,
     gap_ks,
     independent_n,
     interaction_n,
+    jacobi_angles,
 )
 
 KERNELS = {"independent": independent_n, "interaction": interaction_n,
@@ -82,3 +84,21 @@ def compare(
         best = fit_n(x, grid, make)[0]
         out[name] = (gap_chi2(x, k, edges), gap_ks(x, k), int(best))
     return out
+
+
+def ks2(a: np.ndarray, b: np.ndarray) -> float:
+    a, b = np.sort(a), np.sort(b)
+    grid = np.concatenate([a, b])
+    fa = np.searchsorted(a, grid, side="right") / len(a)
+    fb = np.searchsorted(b, grid, side="right") / len(b)
+    return float(np.max(np.abs(fa - fb)))
+
+
+def excision_scan(
+    x: np.ndarray, n: int, fractions: np.ndarray, size: int = 200_000, seed: int = 0
+) -> tuple[np.ndarray, np.ndarray]:
+    theta = jacobi_angles(n - 1, 1.5, size, seed)
+    v = char_poly_at_one(theta)
+    first = n * theta[:, 0] / math.pi
+    cuts = np.quantile(v, fractions)
+    return cuts, np.array([ks2(x, first[v >= c]) for c in cuts])
