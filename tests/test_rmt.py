@@ -4,8 +4,10 @@ import numpy as np
 import pytest
 
 from zeta_explorer.rmt import (
+    bessel,
     binned_chi2,
     char_poly_at_one,
+    conditioned_n,
     even_orthogonal,
     even_orthogonal_n,
     excised_first,
@@ -14,8 +16,16 @@ from zeta_explorer.rmt import (
     fit_n,
     fredholm_det,
     gap,
+    gap_chi2,
+    gap_ks,
+    independent_n,
+    interaction_n,
+    jacobi_angles,
+    jacobi_moment,
+    jacobi_n,
     odd_orthogonal_half,
     odd_orthogonal_n,
+    rank_two_first,
     sine,
     small_value_law,
     so_angles,
@@ -260,3 +270,99 @@ def test_first_density_mix():
     expect = (2 * first_density(even_orthogonal_n(2.0), s)
               + first_density(even_orthogonal_n(5.0), s)) / 3
     assert two == pytest.approx(expect, abs=1e-14)
+
+
+U = np.linspace(0.05, 0.9, 7)[:, None]
+
+
+@pytest.mark.parametrize("n", [1, 3, 8])
+def test_jacobi_reproduces_the_classical_kernels(n):
+    for alpha, beta, k in ((-0.5, -0.5, even_orthogonal_n), (0.5, -0.5, odd_orthogonal_n),
+                           (0.5, 0.5, symplectic_n)):
+        assert jacobi_n(n, alpha, beta)(U, U.T) == pytest.approx(k(n)(U, U.T), abs=1e-13)
+
+
+def test_independent_is_a_smaller_so_even():
+    small = even_orthogonal_n(4)
+    assert independent_n(5)(U, U.T) == pytest.approx(0.8 * small(0.8 * U, 0.8 * U.T), abs=1e-13)
+
+
+def test_bessel_half_is_the_symplectic_limit():
+    y = np.linspace(0.1, 2.7, 6)[None, :]
+    assert bessel(0.5)(U, y) == pytest.approx(symplectic(U, y), abs=1e-14)
+    assert bessel(0.5)(U, U) == pytest.approx(symplectic(U, U), abs=1e-14)
+
+
+@pytest.mark.parametrize("alpha", [1.0, 1.5])
+def test_jacobi_tends_to_bessel_like_one_over_n(alpha):
+    limit = gap(bessel(alpha), 1.0)
+    err = [gap(jacobi_n(n, alpha, scale=n), 1.0) - limit for n in (40, 400)]
+    assert err[0] / err[1] == pytest.approx(10, rel=0.02)
+
+
+def test_interaction_n2_closed_form():
+    t = np.pi * S / 2
+    inside = 1.5 * t - 2 * np.sin(t) + np.sin(2 * t) / 4
+    assert gap(interaction_n(2), S) == pytest.approx(1 - inside / (1.5 * np.pi), abs=1e-14)
+
+
+def test_conditioned_n2_closed_form():
+    def primitive(phi):
+        return -np.cos(phi) + np.cos(phi) ** 3 / 3
+
+    t = np.pi * S / 4
+    expect = (primitive(np.pi / 2) - primitive(t)) / (primitive(np.pi / 2) - primitive(0))
+    assert gap(conditioned_n(2), S) == pytest.approx(expect, abs=1e-13)
+
+
+@pytest.mark.parametrize("s", [0.4, 1.0, 1.7])
+def test_interaction_n3_against_weyl_integral(s):
+    weyl = weyl_gap(np.pi * s / 3, lambda a, b: (np.cos(a) - np.cos(b)) ** 2
+                    * ((1 - np.cos(a)) * (1 - np.cos(b))) ** 2)
+    assert gap(interaction_n(3), s) == pytest.approx(weyl, abs=1e-13)
+
+
+def test_forced_pair_repels_like_a_power():
+    for alpha, k in ((1.5, interaction_n(8)), (1.0, conditioned_n(8))):
+        ratio = first_density(k, 0.02) / first_density(k, 0.01)
+        assert np.log2(ratio) == pytest.approx(2 * alpha + 1, abs=0.01)
+
+
+@pytest.mark.parametrize("model", ["independent", "interaction", "conditioned"])
+def test_rank_two_monte_carlo_matches_fredholm(model):
+    kernel = {"independent": independent_n, "interaction": interaction_n,
+              "conditioned": conditioned_n}[model](4)
+    x = rank_two_first(4, model, 20_000, seed=5)
+    assert gap_ks(x, kernel) < 1.6 / np.sqrt(len(x))
+
+
+def test_jacobi_moment_closed_form():
+    s = np.array([-1.2, 0.5, 2.0])
+    expect = 4**s * np.array([math.gamma(2.5 + x) * 2 / (math.gamma(2.5) * math.gamma(3 + x))
+                              for x in s])
+    assert jacobi_moment(1, s, 1.5) == pytest.approx(expect, rel=1e-13)
+    assert jacobi_moment(4, 0.5, 0.5) == so_moment(4, 0.5, odd=True)
+
+
+def test_jacobi_angles_reweighting():
+    v = char_poly_at_one(jacobi_angles(3, 1.5, 40_000, seed=2))
+    for s in (0.5, 1.0):
+        mc = v**s
+        assert abs(mc.mean() - jacobi_moment(3, s, 1.5)) < 4 * mc.std() / np.sqrt(len(v))
+    with pytest.raises(ValueError):
+        jacobi_angles(3, 0.2, 10)
+
+
+def test_rank_two_cutoff_removes_small_values():
+    plain = rank_two_first(4, "interaction", 10_000, seed=4)
+    cut = rank_two_first(4, "interaction", 10_000, seed=4, cutoff=1.0)
+    assert 0 < len(cut) < len(plain) == 10_000
+    assert np.mean(cut) > np.mean(plain)
+
+
+def test_gap_chi2_and_ks():
+    flat = even_orthogonal_n(1)
+    edges = np.array([0.0, 0.5, 1.0])
+    assert gap_chi2(np.linspace(0.05, 0.95, 10), flat, edges) == pytest.approx(0, abs=1e-20)
+    assert gap_chi2(np.full(10, 0.2), flat, edges) == pytest.approx(10)
+    assert gap_ks(np.array([0.5, 1.0]), flat) == pytest.approx(0.5)
