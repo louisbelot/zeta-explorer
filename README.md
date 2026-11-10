@@ -1520,6 +1520,83 @@ bulk on the even side with an effective N from the lower-order terms of the
 one-level density (their r₁ = 2.86 for this curve). The odd family needs the same
 computation before an excised model can be judged fairly.
 
+### Rank 2 twists and the forced pair
+
+![Lowest zeros of the 309 rank 2 twists of 11a3 against three random matrix models](docs/rank_two.png)
+
+S. J. Miller ([arXiv:math/0508150](https://arxiv.org/abs/math/0508150)) found that
+the first zero above the center is pushed further out in rank 2 curves than in
+rank 0 ones, and noted that nobody knew which matrix model should describe them.
+`ranktwo.family` collects every even twist of 11a3 with 5 ≤ d ≤ 20,000 whose central
+value vanishes: 309 curves, from d = 232 to 19,761, found in 45 minutes on 16
+processes. For each one it keeps the unfolded low zeros and the leading Taylor
+coefficient L''(E_d, 1/2)/2.
+
+That coefficient comes from the series
+L''(1/2) = 4 Σ a_n/n · g₂(n/A), where g₂ is the second derivative kernel of the
+smoothed functional equation. `elliptic.g2` sums a series in x and log x below 2
+and uses 60-point Gauss-Laguerre above. It matches mpmath quadrature to 1e-13,
+gives 0.759316500288427 for 389a1 (the value LMFDB lists for its rank 2 leading
+coefficient) to 1e-14, and agrees with a Richardson-extrapolated −2Z(t)/t² for the
+twist d = 232 to 1e-5.
+
+There are three ways to put a double eigenvalue at 1 in SO(2N), and they give
+different laws for the next one. With x = cos θ, the N − 1 free angles have a Jacobi
+weight (1 − x)^α (1 + x)^(−1/2):
+
+- independent (α = −1/2): drop the pair and take SO(2N − 2) as it is;
+- interaction (α = 3/2): fix θ_N = 0 and keep its repulsion ∏(1 − cos θ_j)² on the
+  others;
+- conditioned (α = 1): ask for det(I − A) < ε and let ε go to 0. The pair only
+  needs θ_N ≲ √(ε/∏(2 − 2cos θ_j)), which gives back a factor ∏(2 − 2cos θ_j)^(−1/2).
+  This is the Borel paradox: the limit depends on how you approach it.
+
+`rmt.jacobi_n` builds the finite-N kernel for any α and β from the three-term
+recurrence of the orthonormal Jacobi polynomials, so the gap probabilities are
+Fredholm determinants as before. With (α, β) = (∓1/2, −1/2) and (1/2, 1/2) it
+reproduces the SO(even), SO(odd) and USp kernels to 1e-13. For N = 2 and 3 it
+matches closed forms and the Weyl integral, the density of the first point
+vanishes like x^(2α+1), and as N grows the kernel goes to the hard-edge Bessel
+kernel J_(α+1/2) with an error that falls like 1/N (ten times smaller
+from N = 40 to 400). Monte Carlo
+draws Haar SO(2N − 1) and resamples by ∏(2 − 2cos θ_j)^(α − 1/2); those first
+eigenvalues pass a KS test against the Fredholm side for all three models.
+
+With N = 8 (the mean log A of the family is 8.15) and 12 bins of (0, 2.4):
+
+| model for the 309 rank 2 twists | χ² | KS | mean lowest zero |
+|---|---|---|---|
+| independent, SO(14) | 16,905 | 0.894 | 0.395 |
+| conditioned, α = 1 | 195.5 | 0.359 | 1.091 |
+| interaction, α = 3/2 | 62.6 | 0.182 | 1.268 |
+| interaction, smallest 20% of Λ''(1)/2 removed | | 0.054 | 1.377 |
+| data | | | 1.370 |
+
+The independent model is not close: the twists never put a zero below x = 0.62,
+while SO(14) puts 79% of its first eigenvalues there. The pair's repulsion is the
+right mechanism, and the interaction model gets most of the way, but its KS
+distance is more than twice the 5% critical value of 0.077. The maximum
+likelihood N for it is 4, half the conductor's value, which is the same pattern as
+the rank 0 twists.
+
+The right panel shows why an excision is the natural next step. In the
+interaction model Λ''(1)/2 = ∏(2 − 2cos θ_j) over the free angles, and a small
+value goes with a close first eigenvalue (rank correlation 0.82). The twists show
+the same thing with log L''(1/2)/2 (rank correlation 0.59). Their leading
+coefficients stay above 5.10 (d = 697), and there is no Waldspurger formula here
+to say why. Birch and Swinnerton-Dyer would tie them to the regulator of a rank 2
+lattice of rational points, which cannot be small. Cutting the matrices with the
+smallest 20% of Λ''(1)/2 brings the KS distance under the critical value and the
+mean within 0.007. The cut is fitted (scanning 0 to 95% in steps of 5%), and the
+fit is not perfect: the excised law still has a standard deviation of 0.342
+against 0.291 in the data, the same excess width the odd twists showed.
+
+Miller also conjectured that the extra repulsion fades as the conductor grows.
+Splitting the family at the median |d|, the mean lowest zero goes from 1.395 ± 0.023
+(d ≤ 8,380, mean log A 7.42) to 1.345 ± 0.024 (d ≥ 8,449, mean log A 8.87). The
+interaction model at the matching N drops by only 0.021 over the same range. The
+data move in his direction, by about 1.5 standard errors.
+
 ### The ratios conjecture for twists, and an effective N
 
 ![One-level density of the even and odd twists of 11a3 against the ratios conjecture](docs/twist_density.png)
