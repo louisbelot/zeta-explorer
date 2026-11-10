@@ -966,7 +966,7 @@ def plot_twist_zeros(
 
 def plot_rank_two(
     first: ArrayLike, size: ArrayLike, n: int, sample: ArrayLike, sample_size: ArrayLike,
-    s_max: float = 3.0, bins: int = 24,
+    s_max: float = 3.0, bins: int = 24, excised: ArrayLike | None = None, removed: float = 0.0,
 ) -> Figure:
     import matplotlib.pyplot as plt
 
@@ -989,6 +989,10 @@ def plot_rank_two(
                   label=f"{label}, N = {n}")
     left.plot(s, first_density(bessel(1.5), s), color=ACCENT, linewidth=1.1, linestyle=":",
               label="interaction, N → ∞")
+    if excised is not None:
+        left.hist(np.asarray(excised, dtype=float), bins=2 * bins, range=(0, s_max), density=True,
+                  histtype="step", color=INK, linewidth=1.3,
+                  label=f"interaction, smallest {removed:.0%} of Λ''(1) removed")
     left.set_xlim(0, s_max)
     left.set_ylim(0, left.get_ylim()[1] * 1.25)
     left.set_xlabel("x of the lowest zero above the double zero at s = 1/2", color=INK)

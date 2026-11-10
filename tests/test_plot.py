@@ -418,3 +418,8 @@ def test_plot_rank_two(tmp_path):
     labels = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
     assert labels[0] == "rank 2 twists (40)"
     assert labels[4] == "interaction: pair at 1, N = 4"
+    fig = plot_rank_two(rng.uniform(0.3, 1.5, 40), rng.lognormal(0, 1, 40), 4,
+                        rng.uniform(0.3, 1.5, 300), rng.lognormal(0, 1, 300),
+                        excised=rng.uniform(0.5, 1.5, 300), removed=0.25)
+    labels = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
+    assert "interaction, smallest 25% of Λ''(1) removed" in labels
