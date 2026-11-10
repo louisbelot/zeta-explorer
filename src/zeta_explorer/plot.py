@@ -22,14 +22,18 @@ from zeta_explorer.multieval import ZWindow
 from zeta_explorer.ratios import quadratic_density
 from zeta_explorer.riemann_siegel import theta, z_exact, z_rs
 from zeta_explorer.rmt import (
+    bessel,
     binned_chi2,
     char_poly_at_one,
+    conditioned_n,
     even_orthogonal,
     even_orthogonal_n,
     first_density,
     first_density_mix,
     fit_n,
     gap,
+    independent_n,
+    interaction_n,
     odd_orthogonal_half,
     odd_orthogonal_n,
     symplectic,
@@ -958,6 +962,57 @@ def plot_twist_zeros(
         _style(ax)
     fig.tight_layout()
     return fig
+
+
+def plot_rank_two(
+    first: ArrayLike, size: ArrayLike, n: int, sample: ArrayLike, sample_size: ArrayLike,
+    s_max: float = 3.0, bins: int = 24,
+) -> Figure:
+    import matplotlib.pyplot as plt
+
+    x = np.asarray(first, dtype=float)
+    fig, (left, right) = plt.subplots(
+        1, 2, figsize=(12, 4.8), facecolor=SURFACE, gridspec_kw={"width_ratios": [1.3, 1]}
+    )
+    s = np.linspace(0, s_max, 241)
+    left.hist(x, bins=bins, range=(0, s_max), density=True, histtype="stepfilled",
+              color=ORDINAL[0], alpha=0.55, label=f"rank 2 twists ({len(x)})")
+    left.plot(s, first_density(even_orthogonal, s), color=INK_SECONDARY, linewidth=1.2,
+              linestyle=":", label="SO(even), no forced pair")
+    curves = (
+        (independent_n(n), ORDINAL[2], "--", f"independent: SO({2 * n - 2})"),
+        (conditioned_n(n), ORDINAL[4], "-.", "Λ(1) → 0 inside SO(2N)"),
+        (interaction_n(n), ACCENT, "-", "interaction: pair at 1"),
+    )
+    for k, color, style, label in curves:
+        left.plot(s, first_density(k, s), color=color, linewidth=1.7, linestyle=style,
+                  label=f"{label}, N = {n}")
+    left.plot(s, first_density(bessel(1.5), s), color=ACCENT, linewidth=1.1, linestyle=":",
+              label="interaction, N → ∞")
+    left.set_xlim(0, s_max)
+    left.set_ylim(0, left.get_ylim()[1] * 1.25)
+    left.set_xlabel("x of the lowest zero above the double zero at s = 1/2", color=INK)
+    left.set_ylabel("density", color=INK)
+    left.set_title("Rank 2 even twists of 11a3 against SO(2N) with a pair at 1", color=INK,
+                   fontsize=11, loc="left")
+    left.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right")
+    right.scatter(np.log(np.asarray(sample_size, dtype=float)), np.asarray(sample, dtype=float),
+                  s=4, color=GRID, alpha=0.6, linewidths=0, label=f"interaction model, N = {n}")
+    right.scatter(np.log(np.asarray(size, dtype=float)), x, s=10, color=SERIES, alpha=0.8,
+                  linewidths=0, label="rank 2 twists")
+    right.set_ylim(0, s_max)
+    right.set_xlabel("log of the leading Taylor coefficient (normalized)", color=INK)
+    right.set_ylabel("x of the lowest zero", color=INK)
+    right.set_title("Small second derivative, close first zero", color=INK, fontsize=11,
+                    loc="left")
+    right.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper left",
+                 markerscale=3)
+    for ax in (left, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig
+
 
 def plot_odd_excision(
     first: ArrayLike, theta: np.ndarray, predicted: dict[str, float], c_max: float = 300.0,

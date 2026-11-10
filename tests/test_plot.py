@@ -51,6 +51,7 @@ from zeta_explorer.plot import (
     plot_spiral,
     plot_sympower,
     plot_twist_density,
+    plot_rank_two,
     plot_twist_zeros,
     plot_z,
     sweep_sigma,
@@ -407,3 +408,13 @@ def test_plot_sympower_panels():
     assert [ax.get_ylabel() for ax in fig.axes[:2]] == ["sym² Δ", "sym³ Δ"]
     assert fig.axes[2].get_title(loc="left") == "S(t) for sym² of 11a"
     assert len(fig.axes[2].get_lines()) == 3
+
+
+def test_plot_rank_two(tmp_path):
+    rng = np.random.default_rng(0)
+    fig = plot_rank_two(rng.uniform(0.3, 1.5, 40), rng.lognormal(0, 1, 40), 4,
+                        rng.uniform(0.3, 1.5, 300), rng.lognormal(0, 1, 300))
+    fig.savefig(tmp_path / "rank2.png")
+    labels = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
+    assert labels[0] == "rank 2 twists (40)"
+    assert labels[4] == "interaction: pair at 1, N = 4"
