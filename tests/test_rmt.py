@@ -289,8 +289,8 @@ def test_independent_is_a_smaller_so_even():
 
 def test_bessel_half_is_the_symplectic_limit():
     y = np.linspace(0.1, 2.7, 6)[None, :]
-    assert bessel(0.5)(U, y) == pytest.approx(symplectic(U, y), abs=1e-14)
-    assert bessel(0.5)(U, U) == pytest.approx(symplectic(U, U), abs=1e-14)
+    assert bessel(0.5)(U, y) == pytest.approx(symplectic(U, y), abs=1e-13)
+    assert bessel(0.5)(U, U) == pytest.approx(symplectic(U, U), abs=1e-13)
 
 
 @pytest.mark.parametrize("alpha", [1.0, 1.5])

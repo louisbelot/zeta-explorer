@@ -33,15 +33,14 @@ def test_h0_at_the_origin():
 
 
 def defining_integral(z, t):
-    mpmath.mp.dps = 30
-
     def f(u):
         e = mpmath.exp(4 * u)
         s = sum((2 * mpmath.pi**2 * n**4 * mpmath.exp(9 * u) - 3 * mpmath.pi * n**2
                  * mpmath.exp(5 * u)) * mpmath.exp(-mpmath.pi * n**2 * e) for n in range(1, 25))
         return mpmath.exp(t * u * u) * s * mpmath.cos(z * u)
 
-    return float(mpmath.quad(f, [0, 0.25, 0.5, 1, 2]))
+    with mpmath.workdps(30):
+        return float(mpmath.quad(f, [0, 0.25, 0.5, 1, 2]))
 
 
 @pytest.mark.parametrize("z, t", [(3.0, -0.3), (25.0, 0.25), (12.0, 0.0), (40.0, -1.0)])
