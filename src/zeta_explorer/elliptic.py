@@ -169,6 +169,41 @@ def central(L: EllipticL) -> float:
     return float(2 * np.sum(a * exp1(n / L.A)))
 
 
+@functools.cache
+def _laguerre(m: int) -> tuple[np.ndarray, np.ndarray]:
+    return np.polynomial.laguerre.laggauss(m)
+
+
+def g2(x: ArrayLike) -> float | np.ndarray:
+    xs = np.atleast_1d(np.asarray(x, dtype=float))
+    if np.any(xs <= 0):
+        raise ValueError("g2 needs x > 0")
+    out = np.empty_like(xs)
+    small = xs < 2
+    xx = xs[small]
+    t = -np.log(xx)
+    g = np.euler_gamma
+    total = t * t / 2 - g * t + g * g / 2 + math.pi**2 / 12
+    term = np.ones_like(xx)
+    for n in range(1, 60):
+        term = -term * xx / n
+        total += term / (n * n)
+    out[small] = total
+    v, w = _laguerre(60)
+    big = xs[~small][:, None]
+    y = 1 + v[None, :] / big
+    out[~small] = np.exp(-big[:, 0]) / big[:, 0] * ((np.log(y) / y) @ w)
+    return float(out[0]) if np.ndim(x) == 0 else out
+
+
+def second_central(L: EllipticL) -> float:
+    if L.root_number != 1:
+        raise ValueError("L''(1/2) is the leading term only for root number +1")
+    M = math.ceil(_CUT * L.A) + 1
+    n = np.arange(1, M + 1)
+    return float(4 * np.sum(L.an(M)[1:] / n * g2(n / L.A)))
+
+
 def arithmetic_factor(E: Curve, s: float, eps: int, P: int = 1 << 14) -> float:
     M = E.conductor
     if factor(M) != [(M, 1)]:

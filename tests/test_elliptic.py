@@ -13,8 +13,10 @@ from zeta_explorer.elliptic import (
     completed,
     ec_theta,
     exp1,
+    g2,
     hardy_z,
     low_zeros,
+    second_central,
     t_of_x,
     twists,
 )
@@ -208,3 +210,26 @@ def test_arithmetic_factor_sign_enters_at_the_conductor():
 def test_arithmetic_factor_needs_prime_conductor():
     with pytest.raises(ValueError):
         arithmetic_factor(Curve(1, 1, 1, -10, -10), 1.0, 1)
+
+
+def test_g2_against_quadrature():
+    for x in (0.01, 0.7, 1.99, 2.0, 5.0, 40.0):
+        def f(v, x=x):
+            return mpmath.exp(-v) * mpmath.log(1 + v / x) / (1 + v / x)
+
+        with mpmath.workdps(30):
+            ref = mpmath.quad(f, mpmath.linspace(0, 60, 13) + [mpmath.inf]) * mpmath.exp(-x) / x
+        assert g2(x) == pytest.approx(float(ref), rel=1e-13)
+
+
+def test_second_central_389a():
+    assert second_central(EllipticL(E389)) / 2 == pytest.approx(0.7593165002884268, rel=1e-14)
+    with pytest.raises(ValueError):
+        second_central(EllipticL(E37))
+
+
+def test_second_central_against_hardy_z():
+    L = EllipticL(E11, 232)
+    h = 0.05
+    f = [-2 * hardy_z(t, L) / t**2 for t in (h, h / 2)]
+    assert second_central(L) == pytest.approx((4 * f[1] - f[0]) / 3, rel=1e-5)
