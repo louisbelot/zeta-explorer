@@ -1828,3 +1828,49 @@ def plot_sympower(
     _style(right)
     fig.tight_layout()
     return fig
+
+
+def plot_barrier(images: dict[float, ArrayLike], ts: ArrayLike, dts: ArrayLike, points: ArrayLike,
+                 edges: list[tuple[float, float, dict[str, float]]], threshold: float,
+                 X: float) -> Figure:
+    import matplotlib.pyplot as plt
+
+    fig, (left, mid, right) = plt.subplots(1, 3, figsize=(15, 4.8), facecolor=SURFACE)
+    for (t, f), color in zip(sorted(images.items()), ORDINAL[::2], strict=False):
+        f = np.asarray(f)
+        left.plot(np.append(f.real, f.real[0]), np.append(f.imag, f.imag[0]), color=color,
+                  linewidth=1.3, label=f"t = {t:g}")
+    left.plot([0], [0], "+", color=ACCENT, markersize=11, markeredgewidth=1.8, label="origin")
+    left.set_aspect("equal", adjustable="datalim")
+    left.set_xlabel("Re f_t", color=INK)
+    left.set_ylabel("Im f_t", color=INK)
+    left.set_title(f"f_t on the barrier rectangle at x = {_fmt_power(X)}", color=INK,
+                   fontsize=12, loc="left")
+    left.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper left")
+    ts = np.asarray(ts, dtype=float)
+    mid.stairs(points, np.append(ts, ts[-1] + np.asarray(dts)[-1]), color=SERIES, linewidth=1.4)
+    mid.set_yscale("log")
+    mid.set_xlim(0, None)
+    mid.set_xlabel("t", color=INK)
+    mid.set_ylabel("mesh points on the rectangle", color=INK)
+    mid.set_title(f"{len(ts)} time steps, winding number 0 at each", color=INK,
+                  fontsize=12, loc="left")
+    styles = {"Lemma 8.5, N tracked": (SERIES, "-"), "Lemma 8.5, coefficients at N+": (
+        ORDINAL[0], "--"), "triangle inequality": (INK_SECONDARY, "-")}
+    for name, (color, ls) in styles.items():
+        for i, (lo, hi, vals) in enumerate(edges):
+            right.plot([lo, hi], [vals[name]] * 2, color=color, linestyle=ls, linewidth=2.0,
+                       label=name if i == 0 else None)
+    right.axhline(threshold, color=ACCENT, linewidth=1.0, linestyle=":",
+                  label=f"needed: {threshold:g}")
+    right.axhline(0, color=INK_SECONDARY, linewidth=0.6)
+    right.set_xscale("log")
+    right.set_xlabel("N on the lower edge y = 0.2", color=INK)
+    right.set_ylabel("lower bound on dist(E f, (−∞, 0])", color=INK)
+    right.set_title("Euler-mollified lower bound", color=INK, fontsize=12, loc="left")
+    right.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="center right")
+    for ax in (left, mid, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig

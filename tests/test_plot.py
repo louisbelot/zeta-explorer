@@ -16,6 +16,7 @@ from zeta_explorer.plot import (
     heat_flow_animation,
     phase_colors,
     plot_afe,
+    plot_barrier,
     plot_bias_densities,
     plot_central_values,
     plot_continuation,
@@ -423,3 +424,15 @@ def test_plot_rank_two(tmp_path):
                         excised=rng.uniform(0.5, 1.5, 300), removed=0.25)
     labels = [t.get_text() for t in fig.axes[0].get_legend().get_texts()]
     assert "interaction, smallest 25% of Λ''(1) removed" in labels
+
+
+def test_plot_barrier_panels(tmp_path):
+    th = np.linspace(0, 2 * np.pi, 50, endpoint=False)
+    images = {0.0: 3 + np.exp(1j * th), 0.2: 2 + 0.5 * np.exp(1j * th)}
+    edges = [(1e4, 2e4, {"Lemma 8.5, N tracked": 0.03, "Lemma 8.5, coefficients at N+": 0.02,
+                         "triangle inequality": -0.1})]
+    fig = plot_barrier(images, [0.0, 0.1], [0.1, 0.1], [400, 50], edges, 2e-3, 6e10)
+    fig.savefig(tmp_path / "barrier.png")
+    assert len(fig.axes[0].lines) == 3
+    assert fig.axes[1].get_title(loc="left") == "2 time steps, winding number 0 at each"
+    assert fig.axes[2].get_xscale() == "log"
