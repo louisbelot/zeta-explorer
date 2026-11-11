@@ -128,6 +128,22 @@ def test_bounds_dominate_differences():
         assert ft.max() < dt
 
 
+def test_winding_counts_zeros():
+    th = np.linspace(0, 2 * np.pi, 400, endpoint=False)
+    z = np.exp(1j * th)
+    assert P.winding(z - 0.3) == 1
+    assert P.winding((z - 0.3j) * (z + 0.5)) == 2
+    assert P.winding(z - 2) == 0
+
+
+def test_mesh_spacing():
+    bar = P.Barrier(X=1e6 + 0.3)
+    u, y = bar.mesh(0.01)
+    gaps = np.abs(np.diff(np.append(u, u[0]) + 1j * np.append(y, y[0])))
+    assert gaps.max() <= 0.01 + 1e-12
+    assert len(u) == 360
+
+
 def test_error_at_the_barrier():
     bar = P.Barrier()
     assert bar.err(0.0, 0.0) == pytest.approx(1.249e-3, rel=1e-3)
@@ -137,3 +153,19 @@ def test_barrier_location_is_large():
     bar = P.Barrier()
     assert bar.N == N0
     assert np.abs(bar.f([-0.5, 0.0, 0.5], 1.0, 0.0)).min() == pytest.approx(4.32, abs=0.01)
+
+
+def test_small_barrier_holds():
+    steps = P.Barrier(X=1e6 + 0.3).verify()
+    assert {s.winding for s in steps} == {0}
+    assert all(s.min_abs > s.err + s.dz * 1e-12 for s in steps)
+    assert math.isclose(steps[-1].t + steps[-1].dt, 0.2)
+
+
+def test_polymath_barrier():
+    steps = P.Barrier().verify()
+    assert {s.winding for s in steps} == {0}
+    assert steps[0].t == 0
+    assert math.isclose(steps[-1].t + steps[-1].dt, 0.2)
+    assert all(b.t == pytest.approx(a.t + a.dt) for a, b in zip(steps, steps[1:], strict=False))
+    assert min(s.min_abs for s in steps) > 1.5

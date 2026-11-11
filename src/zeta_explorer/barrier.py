@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 
 import mpmath
 import numpy as np
@@ -154,6 +155,18 @@ def _alpha_prime(s: np.ndarray) -> np.ndarray:
     return -1 / (2 * s * s) - 1 / (s - 1) ** 2 + 1 / (2 * s)
 
 
+@dataclass(frozen=True)
+class Step:
+    t: float
+    dt: float
+    points: int
+    min_abs: float
+    err: float
+    dz: float
+    dt_bound: float
+    winding: int
+
+
 class Barrier:
     def __init__(self, X: float = X0, y_lo: float = 0.2, y_hi: float = 1.0, width: float = 1.0,
                  t_hi: float = 0.2, block: float = 0.01, tol: float = 1e-13):
@@ -279,3 +292,46 @@ class Barrier:
         u, y, t = self.corners(t1, t2)
         return 1.001 * max(float(error(self.X + du, dy, dt, corrected=False))
                            for du, dy, dt in zip(u, y, t, strict=True))
+
+    def mesh(self, h: float) -> tuple[np.ndarray, np.ndarray]:
+        w, a, b = self.width / 2, self.y_lo, self.y_hi
+        path = [(-w, a), (w, a), (w, b), (-w, b), (-w, a)]
+        us, ys = [], []
+        for (u0, y0), (u1, y1) in zip(path, path[1:], strict=False):
+            k = max(1, math.ceil(math.hypot(u1 - u0, y1 - y0) / h))
+            r = np.arange(k) / k
+            us.append(u0 + r * (u1 - u0))
+            ys.append(y0 + r * (y1 - y0))
+        return np.concatenate(us), np.concatenate(ys)
+
+    def left_edge(self, t: float, h: float) -> tuple[float, float]:
+        y = np.linspace(self.y_lo, self.y_hi, math.ceil((self.y_hi - self.y_lo) / h) + 1)
+        f = self.f(-self.width / 2, y, t)
+        slack = self.bounds(t, t)[0] * h / 2
+        m = float(np.abs(f).min())
+        return m - slack, float(np.abs(np.angle(f)).max()) + math.asin(min(1.0, slack / m))
+
+    def verify(self, frac: float = 0.5) -> list[Step]:
+        steps: list[Step] = []
+        t, m = 0.0, float(np.abs(self.f(*self.mesh(0.01), 0.0)).min())
+        while t < self.t_hi:
+            t2 = self._span(t)[1]
+            dz, dtb = self.bounds(t, t2)
+            err = self.err(t, t2)
+            h = 2 * frac * max(m - err, 1e-3) / dz
+            while True:
+                u, y = self.mesh(h)
+                f = self.f(u, y, t)
+                m = float(np.abs(f).min())
+                margin = m - err - dz * h / 2
+                if margin > 0:
+                    break
+                h /= 2
+            dt = 0.99 * margin / dtb
+            steps.append(Step(t, min(dt, t2 - t), len(u), m, err, dz, dtb, winding(f)))
+            t = t2 if dt >= t2 - t else t + dt
+        return steps
+
+
+def winding(f: np.ndarray) -> int:
+    return round(float(np.angle(np.roll(f, -1) / f).sum()) / (2 * math.pi))
