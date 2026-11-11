@@ -5,8 +5,26 @@ import numpy as np
 import pytest
 
 from zeta_explorer import barrier as P
+from zeta_explorer.effective import _log_mt_mp
 
 N0, N1 = 69_098, 1_500_000
+
+
+def reference_f(X, u, y, t, N):
+    with mpmath.workdps(40):
+        s = (1 + mpmath.mpf(y) - 1j * (mpmath.mpf(X) + mpmath.mpf(u))) / 2
+        tm = mpmath.mpf(t)
+
+        def a(z):
+            return 1 / (2 * z) + 1 / (z - 1) + mpmath.log(z / (2 * mpmath.pi)) / 2
+
+        s1, s2 = s + tm / 2 * a(s), 1 - s + tm / 2 * a(1 - s)
+        g = mpmath.exp(_log_mt_mp(1 - s, tm) - _log_mt_mp(s, tm))
+        acc = mpmath.mpc(0)
+        for n in range(1, N + 1):
+            ln = mpmath.log(n)
+            acc += mpmath.exp(tm / 4 * ln * ln) * (mpmath.exp(-s1 * ln) + g * mpmath.exp(-s2 * ln))
+        return complex(acc)
 
 
 def test_erfi_tail_is_the_integral():
@@ -76,3 +94,28 @@ def test_polar_distance():
     assert P.polar_distance(2.0, 1.0) == 2.0
     assert P.polar_distance(2.0, 3 * math.pi / 4) == pytest.approx(math.sqrt(2))
     assert P.polar_distance(2.0, 4.0) == 0.0
+
+
+def test_series_matches_direct_sum():
+    X = 1e6 + 0.3
+    bar = P.Barrier(X=X)
+    for u, y, t in [(-0.5, 0.2, 0.0), (0.31, 0.77, 0.013), (0.5, 1.0, 0.2), (-0.2, 0.25, 0.157)]:
+        assert abs(bar.f(u, y, t)[0] - reference_f(X, u, y, t, bar.N)) < 1e-13
+
+
+def test_log_gamma_matches_mpmath():
+    bar = P.Barrier(X=P.X0)
+    for u, y, t in [(-0.5, 0.2, 0.0), (0.4, 0.9, 0.2)]:
+        with mpmath.workdps(40):
+            s = (1 + mpmath.mpf(y) - 1j * (mpmath.mpf(P.X0) + mpmath.mpf(u))) / 2
+            d = _log_mt_mp(1 - s, mpmath.mpf(t)) - _log_mt_mp(s, mpmath.mpf(t))
+            ref = complex(float(d.real), float(d.imag % (2 * mpmath.pi)))
+        got = complex(bar.log_gamma(u, y, t))
+        assert abs(got.real - ref.real) < 1e-13
+        assert abs((got.imag - ref.imag + math.pi) % (2 * math.pi) - math.pi) < 1e-12
+
+
+def test_barrier_location_is_large():
+    bar = P.Barrier()
+    assert bar.N == N0
+    assert np.abs(bar.f([-0.5, 0.0, 0.5], 1.0, 0.0)).min() == pytest.approx(4.32, abs=0.01)
