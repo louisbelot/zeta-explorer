@@ -6,7 +6,7 @@ import mpmath
 import numpy as np
 from numpy.typing import ArrayLike
 
-from zeta_explorer.effective import _log_mt_mp, alpha, n_terms
+from zeta_explorer.effective import _log_mt_mp, alpha, error, n_terms
 from zeta_explorer.multieval import log_phases
 
 X0 = 60_000_083_952.0
@@ -150,6 +150,10 @@ def _tail(z: float, k: int) -> float:
     return total
 
 
+def _alpha_prime(s: np.ndarray) -> np.ndarray:
+    return -1 / (2 * s * s) - 1 / (s - 1) ** 2 + 1 / (2 * s)
+
+
 class Barrier:
     def __init__(self, X: float = X0, y_lo: float = 0.2, y_hi: float = 1.0, width: float = 1.0,
                  t_hi: float = 0.2, block: float = 0.01, tol: float = 1e-13):
@@ -253,3 +257,25 @@ class Barrier:
         a = (t - tc) / 4
         g = np.exp(self.log_gamma(u, y, t))
         return self._series(S1, J, K, a, w1c - w1) + g * self._series(S2, J, K, a, w2c - w2)
+
+    def bounds(self, t1: float, t2: float) -> tuple[float, float]:
+        u, y, t = self.corners(t1, t2)
+        s = self._s(u, y)
+        a, ar = alpha(s), alpha(1 - s)
+        da, dar = _alpha_prime(s), _alpha_prime(1 - s)
+        lg = self.log_gamma(u, y, t).real
+        L = self.L[:, None]
+        w1 = np.exp((t / 4 * L**2 - ((1 + y) / 2 + t / 2 * a.real) * L).max(axis=1) + 1e-9)
+        w2 = np.exp((lg + t / 4 * L**2 - ((1 - y) / 2 + t / 2 * ar.real) * L).max(axis=1) + 1e-9)
+        c1 = np.abs(1 + t / 2 * da).max()
+        c2 = np.abs(1 + t / 2 * dar).max()
+        c3 = (np.abs(a * (1 + t / 2 * da)) + np.abs(ar * (1 + t / 2 * dar))).max()
+        dz = 0.5 * (w1 @ (self.L * c1) + w2 @ (self.L * c2 + c3))
+        g1 = np.abs(L**2 / 4 - a * L / 2).max(axis=1)
+        g2 = (np.abs(ar**2 - a**2) / 4 + np.abs(L**2 / 4 - ar * L / 2)).max(axis=1)
+        return float(dz) * (1 + 1e-6), float(w1 @ g1 + w2 @ g2) * (1 + 1e-6)
+
+    def err(self, t1: float, t2: float) -> float:
+        u, y, t = self.corners(t1, t2)
+        return 1.001 * max(float(error(self.X + du, dy, dt, corrected=False))
+                           for du, dy, dt in zip(u, y, t, strict=True))

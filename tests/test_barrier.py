@@ -115,6 +115,24 @@ def test_log_gamma_matches_mpmath():
         assert abs((got.imag - ref.imag + math.pi) % (2 * math.pi) - math.pi) < 1e-12
 
 
+def test_bounds_dominate_differences():
+    bar = P.Barrier(X=1e6 + 0.3)
+    rng = np.random.default_rng(3)
+    for t1, t2 in [(0.0, 0.01), (0.15, 0.16)]:
+        dz, dt = bar.bounds(t1, t2)
+        u, y = rng.uniform(-0.5, 0.5, 300), rng.uniform(0.2, 1.0, 300)
+        t = (t1 + t2) / 2
+        fz = np.abs(bar.f(u + 1e-6, y, t) - bar.f(u - 1e-6, y, t)) / 2e-6
+        ft = np.abs(bar.f(u, y, t + 1e-6) - bar.f(u, y, t - 1e-6)) / 2e-6
+        assert fz.max() < dz
+        assert ft.max() < dt
+
+
+def test_error_at_the_barrier():
+    bar = P.Barrier()
+    assert bar.err(0.0, 0.0) == pytest.approx(1.249e-3, rel=1e-3)
+
+
 def test_barrier_location_is_large():
     bar = P.Barrier()
     assert bar.N == N0
