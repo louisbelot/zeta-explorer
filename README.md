@@ -57,7 +57,11 @@ Polymath 15's effective Riemann-Siegel formula for H_t takes over. It is checked
 against an independent heat-kernel average of ξ, stays inside the paper's error
 bounds at every point tested, and runs in an Odlyzko-Schönhage window out to
 x = 2·10¹². There the zeros of H_t for t > 0 line up on an arithmetic progression,
-as close as a random-phase model built from the primes predicts.
+as close as a random-phase model built from the primes predicts. The same
+machinery recomputes Polymath's proof that Λ ≤ 0.22: the barrier at x = 6·10¹⁰ is
+crossed in 269 time steps with winding number 0 at each, and the Euler-mollified
+bounds clear every edge of the zero-free region. One printed constant in the paper,
+A ≤ 1.88, comes out as 1.906 here, which still leaves room.
 
 The zeros also settle prime races. Under GRH and LI the share of log x where
 primes ≡ 3 (mod 4) lead primes ≡ 1 is 0.9959279, computed from 868 zeros of
@@ -198,6 +202,11 @@ error(1e6 + 0.1, 0.2, 0.2)   # Polymath 15's bound on that: 7.0e-5
 w = HtWindow(2e12, 2e12 + 100, 0.4)
 u = w.zeros()                # 205 zeros of H_0.4, as offsets from w.t0 = x/2
 w.displacement(u[:3])        # indices 3945951430273.., displacements 0.034, 0.031, 0.027
+
+from zeta_explorer.barrier import Barrier, far_bound, lower_edge
+steps = Barrier().verify()   # 269 steps over 0 <= t <= 0.2, winding 0 at each, 14 s
+far_bound(1.5e6, 0.2, 0.2, 69098)   # (A, B) = (1.906, 0.0740)
+lower_edge(69098, 80000)     # 0.0308, needs to beat 0.00215
 ```
 
 ## The math
@@ -2270,6 +2279,88 @@ has r = 0.18 and the next one 0.07, and arg(1 + r e^(iθ)) with θ uniform piles
 at its extremes ±arcsin r, which is ±0.057 after dividing by π. The smaller terms
 blur that into two peaks near ±0.035 with a dip at zero, in the data and in the
 model alike.
+
+### Λ ≤ 0.22, recomputed
+
+Polymath's upper bound (Theorem 1.2 of arXiv:1904.12438) needs three facts for
+t₀ = y₀ = 0.2 and X = 6·10¹⁰ + 83952 − 0.5. First, RH holds up to height X/2,
+which is Platt's verification to 3.06·10¹⁰. Second, H_t₀ has no zeros with
+x ≥ X and 0.2 ≤ y ≤ 1. Third, no zero of H_t crosses the barrier
+X ≤ x ≤ X + 1, 0.2 ≤ y ≤ 1 at any time 0 ≤ t ≤ 0.2. Then Λ ≤ t₀ + y₀²/2 = 0.22.
+`barrier.py` redoes the second and third numerically. Everything is in doubles
+with phases from mpmath, not in interval arithmetic, so it is a careful
+replication and not a certificate.
+
+The barrier. On the rectangle N = 69,098 is fixed, so f_t is holomorphic there,
+and |H_t/B_t − f_t| ≤ e_A + e_B + e_C,0, which is 1.2496·10⁻³ at the worst corner
+(the paper: 1.249·10⁻³). If |f_t| stays above that bound plus the slack between
+mesh points, Rouché's theorem gives H_t and f_t the same winding number. Writing
+f_t = Σ b_n n^(−s*) + γ Σ b_n n^(−(1−s)*), each sum is stored once per time block
+of width 0.01 as moments Σ w_n (log n)^m at a center, and every point in the block
+is a double Taylor series in (t − t_c) log² n and (ω − ω_c) log n, with the orders
+picked so the truncation error stays under 10⁻¹³. The huge phases (X/2) log n are
+reduced mod 2π in mpmath, and log γ is the mpmath value at the center plus an
+8-point Gauss-Legendre integral of its derivative (i/2)(α(1 − s) + α(s)). The
+result matches a 40-digit direct sum to 10⁻¹³ at x = 10⁶. The mesh spacing and
+the time step come from bounds on |∂f/∂z| and |∂f/∂t| over each box, maximized
+over its corners. Those bounds sit 4 to 30 times above finite-difference slopes.
+
+| | here | Polymath |
+|---|---|---|
+| min of \|f_0(x + i)\| at x = X, X + 0.5, X + 1 | 4.319 | 4.32 |
+| mesh points at t = 0 | 2,686 | 11,076 |
+| mesh points at the last step | 40 | 56 |
+| time steps | 269 | not stated |
+| smallest \|f_t\| on any mesh | 1.55 | |
+| winding number | 0 at every step | 0 |
+
+The whole sweep evaluates f 368,008 times and takes 14 seconds.
+
+The zero-free region. Past the barrier the paper multiplies by the Euler factor
+E = Π_(p ≤ 5) (1 − b_p p^(−s*)), which cancels the worst oscillation of f_t, and
+shows that E·H_t/B_t stays off the negative real axis around the rectangle
+x ≥ X, 0.2 ≤ y ≤ 1, N ≤ 1.5·10⁶; beyond that N the triangle inequality alone gives
+|f_t − 1| < 1. Each piece, here against the paper:
+
+| quantity | here | Polymath |
+|---|---|---|
+| Re s* on the region, lower bound | 1.71433 | 1.7143 |
+| \|E\| between | 0.5351 and 1.6340 | 0.534 and 1.635 |
+| \|arg E\| at most | 0.5519 | 0.553 |
+| A at N = 1.5·10⁶ | 1.906 | 1.88 |
+| B, largest over N ≥ 1.5·10⁶ | 0.0740 | 0.075 |
+| \|f − 1\| on the top edge | 0.671 | 0.8 |
+| \|f\| and \|arg f\| on the left edge, t = 0.2 | ≥ 1.575, ≤ 0.127 | ≥ 1, ≤ π/2 |
+
+A is two sums, 1.774 for Σ b_n n^(−α) and 0.132 for the γ term, and I could not
+find a reading of the paper's definition that gives 1.88. It does not matter for
+the proof: A + B = 1.980 still keeps |f − 1| below 1, and the right edge then has
+|E f| ≥ 0.0107 at an angle of at most 1.923, a distance of 0.0100 from the
+negative axis.
+
+The lower edge y = 0.2 is the hard one. Lemma 8.5 bounds the distance by
+1 − r − Σ max(|β_n − r λ_n|, k |β_n + r λ_n|) n^(−σ) over n ≤ 30N, where β and λ
+are the coefficients of E times the two sums, r = c N₋^(−0.2) and
+k = (1 − r)/(1 + r). Those coefficients depend on N through the cutoff n/d ≤ N, and
+N runs over a whole interval [N₋, N₊]. Taking them at N₊, as the paper's numbers
+seem to, reproduces its values within 0.0015. Taking for each n the worst of the
+cutoffs that occur inside the interval, with the sharper constant c = 1.004 from
+the paper's own bound on |γ| (it uses 1.03), gives the first column:
+
+| [N₋, N₊] | N tracked | at N₊, c = 1.03 | Polymath | triangle inequality |
+|---|---|---|---|---|
+| [69098, 8·10⁴] | 0.0308 | 0.0268 | 0.0263 | −0.175 |
+| [8·10⁴, 1.1·10⁵] | 0.0495 | 0.0475 | 0.0470 | −0.146 |
+| [1.1·10⁵, 2.2·10⁵] | 0.0937 | 0.0935 | 0.093 | −0.081 |
+| [2.2·10⁵, 1.5·10⁶] | 0.0639 | 0.0614 | 0.060 | −0.094 |
+
+All of them beat the 2.15·10⁻³ the argument needs, and the plain triangle
+inequality (the paper's (98)) is negative on every interval, which is why the
+lemma exists. With the edges at 0.0100 (right), 0.176 (top), 0.843 (left) and
+0.0308 (bottom), E·H_t/B_t cannot wind around 0, so H_0.2 has no zeros there and
+Λ ≤ 0.22 follows.
+
+![f_t on the barrier rectangle at t = 0, 0.1 and 0.2, mesh size per time step, and the lower-edge bounds against the triangle inequality](docs/barrier.png)
 
 ### The Mertens conjecture
 
