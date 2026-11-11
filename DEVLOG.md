@@ -1499,3 +1499,83 @@ Design notes:
 
 Next: Polymath 15's barrier (the Euler-mollified lower bound on |f_t| along the
 bottom edge of the barrier rectangle), or the two-level density of the odd twists.
+
+## 2026-11-10: Polymath 15's barrier and the Euler-mollified bound, Λ ≤ 0.22 recomputed
+
+Built:
+
+- `barrier.py`, the numerical half of Polymath 15's proof (arXiv:1904.12438,
+  section 8) at t₀ = y₀ = 0.2 and X = 6·10¹⁰ + 83952 − 0.5.
+- The far region: `bsum`, Lemma 8.2's tail (`lemma_tail`) and the exact erfi
+  integral of Remark 8.3 (`erfi_tail`), `sigma_floor` from (21), `gamma_constant`
+  from (20), and `far_bound` and `far_sup` for |f_t − 1| when N ≥ 1.5·10⁶.
+  `top_bound` does the y = 1 edge with the paper's split at N₀.
+- The Euler mollifier over 2, 3, 5: `mollifier_terms`, `mollifier_range` for (94)
+  and (95), `coefficients` for β_n and λ_n with the cutoff n/d ≤ N, and
+  `lower_edge` for Lemma 8.5 (or the plain triangle inequality (98) with
+  `improved=False`).
+- `Barrier`: f_t on the rectangle from stored Taylor moments per time block, log γ
+  from an mpmath center value plus a Gauss-Legendre integral of its derivative,
+  bounds on |∂f/∂z| and |∂f/∂t| over a box, the error bound e_A + e_B + e_C,0, the
+  mesh, and `verify`, which walks t from 0 to 0.2 checking Rouché's condition and
+  the winding number at each step. `left_edge` feeds the zero-free region.
+- `plot.plot_barrier` and docs/barrier.png.
+
+Checks:
+
+- `Barrier.f` against a 40-digit direct sum at x = 10⁶ + 0.3 (N = 282) and
+  3·10⁷ + 0.7 (N = 1545): under 4e−15 at points spread over the whole box. At X it
+  matches the 40-digit sum to every printed digit, while `effective.ft` in doubles is
+  off by 1.3e−5 there.
+- log γ against mpmath at two corners of the barrier box to 1e−12 mod 2π.
+- The z and t derivative bounds against central differences at 300 random points
+  in four boxes: the bounds are 4 to 30 times larger.
+- `erfi_tail` against mpmath quadrature to 1e−12, and the chain
+  sum ≤ head + erfi tail ≤ head + Lemma 8.2 tail.
+- At t = 0, β_n is Möbius: the indicator of gcd(n, 30) = 1.
+- Published values: min |f_0(x + i)| over the three barrier abscissas 4.319 (4.32),
+  e_A + e_B + e_C,0 at the corner 1.2496e−3 (1.249e−3), Re s* ≥ 1.71433 (1.7143),
+  |E| in [0.5351, 1.6340] (0.534, 1.635), |arg E| ≤ 0.5519 (0.553), B = 0.0740
+  (0.075), the first lower-edge interval 0.0268 with the paper's constants (0.0263).
+
+Results:
+
+- The barrier: 269 time steps, 368,008 evaluations, 14 s, winding number 0 at every
+  step, smallest |f_t| on any mesh 1.55. Mesh size 2,686 at t = 0 falling to 40 at
+  the end; Polymath reports 11,076 and 56.
+- Far region: A = 1.906 and B = 0.0740 at N = 1.5·10⁶, A + B = 1.980 the largest
+  over N up to 10³⁰. Top edge |f − 1| ≤ 0.671. Left edge at t = 0.2: |f| ≥ 1.575 and
+  |arg f| ≤ 0.127.
+- Lower edge, tracking N inside each interval: 0.0308, 0.0495, 0.0937, 0.0639 on
+  [69098, 8·10⁴], [8·10⁴, 1.1·10⁵], [1.1·10⁵, 2.2·10⁵], [2.2·10⁵, 1.5·10⁶]. The
+  plain triangle inequality gives −0.175, −0.146, −0.081, −0.094.
+- Distances of E f from the negative axis: 0.0100 right, 0.176 top, 0.843 left,
+  0.0308 bottom, against 2.05e−3 needed.
+
+Design notes:
+
+- The first version of `Barrier` was off by 1e−4 at X. The center value of log γ
+  has an imaginary part near 6.6·10¹¹, and casting it to a double kept 1e−4 rad.
+  Reducing it mod 2π inside mpmath brought the error to 3e−15. The same cast is part of why
+  `effective.ft` drifts at this height.
+- A = 1.906 against the paper's 1.88. The two sums are 1.774 and 0.132, the tail
+  piece B matches the paper to three digits, and A is decreasing in N, so I think
+  the printed 1.88 is a slip. It only moves |f − 1| on the right edge from 0.955 to
+  0.980, and the lower bound on |E f| there from 0.024 to 0.0107.
+- The coefficients of E times f depend on N through the cutoff n/d ≤ N. The paper's
+  numbers come out when they are taken at N₊; that is not quite a bound for every N
+  in the interval. `lower_edge` takes, for each n, the worst state among the
+  cutoffs reached inside [N₋, N₊] (at most nine), which costs 9 times the work and
+  still clears every interval. The sharper constant c = e^(0.02y) instead of the
+  paper's 1.03 more than pays for it.
+- The box maxima of the derivative bounds are taken at the eight corners. That is
+  exact in t, because every log-weight is linear in t, and correct to O(1/x) in
+  x and y, covered by a 1e−9 slack in the exponent and a factor 1 + 1e−6.
+- The first time step used a guessed |f| = 1 and needed 11,610 points, oddly close
+  to Polymath's 11,076. Sizing it from a coarse pass at t = 0 (|f| ≥ 4.3) cut it to
+  2,686.
+- The barrier sweep reuses one block of stored moments per 0.01 of time: 12 orders
+  in t and 32 in ω for a typical block, about 50 moments of 69,098 terms each.
+
+Next: Hiary's amortized method for ζ(1/2 + it) in short intervals, or the
+two-level density of the odd twists from the ratios conjecture.
