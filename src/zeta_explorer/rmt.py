@@ -232,6 +232,19 @@ def so_angles(
     return np.concatenate(out)
 
 
+def o_minus_angles(n: int, size: int, seed: int = 0, batch: int = 10_000) -> np.ndarray:
+    rng = np.random.default_rng(seed)
+    out = []
+    for k in range(0, size, batch):
+        Z = rng.standard_normal((min(batch, size - k), 2 * n, 2 * n))
+        Q, R = np.linalg.qr(Z)
+        Q *= np.sign(np.diagonal(R, axis1=1, axis2=2))[:, None, :]
+        Q[np.linalg.det(Q) > 0, :, 0] *= -1
+        theta = np.sort(np.abs(np.angle(np.linalg.eigvals(Q))), axis=1)
+        out.append(theta[:, 1:-1:2])
+    return np.concatenate(out)
+
+
 def char_poly_at_one(theta: np.ndarray) -> np.ndarray:
     return np.prod(2 - 2 * np.cos(theta), axis=-1)
 

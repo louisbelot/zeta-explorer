@@ -23,6 +23,7 @@ from zeta_explorer.rmt import (
     jacobi_angles,
     jacobi_moment,
     jacobi_n,
+    o_minus_angles,
     odd_orthogonal_half,
     odd_orthogonal_n,
     rank_two_first,
@@ -366,3 +367,10 @@ def test_gap_chi2_and_ks():
     assert gap_chi2(np.linspace(0.05, 0.95, 10), flat, edges) == pytest.approx(0, abs=1e-20)
     assert gap_chi2(np.full(10, 0.2), flat, edges) == pytest.approx(10)
     assert gap_ks(np.array([0.5, 1.0]), flat) == pytest.approx(0.5)
+
+
+def test_o_minus_free_angles_are_symplectic():
+    n = 4
+    theta = o_minus_angles(n, 20000, seed=3)
+    assert theta.shape == (20000, n - 1)
+    assert gap_ks((n - 1) * theta[:, 0] / np.pi, symplectic_n(n - 1)) < 0.015
