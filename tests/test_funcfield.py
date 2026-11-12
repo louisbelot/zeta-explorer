@@ -1,15 +1,19 @@
 import math
 
+import numpy as np
 import pytest
 
 from zeta_explorer.funcfield import (
     Curve,
     LPoly,
+    Twist,
     _newton,
+    family,
     from_power_sums,
     legendre,
     lpoly,
     power_sums,
+    twist_set,
     ulmer,
 )
 
@@ -61,6 +65,59 @@ def test_l_has_exactly_the_predicted_degree():
     assert tuple(c[:N + 1]) == lpoly(E).c
 
 
+@pytest.mark.parametrize("n, N", [(1, 1), (2, 4), (3, 5), (4, 8)])
+def test_legendre_twist_degree(n, N):
+    D = twist_set(5, n, legendre(5).disc)[0]
+    assert legendre(5).twist(D).degree == N
+
+
+def test_family_agrees_with_point_counts_on_each_twist():
+    E = legendre(5)
+    fam = family(E, 4)
+    for t in fam[::40]:
+        assert lpoly(E.twist(t.D)) == t.L
+
+
+@pytest.fixture(scope="module")
+def fam5():
+    return family(legendre(5), 4)
+
+
+def test_riemann_hypothesis(fam5):
+    for t in fam5:
+        z = t.L.roots()
+        assert np.all(np.abs(np.abs(z) - 1) < 1e-6)
+        assert len(z) + t.L.order(1) + t.L.order(-1) == 8
+
+
+def test_family_size(fam5):
+    q, n = 5, 4
+    a = [1, q] + [q**k - q ** (k - 1) for k in range(2, n + 1)]
+    count = sum(a[k] * (-1) ** (n - k) * (n - k + 1) for k in range(n + 1))
+    assert len(fam5) == count == 345
+
+
+def test_root_number_is_the_parity_of_the_rank(fam5):
+    assert all(t.L.eps == (-1) ** t.rank for t in fam5)
+    assert {t.L.eps for t in fam5} == {1, -1}
+
+
+def test_central_values_are_discrete(fam5):
+    for t in fam5:
+        if t.L.eps == 1:
+            assert t.w >= 0
+            assert (t.w == 0) == (t.rank > 0)
+
+
+def test_so_angles(fam5):
+    for t in fam5:
+        theta = t.L.so_angles()
+        assert len(theta) == (4 if t.L.eps == 1 else 3)
+        assert np.all((theta >= 0) & (theta <= np.pi))
+        if t.L.eps == 1:
+            assert np.prod(2 - 2 * np.cos(theta)) == pytest.approx(float(t.L.central), abs=1e-9)
+
+
 def test_functional_equation_check():
     with pytest.raises(ArithmeticError):
         from_power_sums([1, 5, 2], 4, 5)
@@ -71,6 +128,12 @@ def test_order_counts_exact_factors():
     L = LPoly(q, (1, -2 * q, q * q), 1)
     assert L.order(1) == 2 and L.order(-1) == 0
     assert L.deflated() == [1]
+
+
+def test_w_needs_integral_value():
+    t = Twist((), LPoly(5, (1, 1, 1), 1))
+    with pytest.raises(ArithmeticError):
+        _ = t.w
 
 
 def test_rejects_bad_curves():

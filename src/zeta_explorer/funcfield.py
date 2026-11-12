@@ -15,12 +15,14 @@ from zeta_explorer.gf import (
     distinct_roots,
     field,
     is_prime,
+    monics,
     norm,
     padd,
     pgcd,
     pmul,
     pscale,
     psub,
+    squarefree,
 )
 
 
@@ -230,3 +232,62 @@ def lpoly(E: Curve) -> LPoly:
         if L is not None:
             return L
         M += 1
+
+
+@dataclass(frozen=True)
+class Twist:
+    D: Poly
+    L: LPoly
+
+    @property
+    def rank(self) -> int:
+        return self.L.order(1)
+
+    @property
+    def w(self) -> int:
+        if self.L.N % 2:
+            raise ValueError("odd degree")
+        v = self.L.central * self.L.q ** (self.L.N // 2)
+        if v.denominator != 1:
+            raise ArithmeticError("central value is not in q^(-N/2) Z")
+        return int(v)
+
+
+def twist_set(p: int, n: int, avoid: Poly) -> list[Poly]:
+    return [D for D in monics(p, n) if squarefree(D, p) and deg(pgcd(D, avoid, p)) == 0]
+
+
+def _twisted_sums(E: Curve, Ds: list[Poly], m: int) -> np.ndarray:
+    F = field(E.p, m)
+    reps, inv = F.orbits
+    a = (traces(E, m)[reps] * np.bincount(inv)).astype(np.float64)
+    P = np.stack([F.power(reps, j) for j in range(len(Ds[0]))])
+    digits = [F.dig[P, j].astype(np.float64) for j in range(F.m)]
+    C = np.array(Ds, dtype=np.float64)
+    chunk = max(1, 2**22 // len(reps))
+    out = np.empty(len(Ds), dtype=np.int64)
+    for i in range(0, len(Ds), chunk):
+        rows = C[i:i + chunk]
+        code = np.zeros((len(rows), len(reps)), dtype=np.int64)
+        for d, w in zip(digits, F.pw, strict=True):
+            code += np.fmod(rows @ d, E.p).astype(np.int64) * w
+        out[i:i + chunk] = np.rint(F.chi[code] @ a).astype(np.int64)
+    return out + [trace_inf(E.twist(D), m) for D in Ds]
+
+
+def family(E: Curve, n: int) -> list[Twist]:
+    p = E.p
+    Ds = twist_set(p, n, E.disc)
+    N = E.f_finite + 2 * n + E.twist(Ds[0]).f_inf - 4
+    S: list[list[int]] = [[] for _ in Ds]
+    out: list[LPoly | None] = [None] * len(Ds)
+    todo, m = list(range(len(Ds))), 0
+    while todo:
+        m += 1
+        for i, s in zip(todo, _twisted_sums(E, [Ds[i] for i in todo], m), strict=True):
+            S[i].append(int(s))
+        if m > N // 2:
+            for i in todo:
+                out[i] = from_power_sums(S[i], N, p)
+            todo = [i for i in todo if out[i] is None]
+    return [Twist(D, L) for D, L in zip(Ds, out, strict=True)]
