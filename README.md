@@ -1743,6 +1743,109 @@ The one-level density is a sum over all zeros; the first zero depends on all the
 correlation functions, and here the arithmetic that the ratios conjecture puts into
 ρ(x) does not reach them through a single N.
 
+### Twists over F_q(t), where the matrix is literal
+
+![Lowest eigenangle of the rank 0 even twists of the Legendre curve over F_7(t), the central values, and the KS distance as q grows](docs/funcfield.png)
+
+Over Q the orthogonal matrices of Katz and Sarnak are a model. Over F_q(t) they are
+real: the L-function of an elliptic curve is a polynomial in T = q^(−s), it equals
+det(1 − T·Frob) on a cohomology group, and its zeros are the eigenvalues of an actual
+orthogonal matrix. There is no height to unfold by and no conductor to estimate.
+`gf.py` and `funcfield.py` compute those polynomials exactly from point counts.
+
+A curve is y² = x³ + a₂(t)x² + a₄(t)x + a₆(t) with a_i in F_p[t], p an odd prime.
+Taking the log of the Euler product, the coefficient of T^m/m is
+S_m = Σ a_t(m) over the points t of P¹(F_(p^m)), where a_t(m) = −Σ_x χ(f_t(x)) is the
+Frobenius trace of the fiber over t. The same sum gives ±1 at a node and 0 at a cusp,
+so bad fibers need no special case as long as the model is minimal there. The
+degree comes from Grothendieck-Ogg-Shafarevich, deg L = deg(conductor) − 4, with
+each multiplicative place counting once and each additive place twice. Those are
+read off rad(Δ) and rad(gcd(Δ, c₄)), whose degrees come from distinct-degree
+factorization, and off the model in s = 1/t at infinity. Newton's identities
+k c_k = Σ S_m c_(k−m) give c₀ to c_(N/2+1), and the functional equation
+c_(N−k) = ε q^(N−2k) c_k gives the rest and the root number (a nonzero c_(N/2) already
+forces ε = +1). So the work stops at F_(q^(N/2+1)).
+
+F_(p^m) is a pair of tables: powers of a primitive element (the polynomial is found
+by testing the order of t modulo it, then the table is built by repeated squaring of
+the companion matrix) and their logarithms. Elements are integers whose base-p
+digits are polynomial coefficients, so addition is digitwise. Traces are constant
+on Frobenius orbits, so only one point per orbit is counted. For the Legendre curve
+y² = x(x − 1)(x − t) there is a better trick: a_t = −Σ_x χ(x(x − 1)) χ(x − t) is a
+correlation over the additive group (Z/p)^m, so all p^m fibers cost one
+m-dimensional FFT. A quadratic twist D y² = f(x) has a_t^D = χ(D(t)) a_t at every
+finite t, so one table of a_t serves a whole family, and D(t) at every t for a block
+of twists is one matrix product between their coefficients and the digits of t^j.
+The 1,573 twists of degree 4 over F_7 take about 4 s, and the 2,071 twists of degree
+2 over F_47 about 3 s.
+
+The checks against things I did not compute:
+
+- The Legendre curve is a rational elliptic surface, so L = 1. S₁ = S₂ = S₃ = 0 for
+  p = 5, 7, 11 and 13.
+- Ulmer ([arXiv:math/0109163](https://arxiv.org/abs/math/0109163), Theorem 9.2)
+  proves BSD for y² + xy = x³ − t^d when d divides p + 1 and gives the rank as a sum
+  of φ(e)/o_e(q) over divisors e of d plus corrections at 2 and 3. Section 10 gives
+  deg L = d − 1, or d − 3 when 6 divides d. The computed degree and the order of
+  vanishing at T = 1/q agree with both for all nine curves below. Every one of
+  these L-functions turns out to be a product of factors 1 − qT and 1 + qT.
+
+| p | d | deg L | rank (Ulmer) | order at T = 1/q |
+|---|---|---|---|---|
+| 5 | 2, 3, 6 | 1, 2, 3 | 1, 1, 2 | 1, 1, 2 |
+| 7 | 2, 4, 8 | 1, 3, 7 | 0, 1, 3 | 0, 1, 3 |
+| 11 | 3, 4, 6 | 2, 3, 3 | 1, 1, 1 | 1, 1, 1 |
+
+- Computing S_m out to N + 2 instead of stopping at N/2 + 1 gives c_(N+1) = c_(N+2) = 0
+  and the same c₀ to c_N, so the conductor is right.
+- Across 17 families of Legendre twists (q = 3 to 47, 11,741 twists) every reciprocal
+  root has |γ| = q to 2e-8, and to 4e-15 except where a root is repeated and
+  np.roots loses half the digits. The root number is (−1)^rank in every one of them.
+- Underneath: field axioms, the quadratic character, a₂ = a₁² − 2p and
+  a₃ = a₁³ − 3p·a₁ on single curves, and the FFT correlation against the direct sum.
+
+The family is the Legendre curve twisted by every monic squarefree D of even degree
+n prime to t(t − 1). The fibers are I₂ at 0 and 1, I₂* at infinity and I₀* at the
+roots of D, so N = 2n. Over F_7 with n = 4 there are 1,573 twists: 781 have ε = +1 and
+792 have ε = −1, and the ranks are 0 (660), 1 (789), 2 (121) and 3 (3).
+
+The central value L(E_D, 1/q) is det(I − A) for the Frobenius matrix A, and the
+functional equation makes q^(N/2) L(1/q) an integer. It is more than that: in every
+even twist of all 17 families (q = 3 to 47, N = 4, 8 and 12) it equals
+4·q^(N/4)·k² for an integer k, the function field version of Waldspurger's formula.
+A square is what Birch and Swinnerton-Dyer suggests (Sha has square order), but I
+have only checked the constant 4, not derived it. It means the smallest nonzero
+central value is 4·q^(−N/4), far above the q^(−N/2) that integrality alone allows,
+and the excised ensemble gets its cut with nothing fitted: SO(N) with
+det(I − A) ≥ 4·q^(−N/4).
+
+| q | N | rank 0 even twists | KS against SO(N) | KS, excised | 5% critical | cut removes | central zeros |
+|---|---|---|---|---|---|---|---|
+| 7 | 8 | 660 | 0.179 | 0.040 | 0.053 | 21.0% | 15.5% |
+| 5 | 8 | 135 | 0.205 | 0.117 | 0.117 | 28.5% | 20.1% |
+| 3 | 12 | 114 | 0.278 | 0.113 | 0.127 | 31.6% | 14.3% |
+| 23 | 4 | 188 | 0.238 | 0.129 | 0.099 | 22.1% | 14.9% |
+| 47 | 4 | 887 | 0.183 | 0.115 | 0.046 | 15.6% | 12.4% |
+
+"Central zeros" is the share of even twists with L(1/q) = 0, which the cut should
+roughly match. The lowest eigenangle is in radians, with no unfolding of any kind.
+
+Over F_7 at N = 8 the excised model passes, and Haar SO(8) lands at 3.4 times the
+critical value.
+At N = 4 neither passes. As q grows the distance to Haar SO(4) falls slowly (0.285
+at q = 11, 0.183 at q = 47), as Katz's equidistribution theorem says it must in the
+limit, but the excised distance stalls near 0.09 to
+0.12 after q = 29 while the critical value keeps falling. The histogram of k shows
+one reason the single cut is too crude: odd k are rarer than even (60 twists at
+k = 1, 162 at k = 2, 37 at k = 3, 188 at k = 4 over F_7), so most twists carry an
+extra factor of 4 and their own floor is four times higher. The cut also removes
+more matrices than there are central zeros at every q. A cut that knows the 2-adic
+part of each twist (the Tamagawa numbers at its I₀* fibers) is the obvious next
+step. The odd twists' free angles live in O⁻(N), whose nontrivial eigenangles follow
+USp(N − 2) (`rmt.o_minus_angles`, checked against the symplectic Fredholm
+determinant); the rank 1 odd twists pass against it at N = 4 for q = 43 and 47 (KS
+0.036 and 0.038) and fail over F_7 at N = 8 (0.084 against 0.048).
+
 ### Chebyshev's bias
 
 ![The mod 4 prime race against 3,130 zeros of L(s, χ₋₄), and the first lead change at 26861](docs/race.png)
