@@ -24,6 +24,8 @@ from zeta_explorer.gf import (
     psub,
     squarefree,
 )
+from zeta_explorer.ranktwo import ks2
+from zeta_explorer.rmt import char_poly_at_one, o_minus_angles, so_angles
 
 
 def _cubic_disc(a2: Poly, a4: Poly, a6: Poly, p: int) -> Poly:
@@ -291,3 +293,43 @@ def family(E: Curve, n: int) -> list[Twist]:
                 out[i] = from_power_sums(S[i], N, p)
             todo = [i for i in todo if out[i] is None]
     return [Twist(D, L) for D, L in zip(Ds, out, strict=True)]
+
+
+def lowest(fam: list[Twist], eps: int = 1) -> np.ndarray:
+    rank = 0 if eps == 1 else 1
+    return np.array([t.L.so_angles()[0] for t in fam if t.L.eps == eps and t.rank == rank])
+
+
+def central_k(fam: list[Twist]) -> np.ndarray:
+    q, e = fam[0].L.q, fam[0].L.N // 4
+    k2 = [Fraction(t.w, 4 * q**e) for t in fam if t.L.eps == 1]
+    k = [math.isqrt(int(v)) for v in k2]
+    if any(v.denominator != 1 or r * r != v for v, r in zip(k2, k, strict=True)):
+        raise ArithmeticError("a central value is not 4 q^(N/4) k^2")
+    return np.array(k)
+
+
+@dataclass(frozen=True)
+class Fit:
+    q: int
+    N: int
+    even: int
+    odd: int
+    rank2: float
+    predicted: float
+    ks_so: float
+    ks_excised: float
+    ks_odd: float
+
+
+def compare(fam: list[Twist], cut: float, size: int = 200_000, seed: int = 1) -> Fit:
+    q, N = fam[0].L.q, fam[0].L.N
+    if N % 2:
+        raise ValueError("odd degree")
+    even, odd = lowest(fam, 1), lowest(fam, -1)
+    H = so_angles(N // 2, size, seed)
+    keep = char_poly_at_one(H) >= cut
+    G = o_minus_angles(N // 2, size, seed + 1)
+    return Fit(q, N, len(even), len(odd),
+               float(np.mean([t.rank > 0 for t in fam if t.L.eps == 1])), float(1 - keep.mean()),
+               ks2(even, H[:, 0]), ks2(even, H[keep, 0]), ks2(odd, G[:, 0]))

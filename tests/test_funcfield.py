@@ -5,12 +5,16 @@ import pytest
 
 from zeta_explorer.funcfield import (
     Curve,
+    Fit,
     LPoly,
     Twist,
     _newton,
+    central_k,
+    compare,
     family,
     from_power_sums,
     legendre,
+    lowest,
     lpoly,
     power_sums,
     twist_set,
@@ -143,3 +147,31 @@ def test_rejects_bad_curves():
         Curve(9, (), (1,), (0, 1))
     with pytest.raises(ValueError):
         _ = Curve(5, (), (1,), (2,)).degree
+
+
+def test_central_values_are_four_q_times_a_square(fam5):
+    k = central_k(fam5)
+    even = [t for t in fam5 if t.L.eps == 1]
+    assert len(k) == len(even)
+    assert [t.w for t in even] == [4 * 25 * v * v for v in k]
+    assert np.sum(k == 0) == sum(t.rank > 0 for t in even)
+
+
+def test_lowest_angles(fam5):
+    even, odd = lowest(fam5, 1), lowest(fam5, -1)
+    assert len(even) == sum(t.L.eps == 1 and t.rank == 0 for t in fam5)
+    assert len(odd) == sum(t.rank == 1 for t in fam5)
+    assert np.all(even > 0) and np.all(odd > 0)
+
+
+def test_excision_moves_the_model_toward_the_data(fam5):
+    fit = compare(fam5, 4 / 25, size=20000)
+    assert isinstance(fit, Fit)
+    assert (fit.q, fit.N, fit.even + fit.odd) == (5, 8, 311)
+    assert fit.ks_excised < fit.ks_so
+    assert 0 < fit.rank2 < fit.predicted < 0.5
+
+
+def test_compare_needs_even_degree():
+    with pytest.raises(ValueError):
+        compare(family(legendre(5), 1), 0.1)
