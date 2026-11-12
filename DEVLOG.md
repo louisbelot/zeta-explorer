@@ -1579,3 +1579,78 @@ Design notes:
 
 Next: Hiary's amortized method for ζ(1/2 + it) in short intervals, or the
 two-level density of the odd twists from the ratios conjecture.
+
+## 2026-11-12: Twists of the Legendre curve over F_q(t), exact L-polynomials and a cut with nothing fitted
+
+Built:
+
+- `gf.py`: polynomials over F_p (division, gcd, powmod, distinct-degree root
+  counting) and F_(p^m) as exp/log tables. The primitive polynomial is found by
+  testing the order of t modulo each candidate (only candidates whose constant term
+  is a primitive root mod p can work, which prunes most of them), and the table is
+  built by doubling with powers of the companion matrix. `cubic_sums` counts
+  points on y² = cubic for many cubics at once, and `correlate` is an m-dimensional
+  FFT over (Z/p)^m.
+- `funcfield.py`: `Curve` over F_p[t] with discriminant, c₄, the model at
+  infinity, the conductor degree and deg L = deg N − 4. `traces` gives the
+  Frobenius trace of every fiber over F_(p^m) (Frobenius orbits in general, one FFT
+  for the Legendre curve), `power_sums` adds infinity, `from_power_sums` runs
+  Newton's identities and completes the polynomial with the functional equation,
+  and `LPoly` gives the exact order at T = ±1/q, the deflated polynomial, its roots
+  and the SO-style eigenangles. `family` builds every monic squarefree twist of a
+  given degree and computes its L-polynomial from one table of base traces.
+  `central_k`, `lowest` and `compare` set the families against SO(N), the excised
+  SO(N) and O⁻(N).
+- `rmt.o_minus_angles`: Haar O⁻(2n) with the forced ±1 removed.
+- `plot.plot_funcfield` and docs/funcfield.png.
+
+Checks:
+
+- Legendre curve: L = 1 (S₁ = S₂ = S₃ = 0) for p = 5, 7, 11, 13.
+- Ulmer's Theorem 9.2 and section 10 (arXiv:math/0109163): degree and rank for
+  y² + xy = x³ − t^d at nine (p, d) pairs with d | p + 1, all matching.
+- Power sums out to N + 2 give c_(N+1) = c_(N+2) = 0. The fast family path equals
+  the generic point count of each twisted curve. RH to 2e-8 over 11,741 twists,
+  ε = (−1)^rank throughout, family size against the generating function
+  (1 − qu²)/((1 − qu)(1 + u)²).
+- Field layer: axioms, χ multiplicative with χ(−1) = (−1)^((q−1)/2), Frobenius fixes
+  exactly F_p, orbit counts against the necklace formula, a₂ = a₁² − 2p and
+  a₃ = a₁³ − 3p·a₁, the FFT correlation against the direct sum.
+- O⁻(8) free angles against the USp(6) Fredholm gap probability: KS under 0.015 on
+  20,000 draws.
+
+Results:
+
+- Over F_7, degree 4 twists: 1,573 curves, N = 8, ranks 0/1/2/3 = 660/789/121/3.
+- q^(N/2) L(E_D, 1/q) = 4·q^(N/4)·k² in every even twist of 17 families (q = 3 to
+  47). So the smallest nonzero central value is 4·q^(−N/4).
+- With that cut, the 660 rank 0 even twists over F_7 against SO(8): KS 0.179 for
+  Haar, 0.040 excised (critical 0.053). At N = 4 the excised fit stalls at KS 0.09
+  to 0.12 for q = 29 to 47 while Haar improves slowly from 0.285 (q = 11) to 0.183
+  (q = 47).
+- k is even far more often than odd (60, 162, 37, 188 twists at k = 1 to 4 over
+  F_7), which is why one cut for every twist overshoots: the cut removes 21.0% of
+  SO(8) against 15.5% of twists with a central zero.
+
+Design notes:
+
+- The first family run took 66 s for 345 twists. 4% of them could not fix ε from
+  c₀ to c_(N/2+1) and fell back to a generic point count over F_(5^6), O(Q²). Two
+  fixes: a nonzero c_(N/2) forces ε = +1 (the functional equation pairs it with
+  itself), and the remaining twists extend the fast path one field at a time
+  instead of leaving it. Over F_47 that took the ambiguous share from 383 twists
+  to none.
+- The second slowdown was memory: blocks of 256 twists times 4.9 million points
+  at F_(47^4). Blocks are now sized by the field and evaluated on one point per
+  Frobenius orbit, weighted by orbit size, since χ(D(t)) a_t is Frobenius
+  invariant.
+- The primitive polynomial search took 8 s for F_(7^6), mostly on candidates like
+  t^6 + c whose t has small order. Requiring the constant term to be (up to sign) a
+  primitive root mod p brings it to 9 ms, and 0.12 s for F_(47^4).
+- Bad fibers need no special case: −Σ χ(f(x)) is ±1 at a node and 0 at a cusp,
+  which are exactly the multiplicative and additive traces, as long as the model
+  is minimal. Twisting by D keeps minimality at the roots of D (v(Δ) = 6) and at
+  infinity the generic model in s = 1/t handles both parities of deg D.
+
+Next: a cut that depends on the 2-adic part of each twist (Tamagawa numbers at
+the I₀* fibers), or the symplectic family sym² f over level 1 eigenforms.
