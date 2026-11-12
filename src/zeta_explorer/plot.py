@@ -1874,3 +1874,48 @@ def plot_barrier(images: dict[float, ArrayLike], ts: ArrayLike, dts: ArrayLike, 
         _style(ax)
     fig.tight_layout()
     return fig
+
+
+def plot_funcfield(lowest: ArrayLike, so: ArrayLike, excised: ArrayLike, k: ArrayLike,
+                   scan: list, q: int, N: int) -> Figure:
+    import matplotlib.pyplot as plt
+
+    fig, (left, mid, right) = plt.subplots(1, 3, figsize=(15, 4.8), facecolor=SURFACE)
+    for x, color, name in [(so, INK_SECONDARY, f"SO({N}), Haar"),
+                           (excised, ORDINAL[1], f"SO({N}), det(I − A) ≥ 4/{q}^{N // 4}"),
+                           (lowest, ACCENT, f"{len(lowest)} rank 0 twists")]:
+        x = np.sort(np.asarray(x))
+        left.plot(x, np.arange(1, len(x) + 1) / len(x), color=color, linewidth=1.6, label=name,
+                  drawstyle="steps-post" if color == ACCENT else "default")
+    left.set_xlim(0, 1.2)
+    left.set_ylim(0, 1)
+    left.set_xlabel("lowest eigenangle θ₁ (radians, no unfolding)", color=INK)
+    left.set_ylabel("cumulative fraction", color=INK)
+    left.set_title(f"Even twists of the Legendre curve over F_{q}(t)", color=INK, fontsize=12,
+                   loc="left")
+    left.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="lower right")
+    ks, counts = np.unique(np.asarray(k), return_counts=True)
+    mid.bar(ks, counts, width=0.7, color=[ACCENT if v == 0 else SERIES for v in ks])
+    mid.set_xlabel(f"k, where {q}^{N // 2} · L(E_D, 1/{q}) = 4 · {q}^{N // 4} · k²", color=INK)
+    mid.set_ylabel("even twists", color=INK)
+    mid.set_title("Central values are 4 q^(N/4) times a square", color=INK, fontsize=12,
+                  loc="left")
+    mid.set_xticks(ks)
+    qs = [f.q for f in scan]
+    right.plot(qs, [f.ks_so for f in scan], "o-", color=INK_SECONDARY, linewidth=1.4,
+               label=f"against SO({scan[0].N})")
+    right.plot(qs, [f.ks_excised for f in scan], "o-", color=ACCENT, linewidth=1.4,
+               label=f"against SO({scan[0].N}) with det(I − A) ≥ 4/q")
+    right.plot(qs, [1.36 / np.sqrt(f.even) for f in scan], ":", color=SERIES, linewidth=1.2,
+               label="5% critical value")
+    right.set_ylim(0, None)
+    right.set_xlabel("q", color=INK)
+    right.set_ylabel("KS distance, lowest eigenangle", color=INK)
+    right.set_title(f"Degree {scan[0].N}: rank 0 even twists as q grows", color=INK,
+                    fontsize=12, loc="left")
+    right.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right")
+    for ax in (left, mid, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig

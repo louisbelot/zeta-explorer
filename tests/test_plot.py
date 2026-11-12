@@ -9,6 +9,7 @@ from PIL import Image
 from zeta_explorer.bias import race
 from zeta_explorer.dedekind import zeros as field_zeros
 from zeta_explorer.delta import sato_tate, zeros
+from zeta_explorer.funcfield import Fit
 from zeta_explorer.li import li_trend
 from zeta_explorer.lowlying import OneLevel, w_symplectic
 from zeta_explorer.moments import EULER_GAMMA, polynomial_integral
@@ -28,6 +29,7 @@ from zeta_explorer.plot import (
     plot_effective,
     plot_explicit,
     plot_first_zero,
+    plot_funcfield,
     plot_gram,
     plot_heat_flow,
     plot_jensen,
@@ -436,3 +438,14 @@ def test_plot_barrier_panels(tmp_path):
     assert len(fig.axes[0].lines) == 3
     assert fig.axes[1].get_title(loc="left") == "2 time steps, winding number 0 at each"
     assert fig.axes[2].get_xscale() == "log"
+
+
+def test_plot_funcfield_panels(tmp_path):
+    rng = np.random.default_rng(0)
+    scan = [Fit(q, 4, 100, 120, 0.1, 0.2, 0.2, 0.1, 0.05) for q in (11, 13, 17)]
+    fig = plot_funcfield(rng.random(50), rng.random(500), rng.random(400),
+                         [0, 1, 2, 2, 4], scan, 7, 8)
+    fig.savefig(tmp_path / "funcfield.png")
+    assert [p.get_height() for p in fig.axes[1].patches] == [1, 1, 2, 1]
+    assert len(fig.axes[2].lines) == 3
+    assert fig.axes[0].get_legend().get_texts()[2].get_text() == "50 rank 0 twists"
