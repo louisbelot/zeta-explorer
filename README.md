@@ -2074,6 +2074,94 @@ turing(L, z, 88.0, 100.0).missing    # 0.627
 critical_ratio(1)                    # 0.210152316818984 = 2^15/(3^4 5^2 7 11)
 ```
 
+### The symmetric squares of level 1 eigenforms
+
+![One-level density of L(s, sym² f) over 5,084 level 1 eigenforms, the lowest zero against USp(2N), the smoothed density against the explicit formula, and the error as the Fourier support grows](docs/symfamily.png)
+
+Iwaniec, Luo and Sarnak (arXiv:math/9901141) proved that the low zeros of
+L(s, sym² f), with f running over the Hecke eigenforms of level 1 and weight k,
+follow the symplectic law 1 − sin 2πx/2πx, as long as the test function has Fourier
+support inside (−3/2, 3/2). This section builds that family from scratch up to
+weight 500 and looks at what happens at finite k.
+
+`hecke.py` makes the eigenforms. S_k has the basis Δ^j E₄^a E₆^b (4a + 6b = k − 12j),
+which is unitriangular in q, so the matrix of T₂ comes out over Z from the first 2d
+coefficients. Its characteristic polynomial is factored in FLINT (irreducible for
+every weight up to 500, as Maeda conjectured), the roots are taken as Arb balls, and
+each eigenvector is solved in ball arithmetic, so λ_f(p) = a_f(p)/p^((k−1)/2) comes
+with a certified radius. Precision starts at 128 bits and doubles until every λ_f(p),
+p < 2048, is known to 1e−20. Weight 500 (41 forms) takes 2.3 s. The checks are
+independent of that pipeline: Δ's coefficients against the η-product τ(n), LMFDB's
+1.24.a.a (Hecke field Q(√144169), trace of a₂ = 1080, of a₃ = 339480), T₂ and T₃
+commuting, and the Eichler-Selberg trace formula (Hurwitz class numbers from reduced
+forms, checked against the Kronecker-Hurwitz relation): Σ_f λ_f(p) and Σ_f λ_f(p²)
+match Tr T_p and Tr T_(p²) to 1e−12 at weights 48 and 100.
+
+The harmonic weight of f is ω_f = Γ(k − 1)/((4π)^(k−1) ⟨f, f⟩) = 2π²/((k − 1) L(1, sym² f)),
+so every ω_f is one value of the sym² L-function from `selfdual.py`. For Δ it agrees
+with the Petersson norm computed earlier to 12 digits. Petersson's formula says
+Σ_f ω_f λ_f(m) λ_f(n) = δ(m, n) + 2π i^(−k) Σ_c S(m, n; c)/c · J_(k−1)(4π√(mn)/c), and
+the two sides agree to 1e−11 for weights 24 to 44 and m, n up to 5. The Bessel term
+is tiny while 4π√(mn) < k − 1 and switches on past it: at weight 60 the harmonic mean
+of λ_f(p²) is 2e−16, 1.5e−7, 1.05 and −0.53 for p = 2, 3, 5, 7.
+
+The zeros come from the Mellin-transform line of the previous section with 32 sample
+points per mean gap. Eight per gap was not enough once: Turing's check flagged a
+weight 400 form with 800 zeros below t = 427 where its siblings had 803, and the
+missing pair sits at t = 96.4558 and 96.4749. Below x = 5 the lists are also checked
+by the argument principle, N(T) = θ(T)/π + arg L(1/2 + iT)/π with the argument
+followed in from σ = 3: every fourth form, 1,271 in all, agrees with the scan.
+
+With x = θ(γ)/π (mean spacing 1), the 5,084 forms give 25,577 zeros below x = 5. On
+30 bins up to x = 3, weights 302 to 500, χ² is 486 against USp, 1,534 against U and
+2,834 against SO(even). USp wins by a wide margin, but 486 on 30 bins is far from a
+fit: the density is zero below x = 0.22 and has bumps near 0.6, 1.4 and 2.3. The
+lowest zero is more concentrated than USp allows: P(x₁ > 0.5) is 0.890 against 0.795,
+P(x₁ > 1.2) is 0.093 against 0.110. Finite N moves USp(2N) the other way on both
+counts, and a likelihood fit over N runs to the edge of its grid.
+
+The explicit formula says why. For an even g with ĝ of compact support,
+Σ_(γ>0) g(γ) = ∫₀^∞ g(t) θ′(t)/π dt − (1/2π) Σ_n c(n) n^(−1/2) ĝ(log n), where
+c(p^m) = log p · (1 + 2cos 2mθ_p) and 2cos 2mθ_p = λ_f(p^(2m)) − λ_f(p^(2m−2)). With
+g a Jackson kernel (sinc⁴, so ĝ is a cubic spline with support s in units of the mean
+spacing) the sum is finite. Averaging over a family only needs the family means of
+λ_f(p^(2j)). The diagonal of Petersson's formula gives δ(n, 1), with nothing fitted.
+For the natural average Serre's Plancherel measure gives p^(−j), and the trace
+formula shows the natural mean of λ_f(p²) approaching 1/p like 1/k (−0.020 over
+weights 100 to 200, −0.005 over 400 to 800, p = 2).
+
+Two tests close the loop exactly. One form's zeros reproduce its own explicit formula
+to 1e−5. All the zeros of weights 32 and 36 reproduce the formula fed with Petersson's
+exact means (harmonic weights) and with Eichler-Selberg traces (natural weights) to
+1e−5. Then the measured family against the predictions, weights 302 to 500, as the
+largest error over x₀ in [0, 3]:
+
+| support s | harmonic vs δ(n, 1) | natural vs Plancherel | harmonic vs USp |
+| --- | --- | --- | --- |
+| 0.5 | 0.0002 | 0.006 | 0.137 |
+| 1.0 | 0.0002 | 0.020 | 0.177 |
+| 1.5 | 0.006 | 0.071 | 0.211 |
+| 2.0 | 0.056 | 0.196 | 0.271 |
+| 2.5 | 0.187 | 0.384 | 0.352 |
+
+Up to support 1 the diagonal term explains the family to the noise of the tail
+correction, and it is still within 0.006 at 3/2, where the ILS theorem stops. Past
+that the off-diagonal Kloosterman terms carry real weight and the diagonal stops
+working, the same Bessel transition as at weight 60 above. The USp limit is off by
+0.14 to 0.35 throughout: at these weights 1/log of the conductor is about 0.16, and
+the lower-order terms are that size.
+
+```python
+from zeta_explorer.hecke import eigenforms, trace
+from zeta_explorer.symfamily import family, harmonic_weight, predicted, sato_tate, smoothed
+
+F = eigenforms(24)                   # two forms, a2 = 540 ± 12√144169
+sum(f.lam[0] for f in F) * 2**11.5   # 1080.0 = trace(24, 2)
+fam = family(range(300, 320, 2))     # 252 forms with their zeros below x = 3
+smoothed(fam, [0.5], 1.0, harmonic=True)              # 0.8289
+predicted(fam, [0.5], 1.0, sato_tate, harmonic=True)  # 0.8280
+```
+
 ### Dedekind zeta of quadratic fields
 
 ![Zeros of zeta and L(s, χ₋₄), and the spacing distribution of their union](docs/dedekind.png)
