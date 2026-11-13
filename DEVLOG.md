@@ -1654,3 +1654,83 @@ Design notes:
 
 Next: a cut that depends on the 2-adic part of each twist (Tamagawa numbers at
 the I₀* fibers), or the symplectic family sym² f over level 1 eigenforms.
+
+## 2026-11-13: Symmetric squares of level 1 eigenforms, the ILS family at finite weight
+
+Built:
+
+- `hecke.py`: level 1 cusp forms from the unitriangular basis Δ^j E₄^a E₆^b (FLINT
+  truncated products), the exact integer matrix of T_p on S_k, and `eigenforms(k)`:
+  the characteristic polynomial of T₂, its roots as Arb balls, eigenvectors solved in
+  ball arithmetic, normalized λ_f(p) for p < 2048 with a certified radius under 1e−20
+  (precision doubles from 128 bits, also when the ball solve is singular). Plus the
+  Eichler-Selberg trace formula with Hurwitz class numbers from reduced forms,
+  Kloosterman sums and the Kloosterman-Bessel side of Petersson's formula.
+- `symfamily.py`: L(s, sym² f) as a `SelfDual` (local roots e^(±2iθ_p), 1, gamma
+  shifts (1, k − 1, k)), the harmonic weight 2π²/((k − 1) L(1, sym² f)), low zeros
+  from `MellinLine` unfolded by θ/π, an argument-principle zero count, and `Family`
+  (density, χ² with Pearson variance inflated by the weights, first zeros, save/load).
+- The explicit formula for the family: Jackson kernel (sinc⁴, cubic-spline transform
+  of support s), `smoothed` (zero side, with the mean density standing in beyond the
+  stored zeros) and `predicted` (gamma side minus the finite prime sum) for any rule
+  giving the family means of λ_f(p^(2j)): Sato-Tate/Petersson diagonal, Plancherel,
+  exact Eichler-Selberg traces, exact Petersson.
+- `plot.plot_symfamily` and docs/symfamily.png.
+
+Checks:
+
+- τ(n) from the basis and from the trace formula, n ≤ 40. LMFDB 1.24.a.a (verified
+  live): T₂ polynomial x² − 1080x − 20468736, Hecke field Q(√144169), Tr a₃ = 339480.
+  T₂T₃ = T₃T₂. Hurwitz values H(3..24) and the Kronecker-Hurwitz relation for n < 60.
+  dim S_k = Tr T₁. Σ_f λ_f(p) and Σ_f (λ_f(p)² − 1) against Tr T_p and Tr T_(p²) to
+  1e−12 at weights 48 and 100. Deligne's bound for every form up to weight 100.
+  T₂ irreducible for every weight up to 500.
+- sym² of the weight 12 form equals `delta_power(2)`. ω_Δ against the Petersson norm
+  to 1e−12. Σ_f ω_f λ_f(m)λ_f(n) against Petersson's formula to 1e−11 for k = 24 to
+  44, m, n ≤ 5.
+- Zeros: Mellin line against the pointwise AFE, Turing complete on [42, 60] at weight
+  36, argument-principle counts.
+- Explicit formula: one form against its own coefficients to 1e−5 with zeros to
+  x = 20; the whole of weights 32 and 36 against Petersson's exact means (harmonic) and
+  the trace formula (natural) to 1e−5.
+
+Results:
+
+- 5,084 forms, weights 12 to 500, computed in 38 minutes with the checks (276 s for
+  the 3,234 forms up to weight 400 without them). 25,577 zeros below x = 5.
+- Turing's check caught a close pair (t = 96.4558, 96.4749, weight 400) that 8 sample
+  points per gap had missed. Scans now use 32. All 1,271 argument-principle counts
+  (every fourth form, below x = 5) agree.
+- One-level density, weights 302 to 500, 30 bins on [0, 3]: χ² 486 against USp, 1,534
+  against U, 2,834 against SO(even). No zero below x = 0.22 in the whole family.
+- Lowest zero, weights 302 to 500: P(x₁ > 0.5) = 0.890 (USp 0.795), P(x₁ > 1.2) =
+  0.093 (USp 0.110), KS 0.100 against the USp limit. Finite USp(2N) moves both the
+  wrong way, and the likelihood fit over N ≤ 12 sits at the edge.
+- Smoothed density, weights 302 to 500, largest error over x₀ ∈ [0, 3]: harmonic
+  against the Petersson diagonal 2e−4 up to support 1, 0.006 at 3/2, 0.056 at 2,
+  0.187 at 2.5. Natural against Plancherel 0.006 at 1/2 rising to 0.071 at 3/2.
+  Harmonic against USp 0.14 to 0.35.
+- Natural mean of λ_f(p²) − 1/p over weights ≥ 300: −0.007 (p = 2) to −0.015
+  (p = 19). Harmonic mean: below 5e−4 for p ≤ 19. At weight 60 the harmonic mean of
+  λ_f(p²) is 2e−16, 1.5e−7, 1.05, −0.53 for p = 2, 3, 5, 7: the Bessel term turns on
+  at 4πp ≈ k − 1.
+
+Design notes:
+
+- Using arb balls for the eigenvectors means the cancellation in Σ c_i a_p(g_i) is
+  tracked, not guessed. The basis coefficients at p ≈ 2000, weight 500 run to a few
+  thousand bits (2,743 at most) while λ_f(p) is order 1.
+- The ball solve drops the first row of (T − λ) and fixes c₁ = 1 (an eigenform has
+  a₁ ≠ 0). At low precision the reduced matrix can come out singular as a ball,
+  which is why ZeroDivisionError doubles the precision instead of failing. Weight
+  162 was the first to need it.
+- θ for sym² depends only on k (conductor 1), so `shape(k)` is shared by every form
+  of that weight, and the zero side of the explicit formula maps stored x back to t
+  by interpolation instead of rebuilding L.
+- The explicit-formula test functions use a linear scale D_k t (fixed at x = 2), not
+  θ/π, so that ĝ stays band-limited and the prime sum stays finite.
+- `count_zeros` refuses rather than guesses near a zero: the step count is capped and
+  the result must sit within 0.1 of an integer.
+
+Next: the two-level density of this family, or the lowest zero from the explicit
+formula's n-level terms (where the ILS diagonal should also say why x₁ is narrower).
