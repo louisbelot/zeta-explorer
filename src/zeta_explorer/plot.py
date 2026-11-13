@@ -61,6 +61,8 @@ from zeta_explorer.zeta import zeta
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
+    from zeta_explorer.symfamily import Family as SymFamily
+
 SERIES = "#2a78d6"
 ACCENT = "#eb6834"
 ORDINAL = ["#86b6ef", "#5598e7", "#2a78d6", "#1c5cab", "#104281"]
@@ -1915,6 +1917,79 @@ def plot_funcfield(lowest: ArrayLike, so: ArrayLike, excised: ArrayLike, k: Arra
                     fontsize=12, loc="left")
     right.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right")
     for ax in (left, mid, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig
+
+
+
+def plot_symfamily(F: SymFamily, buckets: list[tuple[int, int]],
+                   smooth: dict[str, tuple[np.ndarray, ...]], s0: float,
+                   sweep: tuple[np.ndarray, ...], x_max: float = 3.0, bins: int = 30) -> Figure:
+    import matplotlib.pyplot as plt
+
+    fig, axes = plt.subplots(2, 2, figsize=(13, 9.4), facecolor=SURFACE)
+    (dens, low), (smo, sup) = axes
+    x = np.linspace(0, x_max, 400)
+    for harm, color, name in ((False, SERIES, "natural average"),
+                              (True, ACCENT, "harmonic (Petersson) weights")):
+        c, d = F.density(bins, x_max, harmonic=harm)
+        dens.step(c, d, where="mid", color=color, linewidth=1.8, label=name)
+    dens.plot(x, w_symplectic(x), color=INK, linewidth=1.4, label="USp: 1 − sin 2πx / 2πx")
+    dens.plot(x, w_unitary(x), color=INK_SECONDARY, linewidth=1.2, linestyle=":", label="U: 1")
+    dens.plot(x, 1 + np.sinc(2 * x), color=INK_SECONDARY, linewidth=1.2, linestyle="--",
+              label="SO(even): 1 + sin 2πx / 2πx")
+    dens.set_xlim(0, x_max)
+    dens.set_ylim(0, 2.2)
+    dens.set_xlabel("x (zero height in units of the mean spacing)", color=INK)
+    dens.set_ylabel("zeros per L-function per unit x", color=INK)
+    dens.set_title(f"L(s, sym² f): {F.size:,} level 1 eigenforms, weight 12 to {F.k.max()}",
+                   color=INK, fontsize=11, loc="left")
+    dens.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right",
+                ncol=2)
+
+    s = np.linspace(0, 1.6, 301)
+    for (lo, hi), color in zip(buckets, ORDINAL[::2], strict=False):
+        first = np.sort(F.select((F.k >= lo) & (F.k <= hi)).first())
+        low.step(first, 1 - np.arange(len(first)) / len(first), where="post", color=color,
+                 linewidth=1.8, label=f"k = {lo} to {hi} ({len(first):,} forms)")
+    for n, style in ((2, "--"), (6, "-.")):
+        low.plot(s, gap(symplectic_n(n), s), color=INK_SECONDARY, linewidth=1.1, linestyle=style,
+                 label=f"USp({2 * n})")
+    low.plot(s, gap(symplectic, s), color=INK, linewidth=1.4, label="USp, N → ∞")
+    low.set_yscale("log")
+    low.set_xlim(0, 1.6)
+    low.set_ylim(1e-3, 1.2)
+    low.set_xlabel("s", color=INK)
+    low.set_ylabel("P(lowest zero > s)", color=INK)
+    low.set_title("Lowest zero: narrower than USp(2N) for every N", color=INK, fontsize=11,
+                  loc="left")
+    low.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="lower left")
+
+    for (label, (x0, data, pred, usp)), color in zip(smooth.items(), ORDINAL[::2], strict=False):
+        smo.plot(x0, data, "o", color=color, markersize=4, label=f"{label}: zeros")
+        smo.plot(x0, pred, color=color, linewidth=1.6, label="explicit formula, E λ(n) = δ(n, 1)")
+        smo.plot(x0, usp, color=color, linewidth=1.2, linestyle=":", label="USp limit")
+    smo.set_xlim(0, x0.max())
+    smo.set_xlabel("x₀", color=INK)
+    smo.set_ylabel("Σ φ(x_γ − x₀) + φ(x_γ + x₀), harmonic average", color=INK)
+    smo.set_title(f"Smoothed density, Fourier support {s0:g}", color=INK, fontsize=11, loc="left")
+    smo.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="lower right")
+
+    supports, harm, nat, lim = sweep
+    sup.plot(supports, harm, "o-", color=ACCENT, linewidth=1.6,
+             label="harmonic, against E λ(n) = δ(n, 1)")
+    sup.plot(supports, nat, "s-", color=SERIES, linewidth=1.6,
+             label="natural, against Plancherel E λ(p²ʲ) = p⁻ʲ")
+    sup.plot(supports, lim, "^:", color=INK_SECONDARY, linewidth=1.2, label="harmonic, against USp")
+    sup.axvline(1.5, color=GRID, linewidth=6, zorder=0)
+    sup.set_yscale("log")
+    sup.set_xlabel("support of the Fourier transform of φ", color=INK)
+    sup.set_ylabel("max |zeros − prediction| over x₀ ∈ [0, 3]", color=INK)
+    sup.set_title("Where the diagonal stops (ILS prove 3/2)", color=INK, fontsize=11, loc="left")
+    sup.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="lower right")
+    for ax in axes.ravel():
         ax.set_facecolor(SURFACE)
         _style(ax)
     fig.tight_layout()
