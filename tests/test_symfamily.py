@@ -12,10 +12,16 @@ from zeta_explorer.symfamily import (
     count_zeros,
     family,
     harmonic_weight,
+    jackson,
+    jackson_hat,
     lambda_power,
     low_zeros,
+    petersson_means,
     plancherel_mean,
+    predicted,
+    smoothed,
     sym_square,
+    trace_means,
     unfold,
 )
 from zeta_explorer.sympower import delta_power
@@ -124,6 +130,34 @@ def test_chi2_by_hand_and_round_trip(tmp_path):
     G = Family.load(tmp_path / "fam.npz")
     assert G.k.tolist() == F.k.tolist() and G.weight.tolist() == F.weight.tolist()
     assert [z.tolist() for z in G.zeros] == [z.tolist() for z in F.zeros] and G.x_max == 1.0
+
+
+def test_jackson_kernel_transform():
+    x = np.linspace(-400, 400, 800001)
+    for s in (1.0, 2.0):
+        assert np.trapezoid(jackson(x, s), x) == pytest.approx(1, abs=1e-6)
+        for xi in (0.2, 0.6, 1.1, 1.7):
+            num = np.trapezoid(jackson(x, s) * np.cos(2 * math.pi * xi * x), x)
+            assert num == pytest.approx(float(jackson_hat(xi, s)), abs=1e-6)
+    assert jackson_hat(2.0, 1.0) == 0
+
+
+def test_explicit_formula_for_one_form():
+    f = eigenforms(36, P=8192)[1]
+    L = sym_square(f)
+    F = Family(np.array([36]), np.array([1.0]), [low_zeros(L, 20.0)], 20.0)
+    own = lambda k, p, j: lambda_power(2 * j, f.lam[np.searchsorted(f.p, p)])  # noqa: E731
+    x0 = np.array([0.0, 0.4, 1.0, 2.5])
+    for s in (1.0, 1.8):
+        assert smoothed(F, x0, s) == pytest.approx(predicted(F, x0, s, own), abs=1e-5)
+
+
+def test_petersson_and_trace_formula_close_the_family_average():
+    F = family([32, 36], x_max=20.0)
+    x0 = np.array([0.0, 0.5, 1.5])
+    assert smoothed(F, x0, 1.2, harmonic=True) == pytest.approx(
+        predicted(F, x0, 1.2, petersson_means, harmonic=True), abs=1e-5)
+    assert smoothed(F, x0, 1.2) == pytest.approx(predicted(F, x0, 1.2, trace_means), abs=1e-5)
 
 
 def test_argument_principle_count_matches_the_scan():

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import math
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -7,9 +8,10 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import ArrayLike
 
-from zeta_explorer.hecke import Eigenform, eigenforms
+from zeta_explorer.explicit import primes
+from zeta_explorer.hecke import Eigenform, dimension, eigenforms, petersson, trace
 from zeta_explorer.mellin import MellinLine
-from zeta_explorer.selfdual import SelfDual, multiplicative
+from zeta_explorer.selfdual import SelfDual, _psi_gamma_factor, multiplicative
 from zeta_explorer.sympower import _local, gamma_shifts
 
 
@@ -135,3 +137,100 @@ def lambda_power(n: int, x: ArrayLike) -> np.ndarray:
         prev, cur = cur, x * cur - prev
     return cur
 
+
+def jackson(x: ArrayLike, s: float) -> np.ndarray:
+    return 0.75 * s * np.sinc(s * np.asarray(x, dtype=float) / 2) ** 4
+
+
+def jackson_hat(xi: ArrayLike, s: float) -> np.ndarray:
+    y = np.abs(2 * np.asarray(xi, dtype=float) / s)
+    return np.where(y < 1, 1 - 1.5 * y**2 + 0.75 * y**3, np.where(y < 2, (2 - y) ** 3 / 4, 0.0))
+
+
+Moments = Callable[[int, np.ndarray, int], np.ndarray]
+
+
+def sato_tate(k: int, p: np.ndarray, j: int) -> np.ndarray:
+    return np.full(len(p), float(j == 0))
+
+
+def plancherel(k: int, p: np.ndarray, j: int) -> np.ndarray:
+    return np.asarray(p, dtype=float) ** -j
+
+
+def trace_means(k: int, p: np.ndarray, j: int) -> np.ndarray:
+    return np.array([trace(k, q ** (2 * j)) / (q ** (j * (k - 1)) * dimension(k))
+                     for q in np.asarray(p).tolist()])
+
+
+def petersson_means(k: int, p: np.ndarray, j: int) -> np.ndarray:
+    return np.array([petersson(k, 1, q ** (2 * j)) / petersson(k, 1, 1)
+                     for q in np.asarray(p).tolist()])
+
+
+@dataclass(frozen=True)
+class Shape:
+    k: int
+    D: float
+    t: np.ndarray
+    x: np.ndarray
+    rho: np.ndarray
+
+    def g(self, t: ArrayLike, x0: ArrayLike, s: float) -> np.ndarray:
+        u = self.D * np.asarray(t, dtype=float)[None, :]
+        c = np.asarray(x0, dtype=float)[:, None]
+        return self.D * (jackson(u - c, s) + jackson(u + c, s))
+
+
+@functools.cache
+def shape(k: int, x_end: float = 40.0, n: int = 40001) -> Shape:
+    mu = gamma_shifts(2, k)
+    L = SelfDual(lambda M: np.zeros(M + 1), 1.0, mu)
+    T = 1.0
+    while L.theta(T) / math.pi < x_end:
+        T *= 1.5
+    t = np.linspace(0, T, n)
+    x = np.asarray(L.theta(t)) / math.pi
+    rho = _psi_gamma_factor(0.5 + 1j * t, mu).real / math.pi
+    D = 2 / float(np.interp(2.0, x, t))
+    return Shape(k, D, t, x, rho)
+
+
+def smoothed(F: Family, x0: ArrayLike, s: float, harmonic: bool = False) -> np.ndarray:
+    x0 = np.atleast_1d(np.asarray(x0, dtype=float))
+    share = F.shares(harmonic)
+    out = np.zeros(len(x0))
+    for k in np.unique(F.k).tolist():
+        sh = shape(k)
+        beyond = sh.x > F.x_max
+        tail = np.trapezoid(sh.g(sh.t[beyond], x0, s) * sh.rho[beyond], sh.t[beyond], axis=1)
+        for i in np.flatnonzero(F.k == k):
+            t = np.interp(F.zeros[i], sh.x, sh.t)
+            out += share[i] * (sh.g(t, x0, s).sum(axis=1) + tail)
+    return out
+
+
+def predicted(F: Family, x0: ArrayLike, s: float, means: Moments | None = None,
+              harmonic: bool = False) -> np.ndarray:
+    x0 = np.atleast_1d(np.asarray(x0, dtype=float))
+    share = F.shares(harmonic)
+    out = np.zeros(len(x0))
+    for k in np.unique(F.k).tolist():
+        sh = shape(k)
+        if means is None:
+            w = 1 - np.sinc(2 * sh.x)
+            out += share[F.k == k].sum() * np.trapezoid(sh.g(sh.t, x0, s) * sh.rho * w, sh.t,
+                                                        axis=1)
+            continue
+        value = np.trapezoid(sh.g(sh.t, x0, s) * sh.rho, sh.t, axis=1)
+        U = 2 * math.pi * sh.D * s
+        m = 1
+        while m * math.log(2) < U:
+            p = primes(int(math.exp(U / m)))
+            lam = means(k, p, m) - means(k, p, m - 1) + 1
+            u = m * np.log(p)
+            ghat = 2 * np.cos(np.outer(x0, u) / sh.D) * jackson_hat(u / (2 * math.pi * sh.D), s)
+            value -= ghat @ (np.log(p) * lam * p ** (-m / 2)) / (2 * math.pi)
+            m += 1
+        out += share[F.k == k].sum() * value
+    return out
