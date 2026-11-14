@@ -4,9 +4,11 @@ from pathlib import Path
 import mpmath
 
 from zeta_explorer.characters import conrey
+from zeta_explorer.elliptic import Curve, EllipticL, central, hardy_z, zeros_below
 from zeta_explorer.explicit import psi_from_zeros
 from zeta_explorer.lfunction import l_z, verify_zeros
 from zeta_explorer.spacing import first_zeros
+from zeta_explorer.zeros import illinois
 
 mpmath.mp.dps = 40
 
@@ -26,6 +28,12 @@ L_AT = [(3, 2, 0.5, 8.0397), (5, 2, 0.5, 30), (7, 3, 0.5, -12.5), (8, 5, 2, 1), 
         (12, 11, 0.5, 0.1), (16, 3, 0.9, -45), (25, 2, 0.5, 3), (40, 3, 0.1, 22),
         (63, 5, 0.5, -60), (99, 2, 0.5, 15), (101, 2, 0.5, 150)]
 LZ_AT = [(5, 2), (7, 3), (13, 2), (24, 5), (61, 2)]
+CURVES = [("11a1", (0, -1, 1, -10, -20)), ("37a1", (0, 0, 1, -1, 0)), ("389a1", (0, 1, 1, -2, 0)),
+          ("5077a1", (0, 0, 1, -7, 6))]
+HARDY_AT = [0.0, 0.5, 3.7, 12.25, 19.0, -6.1]
+TWISTS_AT = [(0, (-3, -4, 5, -7, 8, 12, 13, -19, -20, 21, 24, -31, 37, -43, 56, -59, 61, -84, 97,
+                  -103, 109, -127, 141, -148, 161, -179, 193, -211)),
+             (1, (-3, 5, -11, 12, 13, -19, 21, -23, 28, 41, -47, 53, 60, -67, 73, -88))]
 VERIFY_AT = [(5, 2, 40), (7, 3, 30), (13, 2, 25), (40, 3, 20), (99, 2, 12)]
 
 
@@ -50,6 +58,27 @@ def _verify(q, n, T):
     return [q, n, T, v.in_box, [float(z) for z in v.zeros]]
 
 
+def _curve(label, ainvs):
+    E = Curve(*ainvs)
+    L = EllipticL(E)
+    low = zeros_below(L, 20.0)
+    aps = [E.ap(p) for p in (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59)]
+    return [label, list(ainvs), E.conductor, L.root_number, aps, central(L), low.rank,
+            [_polish(t, L) for t in low.t], [float(hardy_z(t, L)) for t in HARDY_AT]]
+
+
+def _polish(t, L, h=0.02):
+    def f(s):
+        return float(hardy_z(s, L))
+
+    return illinois(f, t - h, t + h, f(t - h), f(t + h))
+
+
+def _twist(i, d):
+    L = EllipticL(Curve(*CURVES[i][1]), d)
+    return [i, d, L.conductor, L.root_number, central(L)]
+
+
 def _zeta(s, t):
     z = mpmath.zeta(mpmath.mpc(s, t))
     return [s, t, float(z.real), float(z.imag)]
@@ -68,6 +97,9 @@ out = {
     "dirichlet": [_dirichlet(*a) for a in L_AT],
     "lz": [_l_z(q, n) for q, n in LZ_AT],
     "lzeros": [_verify(*a) for a in VERIFY_AT],
+    "hardy_at": HARDY_AT,
+    "curves": [_curve(*c) for c in CURVES],
+    "twists": [_twist(i, d) for i, ds in TWISTS_AT for d in ds],
 }
 rows = ",\n".join(f" {json.dumps(k)}: {json.dumps(v)}" for k, v in out.items())
 Path(__file__).with_name("reference.json").write_text("{\n" + rows + "\n}\n")
