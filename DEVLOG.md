@@ -1734,3 +1734,93 @@ Design notes:
 
 Next: the two-level density of this family, or the lowest zero from the explicit
 formula's n-level terms (where the ILS diagonal should also say why x₁ is narrower).
+
+## 2026-11-14: Hiary's amortized method, faster phases, and elliptic curves in the browser
+
+Built:
+
+- `multieval.log_phases` from the primes only. n^(−it) is completely
+  multiplicative, so a smallest-prime-factor sieve gives φ(n) = φ(p) + φ(n/p) mod 2π,
+  filled one Ω(n) level at a time with double-double sums (two-sum) and a
+  double-double 2π. Only the 33,776 primes up to 398,942 go through mpmath at
+  t₀ = 10¹² + 500.
+- `blfi.py`: Hiary's band-limited function interpolation (Math. Comp. 80, 2011,
+  arXiv:1002.2443). `subdivide(n₂, M)` cuts [M, n₂] into dyadic levels of M blocks
+  of length 2ˡ plus the top-length tail; each block F_v(t) has spectrum in
+  [0, 1/M], is centered to [−τ, τ] with τ = 1/2M, tabulated on one shared grid of
+  spacing π/3τ, and rebuilt with the sinc times Kaiser-Bessel kernel (β = 3τ,
+  λ = 2τ, ε = τ, reach c/ε, c = log(24√n₂/tol)). Evaluation is one matrix product
+  per batch of points. `spin` gives e^(i(φ + u log v)) at full precision: log v as
+  a head on a 2⁻¹⁶ grid plus a tail, u rounded to the same grid so the head product
+  is exact, Cody-Waite reduction with a 34-bit 2π, one cos/sin pair.
+- `blfi.compare` and `plot.plot_blfi` with docs/blfi.png: ⌊T^(1/4)⌋ points in
+  [T, T + T^(1/4)] for T = 10⁶ to 10¹³, direct sum against BLFI against the NUFFT
+  window.
+- `web/js/elliptic.js`: semistable curves from a-invariants (BigInt discriminant),
+  a_p by the Legendre sum stepped with cubic forward differences, a_n with the
+  Hecke recursion, root numbers, Kronecker symbols and fundamental discriminants,
+  twists, E₁, the complex incomplete gamma (series and Legendre's continued
+  fraction, log Γ(z) hoisted out of the per-term loop), central values and order,
+  Hardy Z, zeros by sign changes and Illinois.
+- `web/js/curves.js` and `ec-worker.js`: the "Elliptic curves" section with presets
+  11a, 37a, 389a, 5077a, any typed curve, a twist input, Z(t) with the central zero
+  sized by its order, and the even twists' central values against d, clickable.
+
+Checks:
+
+- `log_phases` bit-identical to the per-n mpmath version at t₀ = 10⁴, 1.2·10⁸ and
+  10¹² + 500 (n up to 398,942); spot values against mpmath at 40 digits.
+- `subdivide` tiles [M, n₂] with (K − 1)M < v for 36 (n₂, M) pairs. The kernel
+  rebuilds a random 200-term band-limited sum within 6·Σ|a|·e^(−c) for c = 10, 20,
+  30. `spin` against mpmath for u up to 6·10⁴ and n up to 10⁷: below 1e−14.
+- BLFI against mpmath `siegelz`: 2.5e−13 at 10⁴, 3.3e−13 at 10⁸, 7.3e−13 at 10¹⁰,
+  1.1e−13 at 10¹² (the NUFFT window: 3.5e−13 at 10¹²). Main sum against the NUFFT
+  window's at 777 points near 3·10⁹: below 1e−11. ζ(1/2 + it) against mpmath at 10⁶.
+  Across the jump in N at 2π·200². Asking tol = 1e−3, 1e−6, 1e−9 at 10⁸ gives errors
+  below each, decreasing.
+- JavaScript against Python: conductors, root numbers and a_p for p < 60 of the four
+  curves; L(11a, 1) = 0.253841860855911 and L′(37a, 1) = 0.305999773834052 (LMFDB)
+  to 1e−14; central order 0, 1, 2, 3; Hardy Z at six heights to 1e−11; 44 twists of
+  11a and 37a (conductor, sign, central value to 1e−11). Multiplicativity, the Hecke
+  relation at p² and Hasse's bound. Kronecker periodicity and multiplicativity.
+  Fundamental discriminants in [−20, 20]. The browser's twist scan of 11a gives the
+  same 274 even, 283 odd and 33 vanishing twists with |d| ≤ 1000 as Python.
+
+Results:
+
+- Phases at 10¹²: 0.32 s instead of 2.22 s. ZWindow setup at 10¹² went from about
+  1.3 s to 0.62 s, the Odlyzko check (10⁴ zeros from n = 10¹²) from 2.5 s to 1.5 s,
+  and Polymath 15's 2,000-zero window at x = 2·10¹² from 4 s to 0.9 s.
+- After setup, per point: direct sum T^0.49, BLFI T^0.28, NUFFT flat (fit over
+  T ≥ 10⁸). At 10¹²: 7.6 ms direct, 0.32 ms BLFI, 3 μs NUFFT. Setup included,
+  over 1,000 points: 1.06 ms BLFI, 0.62 ms NUFFT. At 10¹³: 24 ms, 0.69 ms, 3 μs.
+  The NUFFT window is never slower, as Hiary expects in general.
+- BLFI at 10¹² uses 8,559 blocks instead of 398,942 terms, 65 grid samples 2,094
+  apart, c = 32.7.
+- Browser: point counts for all primes below 3·10⁴ in 0.22 s (1.7 s with `%`).
+  Z on [0, 40]: 57 ms for 11a, 1.1 s for 5077a. Twist scans: 0.3 s for 11a
+  (|d| ≤ 1000), 1.3 s for 5077a (|d| ≤ 73).
+
+Design notes:
+
+- The shared grid is what makes BLFI fast in numpy. Every block is band-limited to
+  the same band, so the kernel weights depend only on the point and the grid, and
+  the block sums for a batch are A · table, a GEMM. The per-point cost is then
+  dominated by building A (one complex exponential per block), not the product.
+- The first version had a 1.4e−12 floor at 10¹² whatever the tolerance: u·log v is
+  near 6,500 radians and a double there is only good to 9e−13. Dekker's two-product
+  fixed it but doubled the cost; the grid split does it with plain multiplications
+  because both factors are short enough for the product to be exact.
+- The tolerance is honest but loose (about 10⁴ times): the bound uses sup|F_v|
+  summed over blocks, and the real errors are random-signed.
+- Python's `elliptic.zeros_below` fits ξ(√u) on [0, T²] with Chebyshev polynomials.
+  ξ decays like e^(−πt/2), so at T = 20 the roots near the top are off by up to
+  2e−6 (11a) and 4.7e−3 (5077a). Everything that uses it works at x ≤ 3, where
+  the fit is accurate, so it stays; the browser reference zeros are polished with
+  Illinois on Z.
+- The twist range in the browser is set by a budget of 3·10⁴ coefficients per twist
+  (|d| ≤ 2π·3·10⁴/(36√N)), and the Z range by about 9,000 terms per point.
+
+Next: speed up the incomplete gamma for |w| near |z| (Temme's uniform expansion)
+so high conductors are cheap in the browser, then the two-level density of the odd
+twists from the ratios conjecture.
