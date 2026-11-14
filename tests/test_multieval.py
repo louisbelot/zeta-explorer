@@ -4,7 +4,14 @@ import mpmath
 import numpy as np
 import pytest
 
-from zeta_explorer.multieval import ZWindow, fft_size, nufft, zeros_fast
+from zeta_explorer.multieval import (
+    ZWindow,
+    fft_size,
+    log_phases,
+    nufft,
+    smallest_factor,
+    zeros_fast,
+)
 from zeta_explorer.riemann_siegel import theta, z_rs
 from zeta_explorer.spacing import good_gram, zeros_between
 from zeta_explorer.zeros import gram_points
@@ -49,6 +56,24 @@ def _is_5_smooth(n):
             n //= p
     return n == 1
 
+
+def test_smallest_factor():
+    spf = smallest_factor(1000)
+    for n in range(2, 1001):
+        p = int(spf[n])
+        assert n % p == 0
+        assert all(p % d for d in range(2, math.isqrt(p) + 1))
+        assert all(n % d for d in range(2, p))
+
+
+@pytest.mark.parametrize("t0", [10**4, 123456789, 10**12 + 500])
+def test_log_phases_match_mpmath(t0):
+    got = log_phases(t0, 3000)
+    with mpmath.workdps(40):
+        for k in (1, 2, 97, 512, 1024, 2310, 2999, 3000):
+            exact = mpmath.mpf(t0) * mpmath.log(k) % (2 * mpmath.pi)
+            assert got[k - 1] == float(exact)
+    assert np.all((got >= 0) & (got < 2 * math.pi))
 
 @pytest.mark.parametrize("T", [1e4, 1e8, 1e10])
 def test_window_matches_mpmath(T):

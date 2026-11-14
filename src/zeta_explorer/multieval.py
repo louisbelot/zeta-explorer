@@ -86,11 +86,57 @@ class BandSum:
         return out * np.exp(-1j * self.beta * u)
 
 
+def smallest_factor(n: int) -> np.ndarray:
+    spf = np.zeros(n + 1, dtype=np.int64)
+    for p in range(2, math.isqrt(n) + 1):
+        if spf[p] == 0:
+            multiples = spf[p * p :: p]
+            multiples[multiples == 0] = p
+    ks = np.arange(n + 1)
+    spf[spf == 0] = ks[spf == 0]
+    return spf
+
+
+def _two_sum(a: np.ndarray, b: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    s = a + b
+    bb = s - a
+    return s, (a - (s - bb)) + (b - bb)
+
+
+def _dd_add(ah, al, bh, bl):
+    s, e = _two_sum(ah, bh)
+    e = e + (al + bl)
+    hi = s + e
+    return hi, e - (hi - s)
+
+
 def log_phases(t0: float, n: int) -> np.ndarray:
+    spf = smallest_factor(n)
+    ps = np.flatnonzero(spf[2:] == np.arange(2, n + 1)) + 2
+    hi, lo = np.zeros(n + 1), np.zeros(n + 1)
     with mpmath.workdps(25 + int(math.log10(t0))):
         t = mpmath.mpf(t0)
         two_pi = 2 * mpmath.pi
-        return np.array([float(t * mpmath.log(k) % two_pi) for k in range(1, n + 1)])
+        for p in ps:
+            x = t * mpmath.log(int(p)) % two_pi
+            hi[p] = float(x)
+            lo[p] = float(x - hi[p])
+        tp_hi = float(two_pi)
+        tp_lo = float(two_pi - tp_hi)
+    ks = np.arange(n + 1)
+    q = ks // np.maximum(spf, 1)
+    done = np.zeros(n + 1, dtype=bool)
+    done[:2] = True
+    done[ps] = True
+    while not done.all():
+        k = np.flatnonzero(~done & done[q])
+        p = spf[k]
+        s_hi, s_lo = _dd_add(hi[p], lo[p], hi[q[k]], lo[q[k]])
+        wrap = (s_hi > tp_hi) | ((s_hi == tp_hi) & (s_lo >= tp_lo))
+        w_hi, w_lo = _dd_add(s_hi, s_lo, np.full(len(k), -tp_hi), np.full(len(k), -tp_lo))
+        hi[k], lo[k] = np.where(wrap, w_hi, s_hi), np.where(wrap, w_lo, s_lo)
+        done[k] = True
+    return hi[1:]
 
 
 def theta_reference(t0: float) -> tuple[int, float]:
