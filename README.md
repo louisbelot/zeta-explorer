@@ -17,7 +17,8 @@ pairs (the near misses that bound the de Bruijn-Newman constant), and checks the
 value distribution of log|ζ(1/2 + it)| against random unitary matrices. A
 simplified Odlyzko-Schönhage evaluator (one nonuniform FFT per window, then
 band-limited interpolation) makes Z cost 2.6 μs per point at any height and
-reproduces Odlyzko's published zeros near the 10¹²th zero to 3e-9.
+reproduces Odlyzko's published zeros near the 10¹²th zero to 3e-9. Hiary's
+FFT-free alternative is here too, with its T^(1/4) cost per point measured.
 
 The same machinery extends to Dirichlet L-functions: characters with LMFDB's
 Conrey labels, L(s, χ) anywhere in the plane, zeros checked against LMFDB and
@@ -120,8 +121,10 @@ theorem reproduces Chao and Plymen's proof that π(x) > li(x) somewhere in
 The same numerics also run in the browser at
 [louisbelot.github.io/zeta-explorer](https://louisbelot.github.io/zeta-explorer/):
 a phase portrait you can pan and zoom, a Z(t) explorer that marks zeros and Gram
-points up to t = 10⁹, the explicit formula building ψ(x) one zero at a time, and
-Z(t, χ) with its zeros for every primitive Dirichlet character up to modulus 200.
+points up to t = 10⁹, the explicit formula building ψ(x) one zero at a time,
+Z(t, χ) with its zeros for every primitive Dirichlet character up to modulus 200,
+and Z(t) for any semistable elliptic curve with its central order and the central
+values of its quadratic twists.
 
 ## Install
 
@@ -2839,6 +2842,37 @@ The section plots Z(t, χ) for the chosen character and, below it, the zeros wit
 complex pair is computed once and the second row is the mirror image. The rows go to
 a pool of up to four workers: mod 163 there are 161 primitive characters and 81
 distinct rows, which take 6.3 s on one thread and arrive in about 2.3 s.
+
+Elliptic curves are the third port. `web/js/elliptic.js` follows `elliptic.py`:
+the discriminant in BigInt, the conductor of a semistable curve as the product of
+its bad primes, a_p from the Legendre-symbol sum over x, a_n by multiplicativity
+and the Hecke recursion, the root number −Π(−a_p) over bad p, twists by the
+Kronecker symbol of a fundamental discriminant d with ε(E_d) = ε(E)·χ_d(−N), the
+central value or derivative from the exponential and E₁ sums, and Z(t) from the
+rotated smoothed functional equation with the incomplete gamma Γ(1 + it, w) by
+series or Legendre's continued fraction. The section draws Z for 11a, 37a, 389a,
+5077a or any semistable curve typed in, marks the central zero with its order, and
+plots L(1/2, E ⊗ χ_d) for every even twist in range, computed in two workers.
+
+Point counting was the first bottleneck: the cubic 4x³ + b₂x² + 2b₄x + b₆ mod p
+evaluated with `%` took 1.7 s for every prime below 3·10⁴. Stepping through x with
+the three forward differences of the cubic (the third is the constant 24) needs
+only additions and one conditional subtraction each, and takes 0.22 s. Z costs
+57 ms for 400 samples of 11a on [0, 40] and 1.1 s for 624 samples of 5077a, where
+the terms run to 4,000 per point and the continued fraction is slow near |w| ≈ |z|.
+The twist scan takes 0.3 s for the 274 even twists of 11a with |d| ≤ 1000, of which
+33 have L(1/2) = 0, the same counts as `elliptic.twists` in Python. The range in d
+is cut so no twist needs more than 3·10⁴ coefficients: |d| ≤ 860 for 37a, 265 for
+389a and 73 for 5077a.
+
+Comparing with Python found a weakness on the Python side. `zeros_below` takes the
+roots of a Chebyshev fit to ξ(√u) on [0, T²], and ξ falls like e^(−πt/2), so the
+fit's relative error swamps the small end: at T = 20 the roots near the top are off
+by up to 2e-6 for 11a and 4.7e-3 for 5077a. The low-lying statistics only use
+zeros with x ≤ 3, where the fit is fine, so the library is unchanged and the
+browser's reference zeros are polished with Illinois on Z instead. The JavaScript
+finds zeros from sign changes, eight samples per mean spacing, and agrees with
+the polished values to 1e-9.
 
 `python -m zeta_explorer.site` writes the three data files: the trimmed
 Riemann-Siegel coefficients, the first 10,000 zeros, and the spacing histogram and
