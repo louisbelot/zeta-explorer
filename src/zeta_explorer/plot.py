@@ -808,6 +808,40 @@ def plot_multieval(heights: ArrayLike = (1e4, 1e6, 1e8, 1e10, 1e12), points: int
 
 
 
+def plot_blfi(heights: ArrayLike = (1e6, 1e8, 1e10, 1e12, 1e13)) -> Figure:
+    import matplotlib.pyplot as plt
+
+    from zeta_explorer.blfi import compare
+
+    heights = np.asarray(heights, dtype=float)
+    runs = [compare(T) for T in heights]
+    P = np.floor(heights**0.25)
+    fit = heights >= 1e8
+    names = (("direct", "direct sum", ORDINAL[1]), ("blfi", "Hiary's BLFI", ACCENT),
+             ("nufft", "NUFFT window", ORDINAL[4]))
+
+    fig, (left, right) = plt.subplots(1, 2, figsize=(11, 4.4), facecolor=SURFACE)
+    for key, label, color in names:
+        setup = np.array([r[key][0] for r in runs])
+        each = np.array([r[key][1] for r in runs])
+        slope = np.polyfit(np.log(heights[fit]), np.log(each[fit]), 1)[0]
+        left.loglog(heights, (setup / P + each) * 1e6, "o-", color=color, linewidth=2,
+                    label=label)
+        right.loglog(heights, each * 1e6, "o-", color=color, linewidth=2,
+                     label=f"{label}, slope {slope:.2f}")
+    for ax in (left, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+        ax.set_xlabel("T", color=INK)
+        ax.set_ylabel("μs per point", color=INK)
+        ax.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="upper left")
+    left.set_title("⌊T^(1/4)⌋ points in [T, T + T^(1/4)], setup included", color=INK,
+                   fontsize=11, loc="left")
+    right.set_title("After setup", color=INK, fontsize=11, loc="left")
+    fig.tight_layout()
+    return fig
+
+
 def plot_afe(
     conductors: ArrayLike = (101, 1009, 10007, 100003), heights: ArrayLike = (1, 10, 100, 1000),
     q_fixed: int = 10007, t_fixed: float = 10.0, points: int = 8,

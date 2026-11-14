@@ -19,6 +19,7 @@ from zeta_explorer.plot import (
     plot_afe,
     plot_barrier,
     plot_bias_densities,
+    plot_blfi,
     plot_central_values,
     plot_continuation,
     plot_davenport,
@@ -177,6 +178,13 @@ def test_plot_multieval_window_beats_direct_sum():
     assert np.all(window < 1e-11)
     assert direct[-1] > 1e-9
 
+
+def test_plot_blfi_slopes_order_the_methods():
+    fig = plot_blfi(heights=(1e6, 1e8, 1e10))
+    labels = [line.get_label() for line in fig.axes[1].lines]
+    slopes = [float(label.rsplit(" ", 1)[1]) for label in labels]
+    assert slopes[0] > 0.4
+    assert slopes[0] > slopes[1] > slopes[2]
 
 def test_plot_afe_labels_term_counts():
     fig = plot_afe(conductors=(101, 10007), heights=(1, 100), points=2)

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import math
+import time
 
 import mpmath
 import numpy as np
 from numpy.typing import ArrayLike
 
-from zeta_explorer.multieval import log_phases, theta_reference, theta_shift
-from zeta_explorer.riemann_siegel import TWO_PI, rs_remainder
+from zeta_explorer.multieval import ZWindow, log_phases, theta_reference, theta_shift
+from zeta_explorer.riemann_siegel import TWO_PI, rs_remainder, z_rs
 
 _CHUNK = 1 << 20
 
@@ -152,3 +153,23 @@ class BLFIWindow:
     def zeta(self, u: ArrayLike) -> np.ndarray:
         u = np.atleast_1d(np.asarray(u, dtype=float))
         return np.exp(-1j * self._theta(u)) * self.z(u)
+
+
+def compare(T: float, points: int | None = None) -> dict[str, tuple[float, float]]:
+    L = T**0.25
+    P = points or int(L)
+    out = {}
+    for name, build in (("blfi", BLFIWindow), ("nufft", ZWindow)):
+        start = time.perf_counter()
+        win = build(T, T + L)
+        setup = time.perf_counter() - start
+        u = np.linspace(win.u_lo, win.u_hi, P)
+        win.z(u[:2])
+        start = time.perf_counter()
+        win.z(u)
+        out[name] = (setup, (time.perf_counter() - start) / P)
+    few = win.t0 + u[: min(P, 40)]
+    start = time.perf_counter()
+    z_rs(few)
+    out["direct"] = (0.0, (time.perf_counter() - start) / len(few))
+    return out
