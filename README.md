@@ -531,13 +531,13 @@ extra term is subtracted directly for points below the jump.
 
 On this machine, once the window is built, each Z costs 2.6 μs at any height. The
 direct sum costs 7.4 μs at t = 10⁶, 795 μs at 10¹⁰ and 7.7 ms at 10¹². Building the
-window takes 0.25 s at 10¹⁰ and about 1.3 s at 10¹², mostly for the mpmath phases.
+window takes 0.07 s at 10¹⁰ and 0.6 s at 10¹², half of it for the phases.
 Against mpmath's `siegelz`, the window's error stays between 8e-14 and 3e-13 from
 t = 10⁴ to 10¹², while the direct sum's grows from 1e-11 to 3.5e-3.
 
 The check that convinced me was Odlyzko's published table of zeros number
 10¹² + 1 to 10¹² + 10⁴. `zeros_fast(10**12 - 2, 10**12 + 10**4 + 2)` finds all of
-them in 2.5 s with the same numbering, and the largest difference from his values
+them in 1.5 s with the same numbering, and the largest difference from his values
 is 2.8e-9 (RMS 7e-10; his file promises 1e-8).
 
 Up there Gram blocks start breaking Rosser's rule. The block
@@ -549,6 +549,83 @@ then with the blocks after it, until the union has as many sign changes as Gram
 intervals. In 100,000 Gram intervals from n = 10¹² that happened 4 times; from
 n = 10⁹, never. 20.1% of the Gram points near 10¹² are bad, against 17.5% near
 10⁹.
+
+The phases t₀ log n mod 2π used to be one mpmath call per n, 400,000 of them at
+10¹², and that was most of every window's setup. n^(−it) is completely
+multiplicative, so only the primes need mpmath: `log_phases` sieves the smallest
+prime factor p of each n and sets φ(n) = φ(p) + φ(n/p) mod 2π, one Ω(n) level at a
+time. Done in plain doubles that would add up to Ω(n) roundings, so the phases are
+kept as double-double pairs (Knuth's two-sum) and only rounded at the end. The
+result is bit-for-bit the same array as before. At t₀ = 10¹² + 500 it takes 0.32 s
+instead of 2.22 s (33,776 primes up to 398,942 instead of every n).
+
+### Hiary's amortized method
+
+![Cost per point of the direct sum, Hiary's BLFI and the NUFFT window](docs/blfi.png)
+
+Hiary (Math. Comp. 80, 2011, arXiv:1002.2443) gets to many values in a short
+interval without any FFT. His claim: any ⌊T^(1/4)⌋ points in [T, T + T^(1/4)] in an
+average of T^(1/4+o(1)) operations each. `BLFIWindow(t_lo, t_hi)` follows the paper.
+
+The main sum F(t) = Σ_(n≤n₂) n^(−1/2) e^(it log n) is cut at M = ⌈T^(1/4)⌉. The
+terms below M are summed directly. Above it, dyadic levels [2ˡM, 2ˡ⁺¹M) are each
+split into M blocks of length 2ˡ, and what is left of the range takes blocks of the
+top length. A block starting at v factors as
+
+```
+Σ_(k<K) (v + k)^(−1/2) e^(it log(v + k)) = e^(it log v) · F_v(t),
+F_v(t) = Σ_(k<K) (v + k)^(−1/2) e^(it log(1 + k/v))
+```
+
+and since K/v ≤ 1/M on every block, every F_v has its spectrum inside [0, 1/M].
+That is the whole trick: F_v changes on a scale of M, so it can be stored on a
+grid of spacing about M and interpolated. Centered by e^(−it/2M), the spectrum fits
+in [−τ, τ] with τ = 1/2M, and the paper's formula with β = 3τ, λ = 2τ, ε = τ is
+
+```
+G(t) = (λ/β) Σ_j G(jπ/β) · sinc(λ(t − jπ/β)) · Ĥ(t − jπ/β),
+Ĥ(u) = (c/sinh c) · sinh√(c² − ε²u²) / √(c² − ε²u²)
+```
+
+Ĥ is the Fourier transform of a Kaiser-Bessel bump of width ε, which is what lets
+the smoothed indicator be exactly 1 on the spectrum and 0 past the Nyquist band.
+Keeping only |t − jπ/β| < c/ε costs at most 6·sup|G|·e^(−c). Summed over all
+blocks, sup|G| adds up to at most 2√n₂, so c = log(24√n₂/tol) keeps Z within tol.
+
+All blocks share the same grid, which matters more than the paper lets on. The
+table is one matrix (blocks × grid), and for a batch of points the block sums
+become a single matrix product: A · table, where A[i, v] = e^(it_i log v), then
+weighted by the kernel and summed. At t = 10¹² with M = 1,000 there are 8,559
+blocks instead of 398,942 terms, the grid has 65 samples 2,094 apart, and c = 32.7.
+
+The first version was accurate to 1.4e-12 at 10¹², worse than the NUFFT window,
+whatever the tolerance. The culprit was u·log v for an offset u of a few hundred:
+the product is around 6,500 radians and a double near 6,500 is only good to 9e-13.
+`spin` fixes that without extra transcendentals. log v is split into a head on a
+2⁻¹⁶ grid and a tail of at most 2⁻¹⁷, u is rounded to the same grid, and the head
+product is then exact in a double (21 + 32 bits). It is reduced mod 2π with a
+34-bit 2π and a correction, the way libm does Cody-Waite reduction, and only the
+small reduced angle goes to cos and sin. That brought the error at 10¹² to 1.1e-13.
+
+Against mpmath's `siegelz` the default window (tol = 1e-10) is off by 2.5e-13 at
+10⁴, 3.3e-13 at 10⁸, 7.3e-13 at 10¹⁰ and 1.1e-13 at 10¹². The tolerance is honest
+but loose: asking for 1e-2, 1e-6 and 1e-8 at 10⁸ gives 6e-6, 3e-9 and 9e-12.
+
+The chart uses Hiary's setting. After setup the direct sum costs T^0.49 per point
+and BLFI T^0.28, the predicted T^(1/4) times the growing number of dyadic levels.
+At 10¹² one value costs 7.6 ms directly and 0.32 ms from BLFI; with setup spread
+over the 1,000 points it is 1.06 ms. The NUFFT window is never slower (3 μs per
+point, 0.62 ms with setup), which Hiary expected: his own rough extrapolation put BLFI about 485 times behind Gourdon's Odlyzko-Schönhage run
+of 2·10⁹ zeros. What BLFI buys is simplicity. There is no FFT and no rational function
+evaluation, the precomputation is a direct O(c√T) evaluation, and the cost per
+point does not depend on how long the window is.
+
+```python
+from zeta_explorer.blfi import BLFIWindow
+win = BLFIWindow(1e12, 1e12 + 1000)   # t0 = 1e12 + 500, 8559 blocks, 65 grid samples
+win.z([0.0, 250.0])                   # [-0.30336436, -2.95095492], as mpmath
+win.zeta(0.0)                         # ζ(1/2 + i·t0) = 0.25632826+0.16225215j
+```
 
 ### Zero spacings and random matrices
 
@@ -2420,8 +2497,7 @@ come from mpmath and ϑ_t is assembled from Riemann-Siegel θ, the Stirling tail
 that ZWindow used inline, now shared. Against `zt` the window agrees to 7e−9 at
 10⁶ (where the direct sum is still accurate), and at t = 0 near the 10¹²th zero it
 finds Odlyzko's ten zeros to 2.2e−9, inside his stated 3e−9. A window of 2,000
-zeros at x = 2·10¹² takes 4 s to build, mostly the 400,000 mpmath phases, and 0.2 s
-to search.
+zeros at x = 2·10¹² takes 0.9 s to build and 0.2 s to search.
 
 ### Crystallization
 
