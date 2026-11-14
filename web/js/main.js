@@ -1,3 +1,4 @@
+import { curvePlots } from "./curves.js"
 import { dirichletPlots } from "./dirichlet.js"
 import { domainPlot } from "./domain.js"
 import { zExplorer } from "./explorer.js"
@@ -28,6 +29,16 @@ const redraw = [
     readout: $("l-readout"),
     rows: $("l-rows"),
     rowsReadout: $("l-rows-readout"),
+  }),
+  curvePlots({
+    section: $("elliptic"),
+    a: $("ec-a"),
+    d: $("ec-d"),
+    info: $("ec-info"),
+    plot: $("ec-plot"),
+    readout: $("ec-readout"),
+    twists: $("ec-twists"),
+    twistsReadout: $("ec-twists-readout"),
   }),
   statsPlots($("spacing-plot"), $("pair-plot"), $("stats-intro"), spacing),
 ]

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>zeta-explorer</title>
-<meta name="description" content="The Riemann zeta function computed from scratch in the browser: phase portrait of the critical strip, the Riemann-Siegel Z function with its zeros and Gram points, primes rebuilt from zeros, and zero statistics near the 10^12th zero, and Dirichlet L-functions for any primitive character up to modulus 200.">
+<meta name="description" content="The Riemann zeta function computed from scratch in the browser: phase portrait of the critical strip, the Riemann-Siegel Z function with its zeros and Gram points, primes rebuilt from zeros, and zero statistics near the 10^12th zero, Dirichlet L-functions for any primitive character up to modulus 200, and L-functions of elliptic curves with their quadratic twists.">
 <link rel="stylesheet" href="style.css">
 <script type="module" src="js/main.js"></script>
 </head>
@@ -114,6 +114,42 @@
       Zeros with |t| &lt; 20 for every primitive character mod q, one row per Conrey label.
       Real characters give rows symmetric about t = 0; a complex pair gives two rows that are
       mirror images. Click a row to plot it. <span id="l-rows-readout" class="readout">&nbsp;</span>
+    </figcaption>
+  </figure>
+</section>
+
+<section id="elliptic">
+  <h2>Elliptic curves</h2>
+  <p>
+    A curve E: y² + a₁xy + a₃y = x³ + a₂x² + a₄x + a₆ over ℚ has an L-function built from
+    point counts: a<sub>p</sub> = p + 1 − #E(𝔽<sub>p</sub>), here from a Legendre-symbol sum
+    over x for each prime. Modularity gives the functional equation, with the conductor N in
+    place of q and a root number ε = ±1, so Z(t) is again real on the line. Birch and
+    Swinnerton-Dyer predict that the order of vanishing at the centre is the rank of E(ℚ):
+    0 for 11a, 1 for 37a, 2 for 389a and 3 for 5077a, the smallest conductor of each rank.
+    The central zero is the orange dot at t = 0. Only semistable curves (squarefree N) are
+    accepted.
+  </p>
+  <div class="controls">
+    <label>a-invariants <input id="ec-a" type="text" size="16" value="0, -1, 1, -10, -20"></label>
+    <label>twist d <input id="ec-d" type="number" step="1" value="1"></label>
+    <button type="button" data-a="0,-1,1,-10,-20">11a</button>
+    <button type="button" data-a="0,0,1,-1,0">37a</button>
+    <button type="button" data-a="0,1,1,-2,0">389a</button>
+    <button type="button" data-a="0,0,1,-7,6">5077a</button>
+  </div>
+  <p id="ec-info" class="info">&nbsp;</p>
+  <div class="plot"><canvas id="ec-plot"></canvas></div>
+  <div class="controls">
+    <span id="ec-readout" class="readout">&nbsp;</span>
+  </div>
+  <figure>
+    <div class="plot"><canvas id="ec-twists"></canvas></div>
+    <figcaption>
+      Central values L(1/2, E ⊗ χ<sub>d</sub>) of the quadratic twists with root number +1,
+      against the fundamental discriminant d. By Waldspurger they are never negative, and the
+      orange dots on the axis are twists of rank at least 2. Click a dot to plot that twist.
+      <span id="ec-twists-readout" class="readout">&nbsp;</span>
     </figcaption>
   </figure>
 </section>
