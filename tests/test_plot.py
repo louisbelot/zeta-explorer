@@ -7,6 +7,7 @@ from matplotlib.animation import PillowWriter
 from PIL import Image
 
 from zeta_explorer.bias import race
+from zeta_explorer.bsd import Excision, Group
 from zeta_explorer.dedekind import zeros as field_zeros
 from zeta_explorer.delta import sato_tate, zeros
 from zeta_explorer.funcfield import Fit
@@ -20,6 +21,7 @@ from zeta_explorer.plot import (
     plot_barrier,
     plot_bias_densities,
     plot_blfi,
+    plot_bsd,
     plot_central_values,
     plot_continuation,
     plot_davenport,
@@ -446,6 +448,19 @@ def test_plot_barrier_panels(tmp_path):
     assert len(fig.axes[0].lines) == 3
     assert fig.axes[1].get_title(loc="left") == "2 time steps, winding number 0 at each"
     assert fig.axes[2].get_xscale() == "log"
+
+
+def test_plot_bsd_panels(tmp_path):
+    rng = np.random.default_rng(0)
+    groups = tuple(Group(a, n, 0.1 * (a + 1), 0.15 * (a + 1), rng.random(m), rng.random(500))
+                   for a, n, m in [(0, 300, 280), (1, 200, 150), (2, 40, 30)])
+    scan = [Excision(q, 8, 430, 0.9, 0.12, 0.2, 0.25, 0.2, 0.06, 0.05, 0.04, groups)
+            for q in (5, 7)]
+    fig = plot_bsd(scan[0], scan)
+    fig.savefig(tmp_path / "bsd.png")
+    assert [p.get_height() for p in fig.axes[0].patches] == pytest.approx([0.1, 0.2, 0.3])
+    assert len(fig.axes[1].get_legend().get_texts()) == 3
+    assert len(fig.axes[2].patches) == 8
 
 
 def test_plot_funcfield_panels(tmp_path):

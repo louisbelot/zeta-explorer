@@ -61,6 +61,7 @@ from zeta_explorer.zeta import zeta
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
+    from zeta_explorer.bsd import Excision
     from zeta_explorer.symfamily import Family as SymFamily
 
 SERIES = "#2a78d6"
@@ -1956,6 +1957,64 @@ def plot_funcfield(lowest: ArrayLike, so: ArrayLike, excised: ArrayLike, k: Arra
     fig.tight_layout()
     return fig
 
+
+def plot_bsd(E: Excision, scan: list[Excision]) -> Figure:
+    import matplotlib.pyplot as plt
+
+    fig, (left, mid, right) = plt.subplots(1, 3, figsize=(15, 4.8), facecolor=SURFACE)
+    a = np.array([g.a for g in E.groups])
+    left.bar(a, [g.vanish for g in E.groups], width=0.6, color=SERIES, label="even twists, data")
+    left.plot(a, [g.predicted for g in E.groups], "o-", color=ACCENT, linewidth=1.6,
+              label="SO(N) above 4^a q^(−N/4)")
+    left.axhline(E.predicted_one, color=INK_SECONDARY, linestyle=":", linewidth=1.4,
+                 label="SO(N) above 4 q^(−N/4)")
+    for g in E.groups:
+        left.annotate(f"{g.twists:,}", (g.a, 0), textcoords="offset points", xytext=(0, 5),
+                      ha="center", fontsize=8.5, color=SURFACE)
+    left.set_xticks(a)
+    left.set_xlabel("a = v₂ of the Tamagawa factor, halved", color=INK)
+    left.set_ylabel("share with L(E_D, 1/q) = 0", color=INK)
+    left.set_title(f"Central zeros over F_{E.q}(t), N = {E.N}", color=INK, fontsize=12,
+                   loc="left")
+    left.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper left")
+    shown = [g for g in E.groups if len(g.lowest) >= 100]
+    for g, color in zip(shown, (SERIES, ACCENT, INK), strict=False):
+        x = np.sort(g.lowest)
+        mid.step(x, np.arange(1, len(x) + 1) / len(x), where="post", color=color,
+                 linewidth=1.6, label=f"a = {g.a} ({len(x):,} rank 0)")
+        m = np.sort(g.model)
+        mid.plot(m, np.arange(1, len(m) + 1) / len(m), color=color, linewidth=1.0,
+                 linestyle="--")
+    mid.plot([], [], color=INK_SECONDARY, linestyle="--", linewidth=1.0,
+             label="SO(N) above each floor")
+    mid.set_xlim(0, 0.7)
+    mid.set_ylim(0, 1)
+    mid.set_xlabel("lowest eigenangle θ₁ (radians)", color=INK)
+    mid.set_ylabel("cumulative fraction", color=INK)
+    mid.set_title("Higher floor, higher first zero", color=INK, fontsize=12, loc="left")
+    mid.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="lower right")
+    pos = np.arange(len(scan))
+    w = 0.2
+    for k, (attr, color, name) in enumerate([
+            ("ks_so", INK_SECONDARY, "Haar SO(N)"),
+            ("ks_one", ORDINAL[1], "one floor, k ≥ 1"),
+            ("ks_tamagawa", SERIES, "Tamagawa floors, k rounded"),
+            ("ks_selmer", ACCENT, "Tamagawa and Sel₂ floors, k rounded")]):
+        right.bar(pos + (k - 1.5) * w, [getattr(f, attr) for f in scan], width=w, color=color,
+                  label=name)
+    right.scatter(pos, [1.36 / np.sqrt(f.rank0) for f in scan], marker="_", s=600,
+                  color=INK, zorder=3, label="5% critical value")
+    right.set_xticks(pos, [f"F_{f.q}, N = {f.N}" for f in scan], fontsize=8.5)
+    right.set_ylim(0, 1.75 * max(f.ks_so for f in scan))
+    right.set_ylabel("KS distance, lowest eigenangle", color=INK)
+    right.set_title("Rank 0 even twists against each model", color=INK, fontsize=12,
+                    loc="left")
+    right.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right")
+    for ax in (left, mid, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig
 
 
 def plot_symfamily(F: SymFamily, buckets: list[tuple[int, int]],
