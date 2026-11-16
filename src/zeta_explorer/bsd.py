@@ -3,10 +3,11 @@ from __future__ import annotations
 import functools
 import math
 from dataclasses import dataclass
+from fractions import Fraction
 
 import numpy as np
 
-from zeta_explorer.funcfield import legendre, traces
+from zeta_explorer.funcfield import Twist, legendre, traces
 from zeta_explorer.gf import (
     Poly,
     deg,
@@ -200,3 +201,69 @@ def torsion(D: Poly, p: int, max_degree: int = 6) -> int:
         if odd == 1:
             return 4
     raise ArithmeticError(f"odd torsion not ruled out, gcd {g}")
+
+
+@dataclass(frozen=True)
+class Arith:
+    D: Poly
+    q: int
+    N: int
+    rank: int
+    fibers: dict[Place, Fiber]
+    tamagawa: int
+    height: int
+    selmer: int
+    torsion: int
+    sha: Fraction | None
+
+    @property
+    def omega(self) -> int:
+        return sum(1 for P in self.fibers if P is not None and self.fibers[P].kind == "I0*")
+
+    @property
+    def sha2(self) -> int:
+        return self.selmer - self.rank - 2
+
+    @property
+    def tamagawa2(self) -> int:
+        if self.N % 4:
+            raise ValueError("k is defined for N divisible by 4")
+        v = _v2(Fraction(self.tamagawa, 4 * self.torsion**2))
+        if v % 2:
+            raise ArithmeticError("odd 2-adic valuation in the Tamagawa factor")
+        return v // 2
+
+    @property
+    def floor2(self) -> int:
+        if self.sha2 % 2:
+            raise ArithmeticError("Sha[2] is not a square")
+        return self.tamagawa2 + self.sha2 // 2
+
+
+def _v2(x: Fraction) -> int:
+    n, d, v = x.numerator, x.denominator, 0
+    while n % 2 == 0:
+        n, v = n // 2, v + 1
+    while d % 2 == 0:
+        d, v = d // 2, v - 1
+    return v
+
+
+def arith(t: Twist) -> Arith:
+    q, D = t.L.q, t.D
+    e = legendre_roots(D, q)
+    fib = fibers(e, q)
+    tam = math.prod(f.c for f in fib.values())
+    disc = sum(f.disc * place_degree(P) for P, f in fib.items())
+    if disc % 12:
+        raise ArithmeticError("degree of the minimal discriminant is not a multiple of 12")
+    tors = torsion(D, q)
+    sha = None
+    if t.rank == 0:
+        sha = t.L.central * tors**2 * Fraction(q) ** (disc // 12 - 1) / tam
+    return Arith(D, q, t.L.N, t.rank, fib, tam, disc // 12, selmer_rank(e, q), tors, sha)
+
+
+def v2k(t: Twist) -> int:
+    k = math.isqrt(t.w // (4 * t.L.q ** (t.L.N // 4)))
+    return (k & -k).bit_length() - 1
