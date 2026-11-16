@@ -1824,3 +1824,71 @@ Design notes:
 Next: speed up the incomplete gamma for |w| near |z| (Temme's uniform expansion)
 so high conductors are cheap in the browser, then the two-level density of the odd
 twists from the ratios conjecture.
+
+## 2026-11-15: BSD for the Legendre twists, a 2-descent over F_q(t), and a floor per twist
+
+Built:
+
+- `gf.factor`: distinct-degree factorization followed by Cantor-Zassenhaus splitting.
+  `gf.primes_dividing` lists the irreducible factors of any polynomial, taking p-th
+  roots when the derivative vanishes.
+- `bsd.py`. `local` gives the valuation and the quadratic character of the leading
+  residue at a place (a monic irreducible or infinity). `kodaira` reads the fiber
+  type, c_v, v(Δ_min) and the conductor exponent off the valuations of e_i − e_j for
+  a model y² = (x − e₁)(x − e₂)(x − e₃). `selmer_rank` is a full 2-descent:
+  `local_image` finds the order 4 image of E(K_v)/2E(K_v) in (K_v*/K_v*²)², and the
+  Selmer group is the kernel of a matrix over F₂. `torsion` bounds the odd torsion by
+  the gcd of point counts. `arith` puts it together with BSD and returns |Sha| for the
+  rank 0 twists. `excise` and `ks_mix` compare the lowest eigenangles with SO(N)
+  conditioned on a different floor for each twist.
+- `plot.plot_bsd` and docs/bsd.png.
+
+Checks:
+
+- 22 families (q = 3 to 47, deg D = 2 to 8), 19,324 twists, 14,336 of analytic rank
+  0: |Sha| = L(1/q)·|tors|²·q^(d−1)/τ is a perfect square in every one, between 1 and
+  784. dim Sel₂ − rank − 2 is even everywhere, |Sha| is odd exactly when that is 0, and
+  2^(dim Sel₂ − rank − 2) divides |Sha|. The descent never uses the L-function.
+- Conductor degree from the fibers against `funcfield.Curve` (rad(Δ) and
+  rad(gcd(Δ, c₄))) and against deg L + 4. Residue character against the norm
+  character for irreducibles of degree 2 to 4. Factorization against the necklace
+  count of irreducibles.
+- Hasse bound and divisibility by 4 for the point counts.
+
+Results:
+
+- At degree 4, τ = 2·2·4·4^ω, H = q³ and the torsion is (Z/2)², so k² = 4^(ω−1)|Sha|.
+  The 4 in q^(N/2)L(1/q) = 4q^(N/4)k² is c₀c₁c_∞ times one I₀* fiber over |tors|².
+- The local floor k ≥ 2^(a + dim Sha[2]/2) is exact for 88.2% of the rank 0 twists over
+  F_7 (N = 8), 84.3% over F_5 (N = 12), 87.6% over F_3 (N = 16). The rest have
+  elements of order 4 in Sha.
+- Truncating at the floor (det(I − A) ≥ 4^(1+a) q^(−N/4)) is worse than one global
+  cut: KS 0.123 against 0.040 over F_7. By group the direction is right (over F_5 at
+  N = 12, central zeros 5.5%, 13.6%, 18.4%, 39.3% for a = 0 to 3; mean θ₁ 0.200 to
+  0.278) but the size is off (predicted 15.7% to 76.5%).
+- Rounding √(det(I − A)/floor) to the nearest k instead (the CKRS discretization,
+  cut at a quarter of the floor) matches by group: predicted 8.0%, 15.7%, 29.7%,
+  51.3%, mean θ₁ 0.198 to 0.288. KS over F_5 at N = 12: 0.028 with Tamagawa and Sel₂
+  floors, 0.035 with Tamagawa only, 0.044 for the global cut (critical 0.022). Over
+  F_3 at N = 16: 0.044 against 0.052 (critical 0.042). The per-twist floors win in
+  four of five families at N ≥ 8; over F_7 the global cut stays best (0.040 against
+  0.047). Nothing changes at N = 4.
+
+Design notes:
+
+- c_v = 4 at every additive fiber needs no Tate's algorithm: in odd residue
+  characteristic the identity component of an additive Néron model is pro-p, so the
+  rational 2-torsion injects into the component group, and I_n* groups have order 4.
+  Additive plus full 2-torsion also rules out every type except I_n* with n even.
+- The first version missed the I₀* fibers over F_3. Bad places came from rad(∏ e_i −
+  e_j) computed as f / gcd(f, f′), and in characteristic 3 the factor D³ has zero
+  derivative, so it disappeared. `primes_dividing` handles it.
+- `local_image` starts from the 2-torsion images, which often span the whole order 4
+  group, and otherwise samples x = a/P^j. Every sample is an exact local point
+  (Hensel in odd characteristic), so the only failure mode is not finding enough of
+  them, which raises.
+- The 4,333 even twists over F_5 at degree 6 take about 35 s, most of it the descent
+  in pure Python.
+
+Next: the distribution of dim Sel₂ across the twists against the Swinnerton-Dyer and
+Kane Markov chain and Poonen-Rains, then the odd part of Sha against the BKLPR model.
