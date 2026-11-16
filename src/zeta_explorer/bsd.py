@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import functools
+import math
 from dataclasses import dataclass
 
 import numpy as np
 
+from zeta_explorer.funcfield import legendre, traces
 from zeta_explorer.gf import (
     Poly,
     deg,
+    field,
     norm,
     pdivmod,
     pmul,
@@ -174,3 +177,26 @@ def selmer_rank(e: Roots, p: int) -> int:
                     row[comp * n + k] = (a[2 * comp] * r[0] + a[2 * comp + 1] * r[1]) % 2
             rows.append(row)
     return 2 * n - _rank2(rows, 2 * n)
+
+
+def point_counts(D: Poly, p: int, m: int) -> np.ndarray:
+    F = field(p, m)
+    t = F.orbits[0]
+    s, size = t, np.zeros(len(t), dtype=np.int64)
+    for k in range(1, m + 1):
+        s = F.frobenius(s)
+        size[(size == 0) & (s == t)] = k
+    x = F.polyval(D, t)
+    good = (size == m) & (x != 0) & (t != 0) & (F.polyval((p - 1, 1), t) != 0)
+    a = traces(legendre(p), m)[t[good]]
+    return F.q + 1 - F.chi[x[good]].astype(np.int64) * a
+
+
+def torsion(D: Poly, p: int, max_degree: int = 6) -> int:
+    g = 0
+    for m in range(1, max_degree + 1):
+        g = math.gcd(g, *map(int, point_counts(D, p, m)))
+        odd = g >> ((g & -g).bit_length() - 1) if g else 0
+        if odd == 1:
+            return 4
+    raise ArithmeticError(f"odd torsion not ruled out, gcd {g}")

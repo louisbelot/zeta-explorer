@@ -1,5 +1,6 @@
 import math
 
+import numpy as np
 import pytest
 
 from zeta_explorer.bsd import (
@@ -10,9 +11,10 @@ from zeta_explorer.bsd import (
     local,
     local_image,
     place_degree,
+    point_counts,
 )
 from zeta_explorer.funcfield import family, legendre
-from zeta_explorer.gf import factor, monics, squarefree
+from zeta_explorer.gf import factor, monics, peval, squarefree
 
 
 @pytest.fixture(scope="module")
@@ -71,3 +73,13 @@ def test_local_images_have_order_four(fam5):
         span = {tuple((x * a + y * b) % 2 for a, b in zip(*W, strict=True))
                 for x in (0, 1) for y in (0, 1)}
         assert all(v in span for v in _torsion_images(e, P, 5))
+
+
+def test_point_counts():
+    D = (1, 0, 1)
+    for m in (1, 2, 3):
+        c = point_counts(D, 5, m)
+        assert np.all(np.abs(c - 5**m - 1) <= 2 * 5 ** (m / 2))
+        assert np.all(c % 4 == 0)
+    good = [t for t in range(2, 5) if peval(D, t, 5)]
+    assert len(point_counts(D, 5, 1)) == len(good)
