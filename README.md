@@ -1893,8 +1893,8 @@ The central value L(E_D, 1/q) is det(I − A) for the Frobenius matrix A, and th
 functional equation makes q^(N/2) L(1/q) an integer. It is more than that: in every
 even twist of all 17 families (q = 3 to 47, N = 4, 8 and 12) it equals
 4·q^(N/4)·k² for an integer k, the function field version of Waldspurger's formula.
-A square is what Birch and Swinnerton-Dyer suggests (Sha has square order), but I
-have only checked the constant 4, not derived it. It means the smallest nonzero
+A square is what Birch and Swinnerton-Dyer suggests (Sha has square order), and the
+next section derives the 4 from the Tamagawa numbers. It means the smallest nonzero
 central value is 4·q^(−N/4), far above the q^(−N/2) that integrality alone allows,
 and the excised ensemble gets its cut with nothing fitted: SO(N) with
 det(I − A) ≥ 4·q^(−N/4).
@@ -1919,12 +1919,133 @@ limit, but the excised distance stalls near 0.09 to
 one reason the single cut is too crude: odd k are rarer than even (60 twists at
 k = 1, 162 at k = 2, 37 at k = 3, 188 at k = 4 over F_7), so most twists carry an
 extra factor of 4 and their own floor is four times higher. The cut also removes
-more matrices than there are central zeros at every q. A cut that knows the 2-adic
-part of each twist (the Tamagawa numbers at its I₀* fibers) is the obvious next
-step. The odd twists' free angles live in O⁻(N), whose nontrivial eigenangles follow
+more matrices than there are central zeros at every q. The next section gives each
+twist its own floor from its Tamagawa numbers and 2-Selmer group. The odd twists' free angles live in O⁻(N), whose nontrivial eigenangles follow
 USp(N − 2) (`rmt.o_minus_angles`, checked against the symplectic Fredholm
 determinant); the rank 1 odd twists pass against it at N = 4 for q = 43 and 47 (KS
 0.036 and 0.038) and fail over F_7 at N = 8 (0.084 against 0.048).
+
+### Birch and Swinnerton-Dyer for the twists, and a floor for each one
+
+![Central zeros and lowest eigenangles of the Legendre twists grouped by their Tamagawa factor over F_5(t), and KS distances for each excision model](docs/bsd.png)
+
+Over F_q(t) the leading term of the L-function at the center is
+
+L*(E, 1) = |Sha| · Reg · τ · q / (H · |E(K)_tors|²),
+
+where τ is the product of the Tamagawa numbers c_v and H = q^(deg Δ_min / 12) is the
+differential height (the form in Griffon, [arXiv:1706.07728](https://arxiv.org/abs/1706.07728),
+equation 2.6). For a twist of analytic rank 0 this is a theorem: the rank is at most
+the order of vanishing, equality is equivalent to Sha being finite (Tate, Milne), and
+Kato and Trihan get the whole formula from there. `funcfield.py` already has
+L(E_D, 1/q) as an exact rational, so once the local data are known, BSD hands back
+|Sha|. `bsd.py` computes the local data and, independently, the 2-Selmer group.
+
+**Fibers.** Every twist has full 2-torsion, y² = (x − e₁)(x − e₂)(x − e₃) with
+e = (0, D, tD). With the residue characteristic odd, the Kodaira type at a place
+depends only on the valuations of the three differences e_i − e_j. Two of them are
+equal and minimal (call it m) and the third is M. Replacing x by π²x lowers all
+three by 2, so the reduced model has m = 0 or 1. If m is even the fiber is good
+(M = m) or I_(2(M−m)), split when e_i − e_k is a square in the residue field (e_i
+and e_j being the pair that collide). If m is odd it is I*_(2(M−m)), and then
+c_v = 4 with no case analysis: the identity component of the Néron model has no
+2-torsion in odd residue characteristic, so E(K_v)[2] = (Z/2)² injects into the
+component group, which has order 4 for every I_n*. A multiplicative fiber has
+c_v = n when split and 2 when not (n is always even here). For the Legendre twists
+this gives I₂ at t = 0 and 1, I₀* at every irreducible factor of D, and I₂* at
+infinity (I₂ when deg D is odd). A place of degree d counts d times in the conductor
+and in the discriminant, and the conductor degree matches the independent count in
+`funcfield.Curve` for every twist tested.
+
+**Torsion.** A point of order 4 over (0, 0), (D, 0) or (tD, 0) would need t, 1 − t or
+t(t − 1) to be a square in F_q(t), so the 2-part of E_D(K) is exactly (Z/2)². Odd
+torsion injects into E(k_v) at every good place, and the gcd of the point counts over
+places of degree 1 and 2 (more degrees over F_3) leaves nothing odd in any twist I ran.
+
+**2-descent.** The map P ↦ (x − e₁, x − e₂) sends E(K)/2E(K) into (K*/K*²)². The
+2-Selmer group is the set of pairs, unramified outside the bad places and infinity,
+whose image at each bad place v lands in the local image W_v. Unramified outside S
+means spanned by one nonsquare constant and the monic irreducibles in S. A class at
+v is the valuation mod 2 and the quadratic character of the leading residue,
+u^((q^deg v − 1)/2) mod P. In odd residue characteristic |W_v| = |E(K_v)[2]| = 4,
+so `local_image` starts from the images of the 2-torsion points and, when those span
+less than four classes, samples x = a/P^j until they do. f(x) is a square in K_v
+exactly when its valuation is even and its leading residue is a square (Hensel), so
+every sample is checked exactly. Sel₂ is then the kernel of a small matrix over F₂,
+and dim Sel₂ = rank + 2 + dim Sha[2].
+
+The checks, none of which can be passed by construction:
+
+- Over 22 families (q = 3 to 47, deg D = 2 to 8, 19,324 twists, 14,336 of analytic
+  rank 0), |Sha| from BSD is a positive integer and a perfect square in every rank 0
+  twist, from 1 up to 784 = 28². A wrong Tamagawa number shows up as a stray factor
+  of 2: with c = 1 at nonsplit I₂, every twist where exactly one of the fibers at 0
+  and 1 is nonsplit would come out with |Sha| twice a square.
+- The descent never looks at the L-function, and it agrees with it everywhere:
+  dim Sel₂ − rank − 2 is even (Sha[2] has square order), |Sha| is odd exactly when
+  that difference is 0, and 2^(dim Sel₂ − rank − 2) divides |Sha|. Among rank 0 twists dim Sel₂
+  is 2, 4 or 6 for 8,498, 5,802 and 36 of them; every higher rank twist has
+  dim Sel₂ = rank + 2 or rank + 4.
+- The conductor degree from the fibers equals the count in `funcfield.Curve` and
+  deg L + 4, and deg Δ_min is a multiple of 12.
+- The residue character equals the character of the norm, χ((−1)^d P(0)), for every
+  monic irreducible of degree 2 to 4 tried, and `gf.factor` (distinct-degree, then
+  Cantor-Zassenhaus) finds the number of irreducibles the necklace formula gives.
+
+**What it says about k.** For the degree 4 twists the Tamagawa product is
+2 · 2 · 4 · 4^ω (I₂, I₂, I₂* and ω fibers I₀*, one per irreducible factor of D),
+H = q³ and the torsion is 4, so q⁴ L(1/q) = 4q²k² becomes
+
+k² = 4^(ω−1) · |Sha|.
+
+That is the constant 4 from the previous section: 2 · 2 · 4 · 4 / 4² with a single I₀*
+fiber. In general v₂(k) = a + v₂|Sha| / 2 with a = v₂(τ / (4 · |tors|²)) / 2, and
+since |Sha| is divisible by |Sha[2]| = 2^(dim Sel₂ − rank − 2), local data alone give
+the floor k ≥ 2^(a + dim Sha[2]/2). It is exact unless Sha[2^∞] has an element of
+order 4: for 88.2% of the rank 0 twists over F_7 at N = 8, 84.3% over F_5 at N = 12.
+Odd k, which looked rare in the histogram above, are the twists with D irreducible
+and |Sha| odd.
+
+**A floor per twist.** The first attempt conditioned SO(N) on
+det(I − A) ≥ 4^(1+a)·q^(−N/4), the literal floor k ≥ 2^a. It was worse than one
+global cut (KS 0.123 against 0.040 over F_7). Splitting the twists by a shows why
+the idea is right and the cut is not. Over F_5 at N = 12:
+
+| a | even twists | central zeros | predicted | mean θ₁, data | mean θ₁, model |
+|---|---|---|---|---|---|
+| 0 | 1,280 | 5.5% | 8.0% | 0.200 | 0.198 |
+| 1 | 2,072 | 13.6% | 15.7% | 0.219 | 0.213 |
+| 2 | 892 | 18.4% | 29.7% | 0.248 | 0.240 |
+| 3 | 89 | 39.3% | 51.3% | 0.278 | 0.288 |
+
+The columns "predicted" and "model" are already the second version. Vanishing gets
+more common and the first zero moves up as a grows, which no single cut can produce.
+The truncated floors pushed both too far (predicted vanishing 15.7%, 29.7%, 51.3%,
+76.5%). The second version treats the matrix value as the continuous quantity and
+rounds √(det(I − A) / floor) to the nearest integer k, so a twist vanishes when
+det(I − A) < floor/4 and the conditioning is on det(I − A) ≥ 4^a·q^(−N/4). That is
+the discretization of Conrey, Keating, Rubinstein and Snaith
+([arXiv:math/0012043](https://arxiv.org/abs/math/0012043)) with the arithmetic
+factor read off the fibers instead of fitted. Nothing in it is tuned to the data.
+
+| q | N | rank 0 even twists | Haar SO(N) | one floor, k ≥ 1 | Tamagawa floors | Tamagawa and Sel₂ | 5% critical | central zeros | predicted, one floor | predicted, own floors |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 7 | 8 | 660 | 0.179 | 0.040 | 0.047 | 0.054 | 0.053 | 15.5% | 21.0% | 19.8% |
+| 5 | 8 | 135 | 0.205 | 0.117 | 0.074 | 0.125 | 0.117 | 20.1% | 28.5% | 24.9% |
+| 3 | 12 | 114 | 0.278 | 0.113 | 0.077 | 0.129 | 0.127 | 14.3% | 31.6% | 27.6% |
+| 5 | 12 | 3,783 | 0.157 | 0.044 | 0.035 | 0.028 | 0.022 | 12.7% | 15.7% | 17.1% |
+| 3 | 16 | 1,063 | 0.196 | 0.052 | 0.053 | 0.044 | 0.042 | 13.2% | 21.6% | 21.7% |
+| 29 | 4 | 313 | 0.227 | 0.096 | 0.118 | 0.110 | 0.077 | 14.2% | 19.7% | 14.5% |
+| 47 | 4 | 887 | 0.183 | 0.115 | 0.106 | 0.127 | 0.046 | 12.4% | 15.6% | 11.6% |
+
+"One floor" is the cut from the previous section. The per-twist floors win in four of
+the five families at N ≥ 8, and the Selmer information helps exactly where there are
+enough twists for it to show (3,783 over F_5, 1,063 over F_3). Over F_5 at N = 12 the
+distance falls from 0.044 to 0.028; the critical value there is 0.022, so it still
+does not pass. The predicted
+share of central zeros is too high in most families with either kind of floor. At
+N = 4 nothing changes much: none of the models pass, and the stall noted above is not
+about the 2-adic factor.
 
 ### Chebyshev's bias
 
