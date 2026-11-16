@@ -104,6 +104,51 @@ def distinct_roots(a: Poly, p: int) -> int:
     return total
 
 
+def _split(g: Poly, d: int, p: int, rng: np.random.Generator) -> list[Poly]:
+    if deg(g) == d:
+        return [g]
+    e = (p**d - 1) // 2
+    while True:
+        r = norm([int(c) for c in rng.integers(0, p, deg(g))] + [1], p)
+        h = pgcd(g, psub(ppowmod(r, e, g, p), (1,), p), p)
+        if 0 < deg(h) < deg(g):
+            return _split(h, d, p, rng) + _split(pdivmod(g, h, p)[0], d, p, rng)
+
+
+def factor(a: Poly, p: int) -> list[Poly]:
+    f = monic(a, p)
+    if not squarefree(f, p):
+        raise ValueError("factor expects a squarefree polynomial")
+    rng = np.random.default_rng(p)
+    out, h, d = [], (0, 1), 0
+    while deg(f) >= 2 * (d + 1):
+        d += 1
+        h = ppowmod(h, p, f, p)
+        g = pgcd(f, psub(h, (0, 1), p), p)
+        if deg(g) > 0:
+            out += _split(g, d, p, rng)
+            f = pdivmod(f, g, p)[0]
+            h = pdivmod(h, f, p)[1]
+    if deg(f) > 0:
+        out.append(f)
+    return sorted(out, key=lambda P: (deg(P), P[::-1]))
+
+
+def primes_dividing(a: Poly, p: int) -> list[Poly]:
+    f, out = monic(a, p), set()
+    while deg(f) > 0:
+        df = deriv(f, p)
+        if not df:
+            f = f[::p]
+            continue
+        r = pdivmod(f, pgcd(f, df, p), p)[0]
+        for P in factor(r, p) if deg(r) > 0 else []:
+            out.add(P)
+            while not pdivmod(f, P, p)[1]:
+                f = pdivmod(f, P, p)[0]
+    return sorted(out, key=lambda P: (deg(P), P[::-1]))
+
+
 def monics(p: int, n: int):
     for low in itertools.product(range(p), repeat=n):
         yield (*low, 1)

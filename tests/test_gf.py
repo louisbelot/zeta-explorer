@@ -8,14 +8,17 @@ from zeta_explorer.gf import (
     correlate,
     cubic_sums,
     distinct_roots,
+    factor,
     field,
     monic,
+    monics,
     padd,
     pdivmod,
     peval,
     pgcd,
     pmul,
     ppowmod,
+    primes_dividing,
     squarefree,
 )
 
@@ -117,6 +120,46 @@ def test_distinct_roots():
     assert distinct_roots(pmul(six, (0, 1), 3), 3) == 3
     assert not squarefree(pmul(irr, irr, p), p)
     assert squarefree(pmul(irr, (0, 1), p), p)
+
+
+def _mobius(n):
+    out, d = 1, 2
+    while d * d <= n:
+        if n % d == 0:
+            n //= d
+            if n % d == 0:
+                return 0
+            out = -out
+        d += 1
+    return -out if n > 1 else out
+
+
+@pytest.mark.parametrize("p,n", [(3, 1), (3, 2), (3, 4), (5, 3), (7, 2)])
+def test_factor_counts_irreducibles(p, n):
+    irreducible = 0
+    for f in monics(p, n):
+        if not squarefree(f, p):
+            continue
+        parts = factor(f, p)
+        prod = (1,)
+        for P in parts:
+            prod = pmul(prod, P, p)
+        assert prod == f
+        irreducible += len(parts) == 1
+    assert irreducible == sum(_mobius(n // d) * p**d for d in range(1, n + 1) if n % d == 0) // n
+
+
+def test_factor_rejects_repeated_factors():
+    with pytest.raises(ValueError):
+        factor(pmul((1, 1), (1, 1), 5), 5)
+
+
+def test_primes_dividing_survives_pth_powers():
+    p, P = 3, (1, 0, 1)
+    cube = pmul(pmul(P, P, p), P, p)
+    assert primes_dividing(cube, p) == [P]
+    f = pmul(pmul(cube, (0, 1), p), pmul((1, 1), (1, 1), p), p)
+    assert primes_dividing(f, p) == [(0, 1), (1, 1), P]
 
 
 def test_rejects_even_and_composite():
