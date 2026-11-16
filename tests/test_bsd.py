@@ -7,8 +7,10 @@ from zeta_explorer.bsd import (
     _torsion_images,
     _v2,
     arith,
+    excise,
     fibers,
     klass,
+    ks_mix,
     legendre_roots,
     local,
     local_image,
@@ -19,6 +21,8 @@ from zeta_explorer.bsd import (
 )
 from zeta_explorer.funcfield import family, legendre
 from zeta_explorer.gf import factor, monics, peval, squarefree
+from zeta_explorer.ranktwo import ks2
+from zeta_explorer.rmt import char_poly_at_one, so_angles
 
 
 @pytest.fixture(scope="module")
@@ -147,3 +151,30 @@ def test_point_counts():
         assert np.all(c % 4 == 0)
     good = [t for t in range(2, 5) if peval(D, t, 5)]
     assert len(point_counts(D, 5, 1)) == len(good)
+
+
+def test_ks_mix_with_one_cut_is_ks2():
+    H = so_angles(4, 5000, 3)
+    lam, first = char_poly_at_one(H), H[:, 0]
+    x = so_angles(4, 300, 4)[:, 0]
+    assert ks_mix(x, first, lam, np.full(len(x), 0.5)) == pytest.approx(
+        ks2(x, first[lam >= 0.5]))
+
+
+def test_excision_by_group(fam5, info5):
+    E = excise(fam5, size=40_000)
+    assert sum(g.twists for g in E.groups) == len(info5)
+    assert sum(len(g.lowest) for g in E.groups) == E.rank0 == 135
+    vanish = [g.vanish for g in E.groups]
+    assert vanish == sorted(vanish)
+    assert [g.predicted for g in E.groups] == sorted(g.predicted for g in E.groups)
+    assert E.ks_tamagawa < E.ks_so and E.ks_tamagawa < E.ks_one
+    assert 0.85 < E.exact < 1
+
+
+def test_excision_needs_n_divisible_by_four():
+    fam = family(legendre(5), 3)
+    with pytest.raises(ValueError):
+        excise(fam)
+    with pytest.raises(ValueError):
+        _ = arith(fam[0]).tamagawa2

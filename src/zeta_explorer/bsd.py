@@ -19,6 +19,8 @@ from zeta_explorer.gf import (
     primes_dividing,
     psub,
 )
+from zeta_explorer.ranktwo import ks2
+from zeta_explorer.rmt import char_poly_at_one, so_angles
 
 Place = Poly | None
 Roots = tuple[Poly, Poly, Poly]
@@ -267,3 +269,69 @@ def arith(t: Twist) -> Arith:
 def v2k(t: Twist) -> int:
     k = math.isqrt(t.w // (4 * t.L.q ** (t.L.N // 4)))
     return (k & -k).bit_length() - 1
+
+
+def ks_mix(x: np.ndarray, first: np.ndarray, lam: np.ndarray, cuts: np.ndarray) -> float:
+    grid = np.sort(np.concatenate([x, first]))
+    model = np.zeros(len(grid))
+    vals, counts = np.unique(cuts, return_counts=True)
+    for c, w in zip(vals, counts, strict=True):
+        s = np.sort(first[lam >= c])
+        model += w * np.searchsorted(s, grid, side="right") / len(s)
+    fx = np.searchsorted(np.sort(x), grid, side="right") / len(x)
+    return float(np.max(np.abs(fx - model / len(cuts))))
+
+
+@dataclass(frozen=True)
+class Group:
+    a: int
+    twists: int
+    vanish: float
+    predicted: float
+    lowest: np.ndarray
+    model: np.ndarray
+
+
+@dataclass(frozen=True)
+class Excision:
+    q: int
+    N: int
+    rank0: int
+    exact: float
+    vanish: float
+    predicted_one: float
+    predicted_local: float
+    ks_so: float
+    ks_one: float
+    ks_tamagawa: float
+    ks_selmer: float
+    groups: tuple[Group, ...]
+
+
+def excise(fam: list[Twist], scale: float = 0.25, size: int = 200_000,
+           seed: int = 1) -> Excision:
+    q, N = fam[0].L.q, fam[0].L.N
+    if N % 4:
+        raise ValueError("N must be divisible by 4")
+    even = [t for t in fam if t.L.eps == 1]
+    info = [arith(t) for t in even]
+    a = np.array([A.tamagawa2 for A in info])
+    zero = np.array([t.rank == 0 for t in even])
+    x = np.array([t.L.so_angles()[0] for t in even if t.rank == 0])
+    one = 4 * float(q) ** (-N / 4)
+    base = scale * one
+    H = so_angles(N // 2, size, seed)
+    lam, first = char_poly_at_one(H), H[:, 0]
+    tam = base * 4.0**a
+    sel = np.array([base * 4.0**A.floor2 for A in info if A.rank == 0])
+    exact = np.mean([v2k(t) == A.floor2 for t, A in zip(even, info, strict=True) if t.rank == 0])
+    groups = tuple(
+        Group(int(g), int(np.sum(a == g)), float(1 - zero[a == g].mean()),
+              float(np.mean(lam < base * 4.0**g)),
+              x[a[zero] == g], first[lam >= base * 4.0**g])
+        for g in np.unique(a))
+    return Excision(
+        q, N, len(x), float(exact), float(1 - zero.mean()),
+        float(np.mean(lam < one)), float(np.mean([np.mean(lam < c) for c in tam])),
+        ks2(x, first), ks_mix(x, first, lam, np.full(len(x), one)),
+        ks_mix(x, first, lam, tam[zero]), ks_mix(x, first, lam, sel), groups)
