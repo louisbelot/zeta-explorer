@@ -3,10 +3,12 @@ import math
 import pytest
 
 from zeta_explorer.bsd import (
+    _torsion_images,
     fibers,
     klass,
     legendre_roots,
     local,
+    local_image,
     place_degree,
 )
 from zeta_explorer.funcfield import family, legendre
@@ -58,3 +60,14 @@ def test_conductor_matches_the_curve(p, n):
         twisted = E.twist(t.D)
         assert cond == twisted.f_finite + twisted.f_inf == t.L.N + 4
         assert sum(x.disc * place_degree(P) for P, x in f.items()) % 12 == 0
+
+
+def test_local_images_have_order_four(fam5):
+    t = fam5[17]
+    e = legendre_roots(t.D, 5)
+    for P in fibers(e, 5):
+        W = local_image(e, P, 5)
+        assert len(W) == 2
+        span = {tuple((x * a + y * b) % 2 for a, b in zip(*W, strict=True))
+                for x in (0, 1) for y in (0, 1)}
+        assert all(v in span for v in _torsion_images(e, P, 5))
