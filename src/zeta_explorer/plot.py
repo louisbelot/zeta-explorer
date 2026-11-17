@@ -2223,3 +2223,57 @@ def plot_hyperelliptic(gaps: dict[int, tuple[list[int], list[float]]],
         _style(ax)
     fig.tight_layout()
     return fig
+
+
+def plot_florea(first: dict[int, tuple[list[int], list[float], list[float]]],
+                gaps: dict[tuple[int, int], tuple[list[int], list[float]]],
+                leading: dict[int, tuple[list[int], list[float]]]) -> Figure:
+    import matplotlib.pyplot as plt
+
+    fig, (left, mid, right) = plt.subplots(1, 3, figsize=(15, 4.6), facecolor=SURFACE)
+    marks = ("o", "s", "^")
+    for (q, (gs, N, R)), color in zip(sorted(first.items()), (SERIES, ACCENT), strict=False):
+        left.plot(gs, N, "-", color=color, linewidth=1, alpha=0.5)
+        for g, y in zip(gs, N, strict=True):
+            left.plot(g, y, marks[g % 3], color=color, markersize=7)
+        left.plot(gs, R, "--", color=color, linewidth=1.5, label=f"q = {q}: Florea's R(2g + 1)")
+    for r, m in enumerate(marks):
+        left.plot([], [], m, color=INK_SECONDARY, label=f"g = {r} mod 3")
+    lo = min(min(N) for _, N, _ in first.values())
+    hi = max(max(N) for _, N, _ in first.values())
+    left.set_ylim(lo - 0.6 * (hi - lo), hi + 0.08 * (hi - lo))
+    left.axhline(0, color=INK_SECONDARY, linestyle=":", linewidth=1)
+    left.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    left.set_xlabel("genus g", color=INK)
+    left.set_ylabel("(mean − Andrade-Keating) · |H| / q^((2g+1)/3)", color=INK)
+    left.set_title("Behind the first moment", color=INK, fontsize=12, loc="left")
+    left.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="lower left", ncol=2)
+    for ((q, k), (gs, rel)), color in zip(sorted(gaps.items()),
+                                          (ORDINAL[1], ORDINAL[4], ACCENT, "#b5471c"),
+                                          strict=False):
+        rel = np.asarray(rel)
+        mid.semilogy(gs, np.abs(rel), "-" if k == 2 else "--", color=color, linewidth=1.3,
+                     label=f"q = {q}, k = {k}")
+        for x, y in zip(gs, rel, strict=True):
+            mid.semilogy(x, abs(y), "o", color=color, markersize=6,
+                         markerfacecolor=color if y > 0 else SURFACE)
+    mid.plot([], [], "o", color=INK_SECONDARY, markerfacecolor=SURFACE,
+             label="open: below the recipe")
+    mid.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    mid.set_xlabel("genus g", color=INK)
+    mid.set_ylabel("|exact mean / recipe − 1|", color=INK)
+    mid.set_title("Second and third moments", color=INK, fontsize=12, loc="left")
+    mid.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right")
+    for (k, (gs, ratio)), color in zip(sorted(leading.items()), ORDINAL[1::1], strict=False):
+        right.semilogx(gs, ratio, "o-", color=color, markersize=4, linewidth=1.3,
+                       label=f"k = {k}")
+    right.axhline(1, color=INK_SECONDARY, linestyle=":", linewidth=1.2)
+    right.set_xlabel("genus g", color=INK)
+    right.set_ylabel("recipe / (a_k · Keating-Snaith USp(2g))", color=INK)
+    right.set_title("Leading order of the recipe", color=INK, fontsize=12, loc="left")
+    right.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="upper right")
+    for ax in (left, mid, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig

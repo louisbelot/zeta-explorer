@@ -35,6 +35,7 @@ from zeta_explorer.plot import (
     plot_effective,
     plot_explicit,
     plot_first_zero,
+    plot_florea,
     plot_funcfield,
     plot_gram,
     plot_heat_flow,
@@ -518,3 +519,14 @@ def test_plot_hyperelliptic_panels(tmp_path):
     assert fig.axes[0].lines[2].get_markerfacecolor() == SERIES
     labels = [t.get_text() for t in fig.axes[1].get_legend().get_texts()]
     assert labels == ["g = 1, k = 2", "g = 2, k = 1", "g = 2, k = 2"]
+
+
+def test_plot_florea_panels(tmp_path):
+    first = {5: ([2, 3, 4, 5], [-0.06, 0.4, -0.3, 0.1], [0.007, 0.013, 0.019, 0.026])}
+    gaps = {(3, 2): ([3, 4, 5], [1.5e-3, -4e-4, 3e-5]), (3, 3): ([3, 4], [1e-3, -7e-4])}
+    leading = {2: ([50, 200], [1.05, 1.01])}
+    fig = plot_florea(first, gaps, leading)
+    fig.savefig(tmp_path / "florea.png")
+    assert [line.get_marker() for line in fig.axes[0].lines[1:5]] == ["^", "o", "s", "^"]
+    assert fig.axes[1].lines[2].get_markerfacecolor() == SURFACE
+    assert fig.axes[2].lines[0].get_ydata().tolist() == [1.05, 1.01]
