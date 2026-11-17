@@ -55,6 +55,7 @@ from zeta_explorer.plot import (
     plot_rank_two,
     plot_rs_error,
     plot_selmer,
+    plot_twist_moments,
     plot_skewes,
     plot_spacing,
     plot_spiral,
@@ -490,3 +491,13 @@ def test_plot_selmer_panels(tmp_path):
     assert fig.axes[0].lines[0].get_ydata()[0] == pytest.approx(0.4 / 0.6)
     assert len(fig.axes[1].lines) == 6
     assert fig.axes[2].get_title(loc="left") == "Odd part of Sha, N = 5"
+
+
+def test_plot_twist_moments_panels(tmp_path):
+    gaps = {3: ([2, 4, 6], [0.4, 0.13, 0.05]), 5: ([2, 4], [0.3, 0.07])}
+    ratios = np.array([[0.9, 0.6], [0.95, 0.8], [0.99, 0.9]])
+    fig = plot_twist_moments(gaps, [11, 13, 17], ratios, [1, 2], 4)
+    fig.savefig(tmp_path / "moments.png")
+    assert len(fig.axes[0].lines) == 5
+    assert fig.axes[0].lines[1].get_ydata()[2] == pytest.approx(0.4 / 9)
+    assert fig.axes[1].lines[1].get_ydata().tolist() == [0.6, 0.8, 0.9]

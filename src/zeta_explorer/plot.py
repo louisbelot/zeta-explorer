@@ -2145,3 +2145,37 @@ def plot_selmer(laws: list[Law], omegas: ArrayLike, draws: list[np.ndarray],
         _style(ax)
     fig.tight_layout()
     return fig
+
+
+def plot_twist_moments(gaps: dict[int, tuple[list[int], list[float]]], qs: ArrayLike,
+                       ratios: ArrayLike, ks: list[int], N: int) -> Figure:
+    import matplotlib.pyplot as plt
+
+    fig, (left, right) = plt.subplots(1, 2, figsize=(12, 4.6), facecolor=SURFACE)
+    colors = (SERIES, ACCENT, ORDINAL[4], ORDINAL[0])
+    for (q, (ns, g)), color in zip(sorted(gaps.items()), colors, strict=False):
+        ns = np.asarray(ns)
+        left.semilogy(ns, g, "o-", color=color, markersize=6, linewidth=1.4, label=f"q = {q}")
+        left.semilogy(ns, g[0] * float(q) ** (-(ns - ns[0]) / 2), ":", color=color,
+                      linewidth=1.1)
+    left.plot([], [], ":", color=INK_SECONDARY, linewidth=1.1, label="slope q^(−deg D/2)")
+    left.set_xlabel("deg D", color=INK)
+    left.set_ylabel("recipe − mean of L(E_D, 1/q)", color=INK)
+    left.set_title("Diagonal recipe against the exact first moment", color=INK, fontsize=12,
+                   loc="left")
+    left.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="upper right")
+    qs, ratios = np.asarray(qs), np.asarray(ratios)
+    for i, k in enumerate(ks):
+        right.plot(qs, ratios[:, i], "o-", color=ORDINAL[min(i + 1, 4)], markersize=4,
+                   linewidth=1.3, label=f"k = {k}")
+    right.axhline(1, color=INK_SECONDARY, linestyle=":", linewidth=1.2)
+    right.set_xlabel("q", color=INK)
+    right.set_ylabel(f"moment over even twists / Haar SO({N})", color=INK)
+    right.set_title(f"Moments of L(E_D, 1/q) against Keating-Snaith, N = {N}", color=INK,
+                    fontsize=12, loc="left")
+    right.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="lower right")
+    for ax in (left, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig
