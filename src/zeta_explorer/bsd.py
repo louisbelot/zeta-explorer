@@ -165,21 +165,26 @@ def nonsquare(p: int) -> int:
     return next(g for g in range(2, p) if pow(g, (p - 1) // 2, p) == p - 1)
 
 
-def selmer_rank(e: Roots, p: int) -> int:
-    S = bad_places(e, p)
-    gens = [(nonsquare(p),), *[P for P in S if P is not None]]
-    n = len(gens)
+Block = tuple[list[tuple[int, ...]], list[tuple[int, int]]]
+
+
+def selmer_dim(blocks: list[Block]) -> int:
+    n = len(blocks[0][1])
     rows: list[list[int]] = []
-    for P in S:
-        A = _annihilator(local_image(e, P, p))
-        res = [klass(g, P, p) for g in gens]
-        for a in A:
+    for W, res in blocks:
+        for a in _annihilator(W):
             row = [0] * (2 * n)
             for comp in range(2):
                 for k, r in enumerate(res):
                     row[comp * n + k] = (a[2 * comp] * r[0] + a[2 * comp + 1] * r[1]) % 2
             rows.append(row)
     return 2 * n - _rank2(rows, 2 * n)
+
+
+def selmer_rank(e: Roots, p: int) -> int:
+    S = bad_places(e, p)
+    gens = [(nonsquare(p),), *[P for P in S if P is not None]]
+    return selmer_dim([(local_image(e, P, p), [klass(g, P, p) for g in gens]) for P in S])
 
 
 def point_counts(D: Poly, p: int, m: int) -> np.ndarray:
