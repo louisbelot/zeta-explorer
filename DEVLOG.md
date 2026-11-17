@@ -1892,3 +1892,89 @@ Design notes:
 
 Next: the distribution of dim Sel₂ across the twists against the Swinnerton-Dyer and
 Kane Markov chain and Poonen-Rains, then the odd part of Sha against the BKLPR model.
+
+## 2026-11-16: Selmer statistics, the odd part of Sha, twist moments and the hyperelliptic ensemble
+
+Built:
+
+- `selmer.py`. `symbols` reads every residue symbol the descent needs off the
+  factorization of D (the symbols between its prime factors and their classes at t
+  and t − 1), and `symbolic_rank` recomputes dim Sel₂ from those bits alone, with the
+  local images at t, t − 1 and infinity cached per q. `random_symbols` draws them
+  subject to reciprocity, `law` compares a family with that model, and
+  `poonen_rains`, `equilibrium`, `markov` and `chain` give the Poonen-Rains law and the
+  Swinnerton-Dyer/Kane chain. `bsd.selmer_dim` now takes the local blocks directly,
+  so the symbolic and full descents share the linear algebra.
+- `bklpr.py`. Determinant valuations over Z/p^K by elimination with minimal valuation
+  pivots, random alternating matrices, MacWilliams' counts, the BKLPR and Delaunay
+  probabilities for rank 0, and Haar samples from SO(N, Z/p^K) as products of
+  reflections (with spinor norm control). `odd_sha` compares the p-part of |Sha| in a
+  family with BKLPR and with SO(N, Z_p).
+- `twistmoments.py`. `diagonal` is the first-moment recipe as one two-variable
+  generating function (x for deg f, u for deg D), with local factors at every good
+  place of degree up to deg D / 2 and the coprimality condition as a division by
+  1 + u^d. `recipe_first` turns it into the predicted mean through the exact AFE.
+  `moments` and `so_ratios` compare the even twists with Keating-Snaith SO(N).
+- `hyperelliptic.py`. L-polynomials of y² = D(x) for every monic squarefree D of
+  degree 2g + 1 from vectorized character sums, central values, eigenangles,
+  the finite diagonal recipe, the Andrade-Keating formula and USp(2g) moments.
+- `gf.GF.degrees` (exact degree of each field element, shared with
+  `bsd.point_counts`) and `gf.character_sums` (shared with `funcfield`).
+- `plot.plot_selmer`, `plot.plot_twist_moments`, `plot.plot_hyperelliptic` and the
+  three charts.
+
+Checks:
+
+- `symbolic_rank` equals the full descent on every twist of the families (q, deg D)
+  = (3, 4), (5, 3), (7, 2), (11, 2), (13, 2). Real and random symbols both satisfy
+  reciprocity. The Selmer parity equals the rank parity in every family `law` sees.
+- Poonen-Rains sums to 1 with mean p + 1 for p = 2, 3, 5; the equilibrium has
+  E[2^s] = 3 and P(s = 0 | even) = 0.419422; 60 steps of the chain reach it.
+- `det_valuation` against integer determinants of 400 random 4 × 4 matrices.
+  MacWilliams' counts sum to q^(n(n−1)/2) and match brute force for 4 × 4 over F_3.
+  The alternating matrix model reproduces BKLPR and the Delaunay first step within
+  0.02. The SO(N, Z/p^K) sampler matches exact enumeration (SO(2, Z/9) for both
+  discriminants, SO(3, Z/3)) and lands in the requested spinor coset.
+- v_p|Sha| = v_p(q^N L(1/q)) for p = 3 and 7 on every rank 0 even twist over F_5.
+- `diagonal` against a brute-force sum over every monic f (factored with
+  multiplicity) and every D for q = 3, deg D = 4 and q = 5, deg D = 2; 8/9 by hand at
+  q = 3, deg D = 2. ε_D = χ(D(0))χ(D(1)) on every twist over F_5 and F_7 at degree 4.
+- Hyperelliptic c_1 and c_2 against the Dirichlet series with independently computed
+  residue symbols, all roots on |z| = q^(−1/2), central values nonnegative,
+  Σ_D c_1 = 0, USp(2) moments by hand and USp(4) by Monte Carlo.
+
+Results:
+
+- Selmer at deg D = 2: TV to the symbol model 0.161 at q = 7, 0.063 at 13, 0.022 at
+  47, where two model samples of the same size differ by 0.015 on average. At
+  deg D = 3 it falls from 0.087 (q = 5) to 0.021 (q = 23) but stays above noise
+  (E[2^s] 2.12 against 2.21). Random symbols with ω linear factors approach the Kane
+  equilibrium as ω grows (E[2^s] = 3.07 at ω = 14).
+- Odd Sha at N = 4: share with 3 ∤ |Sha| goes 0.857, 0.802, 0.774, 0.744 for q = 11,
+  17, 31, 47, against 0.639 for BKLPR and 0.644 for Haar SO(4, Z_3). Slow.
+- First moment of the Legendre twists: recipe minus mean over F_3 is 0.444, 0.127,
+  0.050, 0.018, 0.0041 for deg D = 2 to 10; over F_5 0.332, 0.066, 0.0086. Moments of
+  the even twists over SO(4) at q = 61: 0.999, 0.983, 0.957, 0.925 for k = 1 to 4.
+- Hyperelliptic: Andrade-Keating is off by −8.1e−3, 3.9e−3, −7.1e−4, 1.2e−4, 4.8e−5
+  for g = 2 to 6 over F_3 (the last over 1,062,882 curves, 68 s), and by 2.5e−5 for
+  g = 4 over F_5 (1,562,500 curves). Moments over USp(4) at q = 13: 0.976, 0.944,
+  0.905. At fixed q = 3 the k = 1 ratio falls toward P(1) = 0.734.
+
+Design notes:
+
+- The symbol model is what makes the Selmer comparison honest: the equilibrium law
+  is a large-ω statement, and these families have ω ≤ 4. Comparing with random
+  symbols at the same factor degrees separates "the symbols are not random yet"
+  (which goes away with q) from "there are not enough primes" (which does not).
+- The recipe needs the root number as a function of D. Reading it off the data first
+  (ε_D is the symbol of D at t times the symbol at t − 1) turned (1 + ε_D) into a
+  second diagonal, f·t(t − 1) a square, instead of a case split.
+- The recipe gap is exact arithmetic (Fractions over all twists), so the decay rate
+  in deg D is a measurement, not a fit.
+- A KS distance on the lowest hyperelliptic angle is dominated by atoms of the
+  discrete L-polynomial distribution (10.6% of the genus 1 curves over F_47 share
+  one value of c_1), so the README reports means and histograms instead.
+
+Next: Florea's second and third moments for the hyperelliptic ensemble and the
+constant in the secondary term of the first, then the one-level density of the twists
+with the lower-order terms checked against exact eigenangles.
