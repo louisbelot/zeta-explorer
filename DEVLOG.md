@@ -1978,3 +1978,81 @@ Design notes:
 Next: Florea's second and third moments for the hyperelliptic ensemble and the
 constant in the secondary term of the first, then the one-level density of the twists
 with the lower-order terms checked against exact eigenangles.
+
+## 2026-11-17: Florea's moments, the first moment to genus 10, and a period-3 term
+
+Built:
+
+- `hypermoments.py`. `irreducibles` builds the monic irreducibles of degree d as
+  minimal polynomials of the elements of F_{q^d} with orbit size d. `squarefrees`
+  walks products of distinct irreducibles, so every squarefree f₀ of degree at most n
+  comes with its factor degrees, and `squares` does the same for h with
+  multiplicity. `lpoly` gives Σ_D (D/f₀) u^deg D from the character sums of f₀ up to
+  half its degree and the functional equation (with the (1 − u) factor split off for
+  even degree and the reciprocity sign (−1)^((q−1)/2 · deg D · deg f₀) for q ≡ 3 mod 4).
+  `dual_coefficients` sums over f = f₀h² instead of over D and returns the exact
+  T_j = Σ_D c_j(D), `dual_mean` the exact first moment.
+- `florea_R` is (6.13) of arXiv:1505.03094 as printed, `florea_D` the log of
+  ∏_P D_P(z, w) from Lemma 6.3 in mpmath, `printed_dlog` and `euler_dlog` the two
+  versions of the log-derivative.
+- `recipe` evaluates the Andrade-Keating/CFKRS recipe for the k-th moment: 2^k sign
+  patterns, the Euler product with the ζ_A(1 + α_i + α_j) pulled out, and the value at
+  α = 0 as the mean over a circle α = t·(1, ..., k) at 60 digits. `arithmetic_factor`
+  is the remaining product at 0.
+- `plot.plot_florea` and docs/florea.png.
+
+Checks:
+
+- `irreducibles` against the Möbius count and `factor`; `squarefrees` against every
+  monic squarefree polynomial of degree ≤ 5 over F_3 with factor degrees; every monic
+  of degree j ≤ 6 is f₀h² exactly once (q^j pairs).
+- `lpoly` against the Dirichlet series Σ_{deg D = k} ∏_{P | f}(D/P) for degrees 1 to 5
+  over F_3 and F_5.
+- `dual_coefficients` equals the brute-force column sums for (q, g) = (3, 2), (3, 3),
+  (5, 2), (7, 2), and `dual_mean` equals the mean over every curve for (3, 4) and
+  (5, 3) to 13 digits.
+- The closed product ∏_P D_P(q^(−4/3), q^(−1/3)) in the paper matches D_P exactly
+  (checked in rationals per prime and as a product). The closed log-derivative does
+  not: z·d/dz log D_P(z, qz) at q^(−4/3) is 2.6, 3.2, 4.8 times the printed term for
+  primes of degree 1, 2, 3 over F_5. R changes by about 5% between the two.
+- `recipe` for k = 1 equals `andrade_keating` to 12 digits; for k = 2, 3 it is a
+  polynomial in g of degree 3 and 6 (finite differences); the ratio to
+  arithmetic_factor × Keating-Snaith goes to 1 like 1/g (gap 0.0062 at g = 800 for
+  k = 2 over F_3, a quarter of the gap at g = 200).
+
+Results:
+
+- First moment over F_5 to genus 10 (1.5·10¹³ curves at genus 9 in 46 s). The
+  difference from Andrade-Keating falls from 3.5e−4 to 1.2e−10 while
+  N = difference·|H|/q^((2g+1)/3) stays in [−0.6, 0.6]: the secondary term has the
+  size Florea proves. Its shape does not match R: N goes −0.31, −0.52, −0.59 for
+  g = 4, 7, 10, +0.40, +0.42, +0.61 for g = 3, 6, 9, and −0.06, 0.12, 0.17 for
+  g = 2, 5, 8, against R between 0.007 and 0.057. Same pattern over F_13 (to g = 6),
+  F_17 (to g = 5) and F_3 (to g = 13). Three-genus averages of N over F_5 are 0.011,
+  0.007, 0.060 against R = 0.013, 0.032, 0.051.
+- The integrand of (6.11) has (1 − q⁴z³)² in the denominator, so the contour shift
+  crosses double poles at all three cube roots of q^(−4/3). Only the real one is
+  kept. Numerically, the two complex residues of the printed S_{g−1} integrand are
+  4.6 to 5.2 times the real one over F_5 for g = 4 to 9, and they rotate by ω^g. That
+  is a period of 3 at the right size. The S_g integrand is not printed, so the full
+  correction is not computed.
+- Second and third moments against the recipe: ratio − 1 is +1.0e−5 and +2.0e−5 at
+  genus 6 over F_3 (1,062,882 curves), −1.8e−5 and −2.5e−5 at genus 4 over F_5, and
+  +8.2e−6 and −2.8e−7 at genus 2 over F_13. The full degree 6 polynomial for the cubic
+  moment holds, not only its leading term.
+
+Design notes:
+
+- The dual sum is the function field version of Poisson summation in Florea's
+  proofs, but done exactly: for fixed f the sum over squarefree D is one coefficient
+  of a rational function, so nothing is approximated. The cost moves from q^(2g+1)
+  curves to about q^g pairs (f₀, h), plus L-polynomials of degree ≤ g − 1.
+- Pulling ζ_A(1 + α_i + α_j) out of the recipe's Euler product is not optional: the
+  raw product diverges for k ≥ 2, and the leftover needs the truncation depth tied
+  to the working precision (q^d ≤ 10^25 at 60 digits), or π(d)·(rounding) blows up.
+- Averaging over a circle instead of differentiating: each of the 2^k terms has a
+  pole of order up to k(k + 1)/2 at α = 0, but their sum is analytic, so the
+  trapezoid rule on |t| = r is exact up to aliasing far below the precision.
+
+Next: the one-level density of the Legendre twists with lower-order terms checked
+against exact eigenangles, then cubic twists over F_q(t) with q ≡ 1 mod 3.
