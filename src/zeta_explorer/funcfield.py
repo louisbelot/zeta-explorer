@@ -9,6 +9,7 @@ import numpy as np
 
 from zeta_explorer.gf import (
     Poly,
+    character_sums,
     correlate,
     cubic_sums,
     deg,
@@ -262,19 +263,8 @@ def twist_set(p: int, n: int, avoid: Poly) -> list[Poly]:
 def _twisted_sums(E: Curve, Ds: list[Poly], m: int) -> np.ndarray:
     F = field(E.p, m)
     reps, inv = F.orbits
-    a = (traces(E, m)[reps] * np.bincount(inv)).astype(np.float64)
-    P = np.stack([F.power(reps, j) for j in range(len(Ds[0]))])
-    digits = [F.dig[P, j].astype(np.float64) for j in range(F.m)]
-    C = np.array(Ds, dtype=np.float64)
-    chunk = max(1, 2**22 // len(reps))
-    out = np.empty(len(Ds), dtype=np.int64)
-    for i in range(0, len(Ds), chunk):
-        rows = C[i:i + chunk]
-        code = np.zeros((len(rows), len(reps)), dtype=np.int64)
-        for d, w in zip(digits, F.pw, strict=True):
-            code += np.fmod(rows @ d, E.p).astype(np.int64) * w
-        out[i:i + chunk] = np.rint(F.chi[code] @ a).astype(np.int64)
-    return out + [trace_inf(E.twist(D), m) for D in Ds]
+    sums = character_sums(F, Ds, traces(E, m)[reps] * np.bincount(inv))
+    return sums + [trace_inf(E.twist(D), m) for D in Ds]
 
 
 def family(E: Curve, n: int) -> list[Twist]:
