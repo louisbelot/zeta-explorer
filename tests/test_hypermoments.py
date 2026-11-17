@@ -1,7 +1,15 @@
+import math
+
+import pytest
+
 from zeta_explorer.gf import factor, monics, squarefree
-from zeta_explorer.hyperelliptic import irreducible_counts
+from zeta_explorer.hyperelliptic import irreducible_counts, lpolys
 from zeta_explorer.hypermoments import (
+    _symbol,
+    dual_coefficients,
+    dual_mean,
     irreducibles,
+    lpoly,
     squarefrees,
     squares,
 )
@@ -35,3 +43,27 @@ def test_every_monic_is_squarefree_times_square():
             if j <= 6:
                 counts[j] += 1
     assert counts == [q**j for j in range(7)]
+
+
+def _brute(q, f, k):
+    Ps = factor(f, q)
+    return sum(math.prod(_symbol(D, P, q) for P in Ps) for D in monics(q, k))
+
+
+@pytest.mark.parametrize("q", [3, 5])
+def test_lpoly_against_dirichlet_series(q):
+    for d in range(1, 6):
+        fs = [f for f in monics(q, d) if squarefree(f, q)][:6]
+        for f, L in zip(fs, lpoly(q, fs), strict=True):
+            assert list(L) == [_brute(q, f, k) for k in range(d)]
+
+
+@pytest.mark.parametrize("q, g", [(3, 2), (3, 3), (5, 2), (7, 2)])
+def test_dual_coefficients_match_brute_force(q, g):
+    E = lpolys(q, g)
+    assert dual_coefficients(q, g) == [int(x) for x in E.c[:, : g + 1].sum(axis=0)]
+
+
+def test_dual_mean_matches_every_curve():
+    for q, g in [(3, 4), (5, 3)]:
+        assert dual_mean(q, g) == pytest.approx(lpolys(q, g).central.mean(), rel=1e-13)
