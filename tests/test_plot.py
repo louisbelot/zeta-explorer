@@ -7,6 +7,7 @@ from matplotlib.animation import PillowWriter
 from PIL import Image
 
 from zeta_explorer.bias import race
+from zeta_explorer.bklpr import OddSha
 from zeta_explorer.bsd import Excision, Group
 from zeta_explorer.dedekind import zeros as field_zeros
 from zeta_explorer.delta import sato_tate, zeros
@@ -53,6 +54,7 @@ from zeta_explorer.plot import (
     plot_race,
     plot_rank_two,
     plot_rs_error,
+    plot_selmer,
     plot_skewes,
     plot_spacing,
     plot_spiral,
@@ -63,6 +65,7 @@ from zeta_explorer.plot import (
     sweep_sigma,
 )
 from zeta_explorer.rmt import so_angles
+from zeta_explorer.selmer import Law
 from zeta_explorer.spacing import first_zeros, zeros_between
 from zeta_explorer.values import log_z_sample
 
@@ -472,3 +475,18 @@ def test_plot_funcfield_panels(tmp_path):
     assert [p.get_height() for p in fig.axes[1].patches] == [1, 1, 2, 1]
     assert len(fig.axes[2].lines) == 3
     assert fig.axes[0].get_legend().get_texts()[2].get_text() == "50 rank 0 twists"
+
+
+def test_plot_selmer_panels(tmp_path):
+    h = np.array([0.4, 0.3, 0.2, 0.1, 0, 0, 0, 0])
+    laws = [Law(q, 3, 100, h, h.copy(), 1.9, 2.0) for q in (11, 13, 17)]
+    rng = np.random.default_rng(0)
+    draws = [rng.integers(0, 4, 200) for _ in range(4)]
+    b = np.array([0.64, 0.24, 0.12])
+    odd = [OddSha(q, 5, p, 100, np.array([0.8, 0.2, 0]), b, b) for q in (11, 13) for p in (3, 5)]
+    fig = plot_selmer(laws, [2, 4, 6, 8], draws, odd)
+    fig.savefig(tmp_path / "selmer.png")
+    assert len(fig.axes[0].lines) == 7
+    assert fig.axes[0].lines[0].get_ydata()[0] == pytest.approx(0.4 / 0.6)
+    assert len(fig.axes[1].lines) == 6
+    assert fig.axes[2].get_title(loc="left") == "Odd part of Sha, N = 5"

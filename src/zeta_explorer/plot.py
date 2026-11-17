@@ -61,7 +61,9 @@ from zeta_explorer.zeta import zeta
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
+    from zeta_explorer.bklpr import OddSha
     from zeta_explorer.bsd import Excision
+    from zeta_explorer.selmer import Law
     from zeta_explorer.symfamily import Family as SymFamily
 
 SERIES = "#2a78d6"
@@ -2083,6 +2085,62 @@ def plot_symfamily(F: SymFamily, buckets: list[tuple[int, int]],
     sup.set_title("Where the diagonal stops (ILS prove 3/2)", color=INK, fontsize=11, loc="left")
     sup.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="lower right")
     for ax in axes.ravel():
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig
+
+
+def plot_selmer(laws: list[Law], omegas: ArrayLike, draws: list[np.ndarray],
+                odd: list[OddSha]) -> Figure:
+    import matplotlib.pyplot as plt
+
+    from zeta_explorer.selmer import equilibrium
+
+    fig, (left, mid, right) = plt.subplots(1, 3, figsize=(15, 4.8), facecolor=SURFACE)
+    q = [L.q for L in laws]
+    for parity, k, color in ((0, 0, SERIES), (1, 1, ACCENT)):
+        name = f"P(s = {k} | {'even' if parity == 0 else 'odd'})"
+        left.plot(q, [L.given(parity)[k] for L in laws], "o", color=color, markersize=6,
+                  label=f"{name}, twists")
+        left.plot(q, [L.given(parity, "predicted")[k] for L in laws], "-", color=color,
+                  linewidth=1.4, label="random symbols, same factor degrees")
+        left.axhline(equilibrium(k, parity), color=color, linestyle=":", linewidth=1.2)
+    left.plot([], [], color=INK_SECONDARY, linestyle=":", linewidth=1.2,
+              label="Heath-Brown, Swinnerton-Dyer, Kane")
+    left.set_ylim(0.3, 1.02)
+    left.set_xlabel("q", color=INK)
+    left.set_ylabel("share of twists", color=INK)
+    left.set_title(f"2-Selmer of the Legendre twists, deg D = {laws[0].n}", color=INK,
+                   fontsize=12, loc="left")
+    left.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="center right")
+    omegas = np.asarray(omegas)
+    for parity, k, color in ((0, 0, SERIES), (0, 2, ORDINAL[3]), (1, 1, ACCENT)):
+        y = [np.mean(s[s % 2 == parity] == k) for s in draws]
+        mid.plot(omegas, y, "o-", color=color, markersize=4, linewidth=1.4,
+                 label=f"P(s = {k} | {'even' if parity == 0 else 'odd'})")
+        mid.axhline(equilibrium(k, parity), color=color, linestyle=":", linewidth=1.2)
+    mid.set_ylim(0, 1)
+    mid.set_xlabel("ω, linear factors of D (random symbols, q = 5)", color=INK)
+    mid.set_ylabel("share", color=INK)
+    mid.set_title("The symbol model settles at the equilibrium", color=INK, fontsize=12,
+                  loc="left")
+    mid.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="lower right")
+    for p, color in zip(sorted({S.p for S in odd}), (SERIES, ACCENT, INK), strict=False):
+        S = sorted((s for s in odd if s.p == p), key=lambda s: s.q)
+        right.plot([s.q for s in S], [s.observed[0] for s in S], "o-", color=color,
+                   markersize=5, linewidth=1.2, label=f"p = {p}, rank 0 even twists")
+        right.axhline(S[0].bklpr[0], color=color, linestyle=":", linewidth=1.2)
+        right.axhline(S[0].orthogonal[0], color=color, linestyle="--", linewidth=0.9)
+    right.plot([], [], color=INK_SECONDARY, linestyle=":", linewidth=1.2, label="BKLPR")
+    right.plot([], [], color=INK_SECONDARY, linestyle="--", linewidth=0.9,
+               label=f"Haar SO({2 * (odd[0].N // 2)}, Z_p)")
+    right.set_ylim(0.5, 1.02)
+    right.set_xlabel("q", color=INK)
+    right.set_ylabel("share with p ∤ |Sha|", color=INK)
+    right.set_title(f"Odd part of Sha, N = {odd[0].N}", color=INK, fontsize=12, loc="left")
+    right.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="lower right")
+    for ax in (left, mid, right):
         ax.set_facecolor(SURFACE)
         _style(ax)
     fig.tight_layout()
