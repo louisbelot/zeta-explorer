@@ -1,5 +1,6 @@
 import math
 
+import numpy as np
 import pytest
 
 from zeta_explorer.gf import factor, monics, squarefree
@@ -8,6 +9,8 @@ from zeta_explorer.hypermoments import (
     _symbol,
     dual_coefficients,
     dual_mean,
+    florea_D,
+    florea_R,
     irreducibles,
     lpoly,
     squarefrees,
@@ -67,3 +70,19 @@ def test_dual_coefficients_match_brute_force(q, g):
 def test_dual_mean_matches_every_curve():
     for q, g in [(3, 4), (5, 3)]:
         assert dual_mean(q, g) == pytest.approx(lpolys(q, g).central.mean(), rel=1e-13)
+
+
+def test_florea_product_closed_form():
+    q = 5
+    z0 = q ** (-4 / 3)
+    pi = irreducible_counts(q, 80)
+    prod = sum(n * math.log1p(-(q ** (4 * d / 3) + q ** (2 * d / 3) + q ** (d / 3) + 1)
+                              / (q ** (4 * d / 3) + q**d) ** 2) for d, n in enumerate(pi) if d)
+    assert florea_D(q, z0, q * z0).real == pytest.approx(prod, abs=1e-12)
+
+
+def test_florea_R_is_linear():
+    r = [florea_R(13, x) for x in (5, 7, 9, 11)]
+    assert np.diff(r, 2) == pytest.approx([0, 0], abs=1e-14)
+    with pytest.raises(ValueError):
+        florea_R(3, 5)

@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import math
 from collections import defaultdict
 from collections.abc import Iterator
 
+import mpmath as mp
 import numpy as np
 
 from zeta_explorer.funcfield import _newton
 from zeta_explorer.gf import Poly, character_sums, field, pdivmod, pmul, ppowmod
+from zeta_explorer.hyperelliptic import irreducible_counts
 
 
 def irreducibles(q: int, d: int) -> list[Poly]:
@@ -135,3 +138,67 @@ def dual_mean(q: int, g: int) -> float:
     n = 2 * g + 1
     total = sum((1 if j == g else 2) * t * q ** (-j / 2) for j, t in enumerate(T))
     return total / (q**n - q ** (n - 1))
+
+
+def _zeta(q: int, s: float) -> float:
+    return 1 / (1 - q ** (1 - s))
+
+
+def _terms(q: int) -> int:
+    return int(60 / math.log10(q))
+
+
+def _log_D(q: int, z, w, pi: list[int]):
+    out = mp.mpf(0)
+    for d in range(1, len(pi)):
+        P, zd, wd = mp.mpf(q) ** d, z**d, w**d
+        num = (-wd**2 - wd**3 / P + wd / (P * P * zd) + P * (w * w * z) ** d
+               + (w * w * z) ** d - P * P * (w * z * z) ** d + (w**3 * z) ** d
+               - P * P * (w * w * z * z) ** d)
+        out += pi[d] * mp.log(1 + num / ((P * P * zd - 1) * (1 + wd)))
+    return out
+
+
+def florea_D(q: int, z, w) -> complex:
+    pi = irreducible_counts(q, _terms(q))
+    with mp.workdps(30 + len(pi)):
+        return complex(_log_D(q, mp.mpmathify(z), mp.mpmathify(w), pi))
+
+
+def printed_dlog(q: int) -> float:
+    pi = irreducible_counts(q, _terms(q))
+    out = 0.0
+    for d in range(1, len(pi)):
+        P = float(q) ** d
+        c = P ** (1 / 3)
+        out -= pi[d] * d * (P - 1) * (c + 1) / ((c - 1) * (c**4 + P) ** 2)
+    return out
+
+
+def euler_dlog(q: int) -> float:
+    pi = irreducible_counts(q, _terms(q))
+    with mp.workdps(30 + len(pi)):
+        z0 = mp.mpf(q) ** (-mp.mpf(4) / 3)
+        return float(z0 * mp.diff(lambda z: _log_D(q, z, q * z, pi), z0))
+
+
+def florea_R(q: int, x: float, dlog: float | None = None) -> float:
+    if q % 4 != 1:
+        raise ValueError("Florea's secondary term assumes q = 1 mod 4")
+    pi = irreducible_counts(q, _terms(q))
+    log_D = 0.0
+    for d in range(1, len(pi)):
+        P = float(q) ** d
+        c = P ** (1 / 3)
+        log_D += pi[d] * math.log1p(-(c**4 + c**2 + c + 1) / (c**4 + P) ** 2)
+    if dlog is None:
+        dlog = printed_dlog(q)
+    pre = _zeta(q, 5 / 3) * _zeta(q, 7 / 3) / (9 * q ** (2 / 3) * _zeta(q, 4 / 3) ** 2)
+    const = (_zeta(q, 7 / 3) / q ** (4 / 3) * (-2.5 - 2 * q ** (1 / 3) - 2 * q + q ** (4 / 3) / 2)
+             - 2 / q ** (4 / 3) * dlog)
+    return pre * math.exp(log_D) * (x / 2 + const)
+
+
+def florea_secondary(q: int, g: int, dlog: float | None = None) -> float:
+    n = 2 * g + 1
+    return q ** (n / 3) * florea_R(q, n, dlog) / (q**n - q ** (n - 1))
