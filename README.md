@@ -118,6 +118,16 @@ a bound on lim sup and lim inf of M(x)/√x. And with two million zeros, Lehman'
 theorem reproduces Chao and Plymen's proof that π(x) > li(x) somewhere in
 [1.39792136·10³¹⁶, 1.39847567·10³¹⁶].
 
+Over F_q(t) the L-functions are polynomials and the random matrix is literal. For
+the quadratic twists of the Legendre curve every L-polynomial is computed exactly,
+Birch and Swinnerton-Dyer returns |Sha| (a perfect square in all 14,336 rank 0
+twists tried), and a full 2-descent gives the Selmer group. The Selmer ranks
+approach a model of random residue symbols as q grows, the odd part of Sha drifts
+slowly toward the Bhargava-Kane-Lenstra-Poonen-Rains prediction, and the diagonal
+of the moment recipe converges to the exact first moment at the rate q^(−deg D/2).
+For the hyperelliptic ensemble the Andrade-Keating first moment matches the exact
+average over all 1,062,882 genus 6 curves over F_3 to 5·10⁻⁵.
+
 The same numerics also run in the browser at
 [louisbelot.github.io/zeta-explorer](https://louisbelot.github.io/zeta-explorer/):
 a phase portrait you can pan and zoom, a Z(t) explorer that marks zeros and Gram
@@ -2046,6 +2056,211 @@ does not pass. The predicted
 share of central zeros is too high in most families with either kind of floor. At
 N = 4 nothing changes much: none of the models pass, and the stall noted above is not
 about the 2-adic factor.
+
+### 2-Selmer groups and the odd part of Sha
+
+![2-Selmer ranks of the Legendre twists against random residue symbols and the Heath-Brown, Swinnerton-Dyer and Kane equilibrium, and the share of twists with 3 or 5 dividing |Sha| against BKLPR](docs/selmer.png)
+
+The descent gives dim Sel₂ for every twist, so the distribution of
+s = dim Sel₂ − 2 over a family can be compared with models. For curves with full
+2-torsion the classical answer is Heath-Brown's, first for the congruent number
+curves. Swinnerton-Dyer explained it as a Markov chain and Kane extended it to every
+curve with full 2-torsion: each new prime factor of D moves s up by one with
+probability 2^(−s) and down otherwise, and on each parity class the chain settles at
+
+P(s = n) = 2 · ∏_{j≥0} (1 + 2^(−j))^(−1) · 2^n / ∏_{j=1}^n (2^j − 1),
+
+which gives P(s = 0 | s even) = 0.4194 and E[2^s] = 3. Poonen-Rains is the same law
+without the parity split (`selmer.poonen_rains`, with mean |Sel_p| = p + 1).
+
+Over F_q(t) every input to the descent other than q itself is a quadratic residue
+symbol: the symbols (P_i/P_j) between the prime factors of D, and the classes of
+P_i at t and at t − 1. `selmer.symbolic_rank` rebuilds the Selmer matrix from those
+bits alone and agrees with the full descent on every twist of five families (q = 3
+to 13). That gives a model with no arithmetic left in it: keep the degrees of the
+factors of D, draw the symbols at random subject to reciprocity,
+(P/Q)(Q/P) = (−1)^((q−1)/2 · deg P · deg Q), and recompute the rank. For a fixed
+deg D the symbols of the actual twists equidistribute as q grows, the regime of
+Park and Wang's large q results on Selmer averages
+([arXiv:2102.00549](https://arxiv.org/abs/2102.00549)). The left panel is
+deg D = 2, and the total variation distance between the twists and the symbol model
+falls with q:
+
+| q | twists | TV to the symbol model | TV between two model samples of that size |
+|---|---|---|---|
+| 7 | 31 | 0.161 | |
+| 13 | 133 | 0.063 | 0.053 |
+| 23 | 463 | 0.044 | |
+| 31 | 871 | 0.029 | |
+| 47 | 2,071 | 0.022 | 0.015 |
+
+At deg D = 3 the distance goes from 0.087 (q = 5) to 0.021 (q = 23, 10,691 twists),
+still above the noise there: the twists average E[2^s] = 2.12 against 2.21 for the
+model. The model itself flows to the Kane equilibrium as the number of prime factors
+grows (middle panel: P(s = 1 | s odd) climbs from 0.74 at ω = 2 to 0.82 at ω = 14,
+against 0.838, and E[2^s] reaches 3.07). Real families with deg D ≤ 4 have at most
+four factors, so they sit far from the equilibrium: P(s = 0 | s even) is about 0.47
+at deg D = 2 for every q above 29.
+
+For odd p, |Sha| has the same p-part as q^N L(1/q). The Tamagawa numbers here are 2
+and 4, the torsion is (Z/2)² and H is a power of q, so BSD leaves nothing else, and
+`test_odd_part_of_sha_is_the_odd_part_of_q_n_l` checks it against `bsd.arith` for
+every rank 0 twist over F_5 at deg D = 4. The BKLPR model (Bhargava, Kane, Lenstra,
+Poonen and Rains, [arXiv:1304.3971](https://arxiv.org/abs/1304.3971)) takes
+Sha[p^∞] to be the cokernel of a random alternating matrix over Z_p, which for rank 0
+gives P(p ∤ |Sha|) = ∏_{j≥1} (1 − p^(1−2j)), so 0.6390 for p = 3 and 0.7933 for
+p = 5, and P(|Sha[p^∞]| = p²) = p/(p² − 1) times that, Delaunay's |G|/|Sp(G)|
+weight. `bklpr.py` checks both against 24 × 24 alternating matrices over Z/3⁶
+(determinant valuations by Gaussian elimination with minimal valuation pivots), and
+checks the limit against MacWilliams' count of alternating matrices of each rank.
+For a function field the matching random matrix is Frobenius itself, acting
+orthogonally on a Z_p-lattice in H², so the large q model is Haar measure on
+SO(N, Z_p) with v_p det(I − g) in place of v_p |Sha|. The sampler multiplies random
+reflections over Z/p^K and is tested against exact enumeration of SO(2, Z/9) and
+SO(3, Z/3). At N = 4 it already gives 0.644 for p = 3, next to BKLPR's 0.639.
+
+The twists are far from both at the sizes reachable here. Share of rank 0 even
+twists with p ∤ |Sha| at N = 4:
+
+| q | twists | p = 3 | p = 5 | p = 7 |
+|---|---|---|---|---|
+| 11 | 35 | 0.857 | 0.971 | 1 |
+| 17 | 96 | 0.802 | 0.958 | 0.990 |
+| 23 | 188 | 0.798 | 0.926 | 0.979 |
+| 31 | 368 | 0.774 | 0.938 | 0.967 |
+| 47 | 887 | 0.744 | 0.900 | 0.959 |
+| BKLPR | | 0.639 | 0.793 | 0.855 |
+
+Over F_7 at N = 8 (660 twists) the shares are 0.811 and 0.939 for p = 3 and 5. The
+direction is right and the movement is slow. |Sha| is bounded in terms of the height
+of the twist, so at small q there is little room for a factor of 9 or 25.
+
+### Moments of the twists
+
+![Gap between the diagonal recipe and the exact first moment as deg D grows, and moments of the central values against Keating-Snaith SO(4) as q grows](docs/twist_moments.png)
+
+The first moment of L(E_D, 1/q) over a family can be computed exactly from
+`funcfield.family`, and it can also be predicted the way the moment recipe of
+Conrey, Farmer, Keating, Rubinstein and Snaith predicts it, by keeping only the
+diagonal. Over F_q(t) every step of that prediction is a finite computation.
+
+The approximate functional equation is exact here. L(E_D, u) = Σ c_j(D) u^j has
+degree N = 2 deg D and c_{N−j} = ε q^(N−2j) c_j, so
+
+L(E_D, 1/q) = (1 + ε) Σ_{j<N/2} c_j q^(−j) + c_{N/2} q^(−N/2),
+
+and the odd twists drop out by themselves. The root number of every even degree
+twist is ε_D = χ(D(0))·χ(D(1)), the product of the symbols of D at t and t − 1
+(checked on every twist over F_5 and F_7 at deg D = 4), so
+(1 + ε_D)χ_D(f) = χ_D(f) + χ_D(t(t − 1)f). The coefficients are
+c_j(D) = Σ_{deg f = j} a(f) χ_D(f), with a(f) from the Euler factors of the Legendre
+curve itself: 1 − a_P u^d + q^d u^(2d) at good places and a₀ = χ(−1), a₁ = 1 at
+the two multiplicative fibers. The recipe keeps the f for which the character is
+trivial (f or t(t − 1)f a square) and replaces χ_D(f) by the exact probability that a
+squarefree D of that degree is coprime to f. `twistmoments.diagonal` does this as one
+generating function in two variables, an Euler product over places of degree up to
+deg D / 2 in which the coprimality condition divides out a factor 1 + u^d at each.
+It matches a brute-force sum over every monic f and every D for q = 3 and 5, and for
+q = 3, deg D = 2 it gives 8/9, which is also what the sum gives by hand (the true
+mean is 4/9).
+
+The only thing the recipe throws away is the off-diagonal. χ_D(f) for f not a
+square sums to zero over all monic D of a given degree, so whatever survives comes
+from the squarefree condition. Bui, Florea, Keating and Roditty-Gershon prove the
+first moment of a twist family with an error of q^(−g+εg) for deg D = 2g + 1
+([arXiv:1902.00568](https://arxiv.org/abs/1902.00568)), and the exact gap here
+falls the same way:
+
+| q | deg D | twists | mean of L(E_D, 1/q) | recipe | gap |
+|---|---|---|---|---|---|
+| 3 | 2 | 3 | 0.4444 | 0.8889 | 0.444 |
+| 3 | 4 | 29 | 0.6897 | 0.8165 | 0.127 |
+| 3 | 6 | 271 | 0.7227 | 0.7730 | 0.0503 |
+| 3 | 8 | 2,457 | 0.7403 | 0.7586 | 0.0183 |
+| 3 | 10 | 22,139 | 0.7382 | 0.7423 | 0.0041 |
+| 5 | 4 | 345 | 0.9030 | 0.9690 | 0.066 |
+| 5 | 6 | 8,677 | 0.9046 | 0.9132 | 0.0086 |
+| 11 | 4 | 11,181 | 0.9182 | 0.9514 | 0.033 |
+
+Over F_3 the gap shrinks by a factor of 2.5 to 4.5 every two degrees, close to the
+q^(−deg D/2) line in the chart, and over F_5 by 5 and then 7.7. The true mean sits
+below the diagonal in every case.
+
+In the other limit, fixed degree and q → ∞, equidistribution (Katz and Sarnak; for
+these twist families Hall, Keating and Roditty-Gershon) makes Frobenius Haar in
+SO(N), so the moments of the even twists should approach the Keating-Snaith values
+E det(I − A)^k, which are 2, 10, 70 and 588 for SO(4). They do, from below, and
+slowly for high k. Ratios to SO(4):
+
+| q | even twists | k = 1 | k = 2 | k = 3 | k = 4 |
+|---|---|---|---|---|---|
+| 13 | 61 | 0.971 | 0.870 | 0.775 | 0.710 |
+| 29 | 365 | 0.994 | 0.945 | 0.918 | 0.907 |
+| 47 | 1,013 | 0.999 | 0.971 | 0.938 | 0.898 |
+| 61 | 1,741 | 0.999 | 0.983 | 0.957 | 0.925 |
+
+The high moments are carried by rare twists with det(I − A) near its maximum of 16,
+so they converge last and are noisy at these family sizes.
+
+### The hyperelliptic ensemble
+
+![Exact first moment of L(1/2, χ_D) against Andrade-Keating by genus, moments against USp(2g) as q grows, and the lowest eigenangle over F_13 at genus 2](docs/hyperelliptic.png)
+
+The simplest family over F_q[t] is the quadratic characters themselves: χ_D for
+monic squarefree D of degree 2g + 1, whose L-function is the numerator of the zeta
+function of the curve y² = D(x), a polynomial of degree 2g with
+c_j = Σ_{deg f = j} χ_D(f). `hyperelliptic.lpolys` gets c_1 to c_g from the point
+counts over F_q to F_{q^g} (one vectorized character sum per field,
+`gf.character_sums`, shared with the elliptic twists) and the rest from the
+functional equation c_{2g−j} = q^(g−j) c_j. The tests rebuild c_1 and c_2 from the
+Dirichlet series with residue symbols computed independently, and check that every
+root has absolute value q^(−1/2).
+
+Andrade and Keating ([arXiv:1208.1131](https://arxiv.org/abs/1208.1131)) proved
+
+(1/|H|) Σ_D L(1/2, χ_D) = (P(1)/2) · (2g + 2 + (4/log q)·(P′/P)(1)) + error,
+P(s) = ∏_P (1 − 1/((|P| + 1)|P|^s)),
+
+with a relative error of size |D|^(−1/4 + log_q(2)/2), and Florea
+([arXiv:1505.03094](https://arxiv.org/abs/1505.03094)) found a secondary term of
+relative size about g·q^(−(4g+2)/3) behind it. Both assume q ≡ 1 (mod 4); the
+formula fits q = 3 and 7 just as well. The exact averages over every curve:
+
+| q | g | curves | mean of L(1/2, χ_D) | Andrade-Keating | difference | diagonal only |
+|---|---|---|---|---|---|---|
+| 3 | 2 | 162 | 2.765432 | 2.773533 | −8.1e−3 | 2.753086 |
+| 3 | 3 | 1,458 | 3.511660 | 3.507734 | +3.9e−3 | 3.500686 |
+| 3 | 4 | 13,122 | 4.241223 | 4.241935 | −7.1e−4 | 4.237718 |
+| 3 | 5 | 118,098 | 4.976251 | 4.976135 | +1.2e−4 | 4.975032 |
+| 3 | 6 | 1,062,882 | 5.710384 | 5.710336 | +4.8e−5 | 5.709681 |
+| 5 | 2 | 2,500 | 2.838400 | 2.838746 | −3.5e−4 | 2.833600 |
+| 5 | 3 | 62,500 | 3.667712 | 3.667440 | +2.7e−4 | 3.666688 |
+| 5 | 4 | 1,562,500 | 4.496110 | 4.496134 | −2.5e−5 | 4.495729 |
+| 7 | 3 | 705,894 | 3.750206 | 3.750163 | +4.3e−5 | 3.750002 |
+
+At genus 6 over F_3 the formula is right to 5·10⁻⁵ on a mean of 5.71. The proven
+error bound is no help there: for q = 3 the exponent −1/4 + log_3(2)/2 is positive.
+The difference changes sign from one genus to the next up to g = 5. I have not
+evaluated Florea's constant, so the chart shows only sizes. "Diagonal only" is the
+same finite recipe as for the elliptic twists: the AFE truncated at degree g with
+exact coprimality counts and nothing off the diagonal. It is below the true mean in
+every case and further from it than the asymptotic formula. At genus 1 the mean is
+exactly 2 for every q: c_1 = Σ_a χ(D(a)) averages to zero by translating and
+rescaling D.
+
+For fixed g and q → ∞ the curves equidistribute in USp(2g), and the Keating-Snaith
+moments are E det(I − A)^k = 2^(2gk) ∏_{j=1}^g Γ(1+g+j)Γ(1/2+k+j) / (Γ(1/2+j)Γ(1+k+g+j))
+(2 and 5 for USp(2), tested against a Monte Carlo of USp(4)). At genus 2 the ratios
+of the first three moments climb to 0.976, 0.944 and 0.905 at q = 13, and at genus 1
+they are 1, 1, 1 to three digits by q = 31. At fixed q the ratios fall as g grows
+(0.82, 0.56 and 0.31 at q = 3, g = 6). That is the arithmetic factor random matrices
+do not see: for k = 1 the USp(2g) moment is g + 1 and the Andrade-Keating mean is
+about P(1)(g + 1), so the ratio should settle at P(1) = 0.734 for q = 3. The lowest eigenangle over F_13 at genus 2 has mean 0.953 against 0.969 for
+USp(4). Its histogram is jagged because the L-polynomials take few values (a
+lattice of (c_1, c_2) pairs), which also makes a KS distance against the continuous
+law meaningless here. At genus 1 over F_47 the most common value of c_1 is shared by
+10.6% of the curves, so the KS distance cannot go below half of that, and it sits at
+0.054.
 
 ### Chebyshev's bias
 
