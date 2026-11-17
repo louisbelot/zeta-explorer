@@ -16,6 +16,8 @@ from zeta_explorer.li import li_trend
 from zeta_explorer.lowlying import OneLevel, w_symplectic
 from zeta_explorer.moments import EULER_GAMMA, polynomial_integral
 from zeta_explorer.plot import (
+    SERIES,
+    SURFACE,
     heat_flow_animation,
     phase_colors,
     plot_afe,
@@ -36,6 +38,7 @@ from zeta_explorer.plot import (
     plot_funcfield,
     plot_gram,
     plot_heat_flow,
+    plot_hyperelliptic,
     plot_jensen,
     plot_l_z,
     plot_l_zeros,
@@ -55,12 +58,12 @@ from zeta_explorer.plot import (
     plot_rank_two,
     plot_rs_error,
     plot_selmer,
-    plot_twist_moments,
     plot_skewes,
     plot_spacing,
     plot_spiral,
     plot_sympower,
     plot_twist_density,
+    plot_twist_moments,
     plot_twist_zeros,
     plot_z,
     sweep_sigma,
@@ -501,3 +504,17 @@ def test_plot_twist_moments_panels(tmp_path):
     assert len(fig.axes[0].lines) == 5
     assert fig.axes[0].lines[1].get_ydata()[2] == pytest.approx(0.4 / 9)
     assert fig.axes[1].lines[1].get_ydata().tolist() == [0.6, 0.8, 0.9]
+
+
+def test_plot_hyperelliptic_panels(tmp_path):
+    gaps = {3: ([2, 3, 4], [-8e-3, 4e-3, -7e-4]), 5: ([2, 3], [-3e-4, 3e-4])}
+    ratios = {1: ([3, 5], [2], np.array([[0.95], [0.98]])),
+              2: ([3, 5, 7], [1, 2], np.array([[0.9, 0.8], [0.95, 0.85], [0.96, 0.9]]))}
+    rng = np.random.default_rng(0)
+    fig = plot_hyperelliptic(gaps, ratios, rng.uniform(0, 2, 500), rng.uniform(0, 2, 500), "data")
+    fig.savefig(tmp_path / "hyperelliptic.png")
+    assert len(fig.axes[0].lines) == 8
+    assert fig.axes[0].lines[1].get_markerfacecolor() == SURFACE
+    assert fig.axes[0].lines[2].get_markerfacecolor() == SERIES
+    labels = [t.get_text() for t in fig.axes[1].get_legend().get_texts()]
+    assert labels == ["g = 1, k = 2", "g = 2, k = 1", "g = 2, k = 2"]

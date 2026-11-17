@@ -2179,3 +2179,47 @@ def plot_twist_moments(gaps: dict[int, tuple[list[int], list[float]]], qs: Array
         _style(ax)
     fig.tight_layout()
     return fig
+
+
+def plot_hyperelliptic(gaps: dict[int, tuple[list[int], list[float]]],
+                       ratios: dict[int, tuple[list[int], list[int], np.ndarray]],
+                       first: ArrayLike, usp: ArrayLike, label: str) -> Figure:
+    import matplotlib.pyplot as plt
+
+    fig, (left, mid, right) = plt.subplots(1, 3, figsize=(15, 4.6), facecolor=SURFACE)
+    for (q, (gs, g)), color in zip(sorted(gaps.items()), (SERIES, ACCENT, ORDINAL[4]),
+                                   strict=False):
+        g = np.asarray(g)
+        left.semilogy(gs, np.abs(g), "-", color=color, linewidth=1.3, label=f"q = {q}")
+        for x, y in zip(gs, g, strict=True):
+            left.semilogy(x, abs(y), "o", color=color, markersize=7,
+                          markerfacecolor=color if y > 0 else SURFACE)
+    left.plot([], [], "o", color=INK_SECONDARY, markerfacecolor=SURFACE,
+              label="open: mean below the formula")
+    left.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    left.set_xlabel("genus g", color=INK)
+    left.set_ylabel("|mean − Andrade-Keating|", color=INK)
+    left.set_title("First moment of L(1/2, χ_D)", color=INK, fontsize=12, loc="left")
+    left.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="upper right")
+    for (g, (qs, ks, r)), style in zip(sorted(ratios.items()), ("--", "-"), strict=False):
+        for i, k in enumerate(ks):
+            mid.plot(qs, r[:, i], "o" + style, color=ORDINAL[k + 1], markersize=4,
+                     linewidth=1.3, label=f"g = {g}, k = {k}")
+    mid.axhline(1, color=INK_SECONDARY, linestyle=":", linewidth=1.2)
+    mid.set_xlabel("q", color=INK)
+    mid.set_ylabel("moment / Haar USp(2g)", color=INK)
+    mid.set_title("Moments against Keating-Snaith", color=INK, fontsize=12, loc="left")
+    mid.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="lower right", ncol=2)
+    edges = np.linspace(0, np.pi, 31)
+    right.hist(first, bins=edges, density=True, color=SERIES, alpha=0.75, label=label)
+    right.hist(usp, bins=edges, density=True, histtype="step", color=ACCENT, linewidth=1.6,
+               label="lowest angle, Haar USp(2g)")
+    right.set_xlabel("θ₁", color=INK)
+    right.set_ylabel("density", color=INK)
+    right.set_title("Lowest eigenangle", color=INK, fontsize=12, loc="left")
+    right.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="upper right")
+    for ax in (left, mid, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig
