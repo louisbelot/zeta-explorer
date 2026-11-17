@@ -236,6 +236,14 @@ class GF:
     def frobenius(self, a) -> np.ndarray:
         return self.power(a, self.p)
 
+    def degrees(self, a) -> np.ndarray:
+        a = np.asarray(a)
+        s, size = a, np.zeros(a.shape, dtype=np.int64)
+        for k in range(1, self.m + 1):
+            s = self.frobenius(s)
+            size[(size == 0) & (s == a)] = k
+        return size
+
     def polyval(self, c: Poly, t) -> np.ndarray:
         t = np.asarray(t)
         acc = np.zeros((*t.shape, self.m), dtype=np.int64)

@@ -167,3 +167,10 @@ def test_rejects_even_and_composite():
         GF(2, 3)
     with pytest.raises(ValueError):
         GF(9, 1)
+
+
+def test_degrees_count_elements_of_each_degree(F):
+    size = F.degrees(np.arange(F.q))
+    for d in range(1, F.m + 1):
+        want = sum(_mobius(d // e) * F.p**e for e in range(1, d + 1) if d % e == 0)
+        assert np.sum(size == d) == (want if F.m % d == 0 else 0)

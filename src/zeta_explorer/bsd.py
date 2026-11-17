@@ -190,12 +190,8 @@ def selmer_rank(e: Roots, p: int) -> int:
 def point_counts(D: Poly, p: int, m: int) -> np.ndarray:
     F = field(p, m)
     t = F.orbits[0]
-    s, size = t, np.zeros(len(t), dtype=np.int64)
-    for k in range(1, m + 1):
-        s = F.frobenius(s)
-        size[(size == 0) & (s == t)] = k
     x = F.polyval(D, t)
-    good = (size == m) & (x != 0) & (t != 0) & (F.polyval((p - 1, 1), t) != 0)
+    good = (F.degrees(t) == m) & (x != 0) & (t != 0) & (F.polyval((p - 1, 1), t) != 0)
     a = traces(legendre(p), m)[t[good]]
     return F.q + 1 - F.chi[x[good]].astype(np.int64) * a
 
