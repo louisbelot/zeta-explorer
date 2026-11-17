@@ -2240,8 +2240,8 @@ formula fits q = 3 and 7 just as well. The exact averages over every curve:
 
 At genus 6 over F_3 the formula is right to 5·10⁻⁵ on a mean of 5.71. The proven
 error bound is no help there: for q = 3 the exponent −1/4 + log_3(2)/2 is positive.
-The difference changes sign from one genus to the next up to g = 5. I have not
-evaluated Florea's constant, so the chart shows only sizes. "Diagonal only" is the
+The sign of the difference follows g mod 3, which the next section traces to
+genus 10 against Florea's constant. "Diagonal only" is the
 same finite recipe as for the elliptic twists: the AFE truncated at degree g with
 exact coprimality counts and nothing off the diagonal. It is below the true mean in
 every case and further from it than the asymptotic formula. At genus 1 the mean is
@@ -2261,6 +2261,104 @@ lattice of (c_1, c_2) pairs), which also makes a KS distance against the continu
 law meaningless here. At genus 1 over F_47 the most common value of c_1 is shared by
 10.6% of the curves, so the KS distance cannot go below half of that, and it sits at
 0.054.
+
+### Florea's moments and the term behind Andrade-Keating
+
+![Normalized first-moment residual by genus against Florea's R(2g + 1), the second and third moments against the recipe, and the recipe against Keating-Snaith](docs/florea.png)
+
+Brute force over every curve stops at genus 6 over F_3 and genus 4 over F_5.
+`hypermoments.dual_coefficients` gets the same first moment much further by
+swapping the order of summation. The coefficient sums T_j = Σ_D c_j(D) are
+Σ_{deg f = j} Σ_{D ∈ H} χ_D(f), and for fixed f the inner sum is a coefficient of
+the rational function
+
+Σ_{D squarefree} ψ_f(D) u^deg D = L(u, ψ_f) / L(u², ψ_f²),  ψ_f(D) = (D/f).
+
+Writing f = f₀h² with f₀ squarefree, this is L(u, ψ_{f₀})·(1 − qu²) divided by
+∏_{P | f₀}(1 − u^(2 deg P)) and by ∏_{P | h, P ∤ f₀}(1 + ψ_{f₀}(P) u^(deg P)).
+By reciprocity L(u, ψ_{f₀}) is the L-polynomial of y² = f₀(x) with u replaced by
+±u, so the whole first moment at genus g needs L-polynomials of squarefree f₀ of
+degree at most g instead of 2g + 1. The squarefree f₀ come with their
+factorizations from a depth-first product over irreducibles, which are built as
+minimal polynomials of field elements. Genus 9 over F_5 (1.5·10¹³ curves) takes
+46 seconds and genus 10 about five minutes. The tests check T_j against the brute
+force column sums and the means against every curve, to 13 digits.
+
+Florea ([arXiv:1505.03094](https://arxiv.org/abs/1505.03094), Theorem 1.1) proves
+that behind the Andrade-Keating main term sits q^((2g+1)/3)·R(2g + 1) with R linear,
+given in her (6.13). `hypermoments.florea_R` evaluates it. The table and the left
+panel show N = (mean − Andrade-Keating)·|H|/q^((2g+1)/3):
+
+| g | q = 5: mean | difference | N | R(2g + 1) | q = 13: N | R(2g + 1) |
+|---|---|---|---|---|---|---|
+| 2 | 2.838400 | −3.5e−4 | −0.059 | 0.007 | +0.069 | 0.011 |
+| 3 | 3.667712 | +2.7e−4 | +0.398 | 0.013 | +0.187 | 0.017 |
+| 4 | 4.496110 | −2.5e−5 | −0.307 | 0.019 | −0.232 | 0.023 |
+| 5 | 5.324829 | +1.1e−6 | +0.117 | 0.026 | +0.143 | 0.028 |
+| 6 | 6.153523 | +4.6e−7 | +0.421 | 0.032 | +0.257 | 0.034 |
+| 7 | 6.982217 | −6.6e−8 | −0.517 | 0.038 | | |
+| 8 | 7.810911 | +2.5e−9 | +0.167 | 0.045 | | |
+| 9 | 8.639605 | +1.1e−9 | +0.606 | 0.051 | | |
+| 10 | 9.468299 | −1.2e−10 | −0.593 | 0.057 | | |
+
+The size is right. Over eight genera the difference falls by six orders of
+magnitude and N stays between −0.6 and 0.6, so the term really is of order
+q^((2g+1)/3), and the error O(q^(g/2)) has not swamped it. The shape is not. N
+follows g mod 3: negative and growing for g ≡ 1, positive for g ≡ 0, small for
+g ≡ 2, and R is ten times smaller than N in most rows. Over F_17 (g = 2 to 5) and
+over F_3 (g = 2 to 13, outside Florea's q ≡ 1 mod 4) the same three-step pattern
+appears. Averaged over three consecutive genera, N is 0.011, 0.007 and 0.060 for
+g = 2..4, 5..7 and 8..10 over F_5, against R = 0.013, 0.032 and 0.051 at the
+middle genus.
+
+The paper shows where a period of 3 could come from. In (6.11) the residue is taken
+at the double pole z = q^(−4/3) of an integrand with the factor (1 − q⁴z³)² in the
+denominator, which also vanishes at the two complex cube roots ωq^(−4/3) and ω̄q^(−4/3).
+Their residues carry ω^g. I evaluated the printed integrand for S_{g−1}(V = □)
+numerically: over F_5 the two complex residues are 4.6 to 5.2 times larger than the real
+one at every genus from 4 to 9. The matching integrand for S_g is not printed, so I
+cannot add up the full correction, but missing residues at ωq^(−4/3) fit both the
+sizes and the period.
+
+A second, smaller point: in (6.13) the closed form given for
+q^(−4/3)·(d/dz) log ∏_P D_P(z, qz) at z = q^(−4/3) does not match the derivative of
+the D_P printed in Lemma 6.3 (by a factor of 2.6 at degree 1 primes), while the
+closed form for ∏_P D_P(q^(−4/3), q^(−1/3)) matches it exactly. Using the derivative
+of D_P changes R by about 5% (`euler_dlog`), which does not affect the comparison.
+
+For the higher moments, `hypermoments.recipe` evaluates the CFKRS recipe of
+Andrade and Keating ([arXiv:1302.3249](https://arxiv.org/abs/1302.3249)) for
+Σ_D L(1/2, χ_D)^k. The shifted moment is a sum over 2^k sign patterns of
+q^(−2g·Σ flipped α) times an Euler product with factors
+1 + (|P|/(|P| + 1))·((∏(1 − x_i)⁻¹ + ∏(1 + x_i)⁻¹)/2 − 1), x_i = |P|^(−1/2−α_i),
+from which ∏_{i≤j} ζ_A(1 + α_i + α_j) is pulled out so the rest converges. The sum
+is analytic at α = 0 while each term has a pole there, so the value at 0 is the mean
+over a small circle α = t·(1, 2, ..., k), computed at 60 digits. The tests check that
+k = 1 gives the Andrade-Keating formula to 12 digits, that the k = 2 and 3 values
+are polynomials in g of degree 3 and 6, and that the leading order is the arithmetic
+factor times the Keating-Snaith USp(2g) moment (right panel; the ratio is
+1 + O(1/g)).
+
+Florea ([arXiv:1507.02640](https://arxiv.org/abs/1507.02640)) proves the second
+moment with error O(q^(g(1+ε))) and the third with O(q^(3g/2(1+ε))), and her
+second moment agrees with this recipe. Exact averages over every curve:
+
+| q | g | curves | mean L² | recipe | ratio − 1 | mean L³ | recipe | ratio − 1 |
+|---|---|---|---|---|---|---|---|---|
+| 3 | 4 | 13,122 | 35.4993 | 35.5143 | −4.2e−4 | 427.966 | 428.291 | −7.6e−4 |
+| 3 | 5 | 118,098 | 54.5012 | 54.4994 | +3.3e−5 | 914.284 | 914.206 | +8.6e−5 |
+| 3 | 6 | 1,062,882 | 79.0198 | 79.0190 | +1.0e−5 | 1770.145 | 1770.109 | +2.0e−5 |
+| 5 | 3 | 62,500 | 23.9304 | 23.9295 | +3.8e−5 | 215.487 | 215.499 | −5.4e−5 |
+| 5 | 4 | 1,562,500 | 41.1481 | 41.1488 | −1.8e−5 | 564.268 | 564.282 | −2.5e−5 |
+| 7 | 3 | 705,894 | 25.3314 | 25.3314 | −7.6e−7 | 239.651 | 239.655 | −1.6e−5 |
+| 13 | 2 | 342,732 | 13.2148 | 13.2147 | +8.2e−6 | 76.0384 | 76.0384 | −2.8e−7 |
+
+The third moment agrees with the full recipe polynomial, lower-order terms
+included, to 2·10⁻⁵ at genus 6 over F_3. Diaconu
+([arXiv:1801.00486](https://arxiv.org/abs/1801.00486)) proves a secondary term of
+size q^(3(2g+1)/4) in the cubic moment, relative size q^(−(2g+1)/4), which is
+0.03 at genus 6 over F_3 before its constant; these genera are too small to
+separate it from the rest of the error.
 
 ### Chebyshev's bias
 
