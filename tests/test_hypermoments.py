@@ -4,15 +4,17 @@ import numpy as np
 import pytest
 
 from zeta_explorer.gf import factor, monics, squarefree
-from zeta_explorer.hyperelliptic import irreducible_counts, lpolys
+from zeta_explorer.hyperelliptic import andrade_keating, irreducible_counts, lpolys, usp_moment
 from zeta_explorer.hypermoments import (
     _symbol,
+    arithmetic_factor,
     dual_coefficients,
     dual_mean,
     florea_D,
     florea_R,
     irreducibles,
     lpoly,
+    recipe,
     squarefrees,
     squares,
 )
@@ -86,3 +88,33 @@ def test_florea_R_is_linear():
     assert np.diff(r, 2) == pytest.approx([0, 0], abs=1e-14)
     with pytest.raises(ValueError):
         florea_R(3, 5)
+
+
+def test_recipe_first_moment_is_andrade_keating():
+    for q in (3, 5):
+        gs = [2, 5, 10]
+        for got, g in zip(recipe(q, gs, 1), gs, strict=True):
+            assert got == pytest.approx(andrade_keating(q, g), rel=1e-12)
+
+
+@pytest.mark.parametrize("k", [2, 3])
+def test_recipe_is_a_polynomial_in_g(k):
+    m = k * (k + 1) // 2
+    vals = recipe(5, list(range(2, m + 4)), k)
+    assert abs(np.diff(vals, m + 1)).max() < 1e-9 * max(vals)
+    assert abs(np.diff(vals, m)).min() > 1e-3
+
+
+def test_recipe_leading_term_is_keating_snaith():
+    a = arithmetic_factor(3, 2)
+    gaps = [abs(r / (a * usp_moment(g, 2)) - 1) for r, g in zip(recipe(3, [200, 800], 2),
+                                                             [200, 800], strict=True)]
+    assert gaps[1] < 0.01 and gaps[0] / gaps[1] == pytest.approx(4, rel=0.05)
+
+
+def test_second_moment_against_recipe():
+    gaps = []
+    for g in (3, 4):
+        c = lpolys(3, g).central
+        gaps.append(abs(np.mean(c**2) / recipe(3, [g], 2)[0] - 1))
+    assert gaps[1] < gaps[0] < 2e-3

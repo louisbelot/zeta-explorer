@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import math
 from collections import defaultdict
 from collections.abc import Iterator
@@ -202,3 +203,56 @@ def florea_R(q: int, x: float, dlog: float | None = None) -> float:
 def florea_secondary(q: int, g: int, dlog: float | None = None) -> float:
     n = 2 * g + 1
     return q ** (n / 3) * florea_R(q, n, dlog) / (q**n - q ** (n - 1))
+
+
+def _depth(q: int) -> int:
+    return int(25 / math.log10(q))
+
+
+def _arithmetic(q: int, beta: list, pi: list[int]):
+    out = mp.mpf(0)
+    k = len(beta)
+    for d in range(1, len(pi)):
+        P = mp.mpf(q) ** d
+        x = [P ** (-mp.mpf(1) / 2 - b) for b in beta]
+        plus = minus = mp.mpf(1)
+        for xi in x:
+            plus /= 1 - xi
+            minus /= 1 + xi
+        loc = 1 + P / (P + 1) * ((plus + minus) / 2 - 1)
+        for i in range(k):
+            for j in range(i, k):
+                loc *= 1 - P ** (-1 - beta[i] - beta[j])
+        out += pi[d] * mp.log(loc)
+    return out
+
+
+def _A(q: int, beta: list, pi: list[int]):
+    L = mp.log(q)
+    zeta = mp.mpf(1)
+    for i in range(len(beta)):
+        for j in range(i, len(beta)):
+            zeta /= 1 - mp.exp(-(beta[i] + beta[j]) * L)
+    return zeta * mp.exp(_arithmetic(q, beta, pi))
+
+
+def arithmetic_factor(q: int, k: int) -> float:
+    with mp.workdps(30):
+        return float(mp.exp(_arithmetic(q, [mp.mpf(0)] * k, irreducible_counts(q, _depth(q)))))
+
+
+def recipe(q: int, gs: list[int], k: int, points: int = 32) -> list[float]:
+    with mp.workdps(60):
+        L = mp.log(q)
+        pi = irreducible_counts(q, _depth(q))
+        v = [mp.mpf(i + 1) for i in range(k)]
+        r = mp.mpf(1) / (40 * L * k * max(max(gs), 1))
+        acc = [mp.mpc(0)] * len(gs)
+        for m in range(points):
+            alpha = [r * mp.expjpi(2 * mp.mpf(m) / points) * vi for vi in v]
+            for eps in itertools.product((1, -1), repeat=k):
+                A = _A(q, [e * a for e, a in zip(eps, alpha, strict=True)], pi)
+                flip = sum(a for e, a in zip(eps, alpha, strict=True) if e < 0)
+                for i, g in enumerate(gs):
+                    acc[i] += A * mp.exp(-2 * g * L * flip)
+        return [float(mp.re(a) / points) for a in acc]
