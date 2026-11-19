@@ -266,6 +266,23 @@ def field(p: int, m: int) -> GF:
     return GF(p, m)
 
 
+def minimal_polys(q: int, d: int) -> tuple[np.ndarray, list[Poly]]:
+    F = field(q, d)
+    reps, inv = F.orbits
+    alpha = reps[np.bincount(inv) == d]
+    c = np.zeros((len(alpha), d + 1), dtype=np.int64)
+    c[:, 0] = 1
+    beta = alpha
+    for _ in range(d):
+        shifted = np.zeros_like(c)
+        shifted[:, 1:] = c[:, :-1]
+        c = F.add(shifted, F.neg(F.mul(c, beta[:, None])))
+        beta = F.frobenius(beta)
+    if np.any(c >= q):
+        raise ArithmeticError("minimal polynomial outside the prime field")
+    return alpha, [tuple(int(x) for x in row) for row in c]
+
+
 def cubic_sums(F: GF, A, B, C) -> np.ndarray:
     A, B, C = (np.atleast_1d(np.asarray(v, dtype=np.int64)) for v in (A, B, C))
     x = np.arange(F.q)

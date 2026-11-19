@@ -9,26 +9,20 @@ import mpmath as mp
 import numpy as np
 
 from zeta_explorer.funcfield import _newton
-from zeta_explorer.gf import Poly, character_sums, field, pdivmod, pmul, ppowmod
+from zeta_explorer.gf import (
+    Poly,
+    character_sums,
+    field,
+    minimal_polys,
+    pdivmod,
+    pmul,
+    ppowmod,
+)
 from zeta_explorer.hyperelliptic import irreducible_counts
 
 
 def irreducibles(q: int, d: int) -> list[Poly]:
-    F = field(q, d)
-    reps, inv = F.orbits
-    alpha = reps[np.bincount(inv) == d]
-    c = np.zeros((len(alpha), d + 1), dtype=np.int64)
-    c[:, 0] = 1
-    beta = alpha
-    for _ in range(d):
-        shifted = np.zeros_like(c)
-        shifted[:, 1:] = c[:, :-1]
-        c = F.add(shifted, F.neg(F.mul(c, beta[:, None])))
-        beta = F.frobenius(beta)
-    if np.any(c >= q):
-        raise ArithmeticError("minimal polynomial outside the prime field")
-    out = [tuple(int(x) for x in row) for row in c]
-    return sorted(out, key=lambda P: P[::-1])
+    return sorted(minimal_polys(q, d)[1], key=lambda P: P[::-1])
 
 
 def squarefrees(q: int, n: int) -> Iterator[tuple[Poly, tuple[int, ...]]]:
