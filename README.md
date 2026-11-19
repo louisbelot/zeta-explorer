@@ -2360,6 +2360,93 @@ size q^(3(2g+1)/4) in the cubic moment, relative size q^(−(2g+1)/4), which is
 0.03 at genus 6 over F_3 before its constant; these genera are too small to
 separate it from the rest of the error.
 
+### Low-lying zeros of the twists, with the lower-order terms
+
+![Family means of Tr Θⁿ for the Legendre twists of degree 6 over F_3 against SO(12), O⁻(12) and the Meisner-Södergren limit, the distance to that limit as deg D grows, and the scaled one-level density against the deviation term](docs/onelevel.png)
+
+The one-level density of a family is a linear combination of the family means of
+Tr Θⁿ, where Θ is the unitarized Frobenius of L(E_D, u) = det(1 − quΘ). Katz-Sarnak
+says those means tend to the orthogonal value η₂(n) (1 for even n, 0 for odd).
+Meisner and Södergren ([arXiv:2110.00102](https://arxiv.org/abs/2110.00102),
+Theorem 1.3) give the next terms for the quadratic twists of a fixed E over F_q(t):
+
+⟨Tr Θⁿ⟩ = η₂(n)·(1 + Tr Θ^(n/2)_{sym² E} / q^(n/4) + 𝒟(n) / q^(n/2)) + error,
+
+where 𝒟(n) collects 1/(|P| + 1) corrections from squarefree D avoiding P and the
+places of bad reduction. This refines Comeau-Lapointe
+([arXiv:2012.09947](https://arxiv.org/abs/2012.09947)). `onelevel.py` computes the
+family mean exactly, with no enumeration of D, and checks the theorem against it.
+
+The exact mean comes from writing the trace of each twist point by point:
+a_x(E_D) = χ(D(x))·a_x(E) over F_{q^n}. For a place P of degree d, k = n/d, the
+average of χ_D(P)^k over squarefree monic D of degree N coprime to Δ is a
+coefficient of a rational function. If k is even it is the share of D prime to P,
+from (1 − qu²)/(1 − qu) divided by (1 + u^d) and the bad places. If k is odd it is
+Σ_D (D/P), from L(u, (·/P))·(1 − qu²)/(1 − u^(2d)) with the same divisions twisted
+by (Q/P), and the L-polynomial comes from `hypermoments.lpoly`. Splitting by the
+root number multiplies in (D/M), M the multiplicative places. So the mean at
+degree N costs one pass over the places of degree up to n, and N = 20 takes 0.1 s.
+The tests check it against `family` (every twist, L-polynomials from point counts)
+as exact fractions over F_3 and F_5 and for a second curve, both for the full family
+and for each root number. Over F_3 the character (D/M) equals the root number for
+every N from 1 to 7. Over F_5 they differ by (−1)^N.
+
+The sym² term needs L(u, sym² E) over F_q(t). Its local factors at good places are
+(1 − α²u)(1 − qu)(1 − β²u), so a_x(sym²) = a_x² − q^m, and at a place of
+potentially multiplicative reduction (I_n or I_n*) sym² is unipotent with a
+one-dimensional invariant line on which Frobenius acts by 1. Grothendieck-Ogg-Shafarevich
+then gives degree 2·(number of bad places) − 6. For the Legendre curve (I_2, I_2,
+I_2*) that is 0, and indeed the point counts give L(u, sym² E) = 1: Σ_x a_x(sym²)
+vanishes over F_{3^m}, F_{5^m}, F_{7^m} for m = 1 to 5. For y² = x(x − 1)(x − t²)
+over F_3 it is 1 + 4u + 27u², and for y² = x(x − 1)(x − t³) over F_5 it is
+1 − 74u² + 15625u⁴, both with roots on |u| = q^(−3/2) and power sums from Newton's
+identities matching the point counts past the degree.
+
+Letting N → ∞ in the exact formula leaves the diagonal with weights |P|/(|P| + 1),
+and `ms_traces` writes the same number in Meisner and Södergren's form with the sym²
+L-polynomial. They agree as exact fractions once one term is added for the place at
+infinity, which the theorem does not have: (a_∞(sym²) − a_∞(E_D, q^n))/q^n. Over
+F_3 the limit for the Legendre family is far from the orthogonal value at small n:
+
+| n | 2 | 4 | 6 | 8 | 10 | 12 |
+|---|---|---|---|---|---|---|
+| limit | 0.2778 | 0.7420 | 0.8782 | 0.9722 | 0.9857 | 0.9968 |
+| degree 6, root number +1 | 0.2774 | 0.8885 | 0.9488 | 1.3204 | 1.7252 | −3.0746 |
+| degree 6, root number −1 | 0.2705 | 0.6541 | 0.7384 | 0.6272 | 1.2656 | 3.3260 |
+
+At n = 2 the limit is exactly 5/18. The middle panel shows the exact mean reaching
+it: at n = 2 the gap falls from 0.46 at deg D = 2 to 1.7e−12 at deg D = 30, a factor
+of about 7.6 for every two degrees, or q^(−0.90N) from deg D = 14 on. Meisner and Södergren's error
+term is q^(n/2)/q^((1−ε)N), and the curves for larger n do sit higher. At deg D = 6
+(L of degree 12) that error is already 1/3 at n = 10, and the table shows it.
+At n = 12 = deg L the family leaves the ensembles altogether: −3.07 and 3.33 against
+0 for SO(12) and 2 for O⁻(12).
+
+Over F_3 the odd-n means are exactly zero whenever deg D is even, and over F_5 they
+are not. The reason is a symmetry of the Legendre curve: t ↦ 1 − t turns it into its
+twist by −1, so D(t) ↦ D(1 − t) maps the family to itself and multiplies Tr Θⁿ by
+χ(−1)ⁿ, which is −1 for odd n when q ≡ 3 mod 4.
+
+The one-level density for an even f with f̂ supported in (−σ, σ) is
+f̂(0) + (2/deg L)·Σ_n f̂(n/deg L)·Tr Θⁿ, and Meisner and Södergren's Corollary 1.5
+says it differs from the orthogonal integral by dev_E(f)/N + O(N^(−2+ε)). With the
+exact means, dev_E(f) = f̂(0)·Σ_n (limit_n − η₂(n)), which is −1.150 over F_3 and
+−0.626 over F_5. The right panel uses the Fejér f̂(u) = (1 − 2|u|)₊ (σ = 1/2) over
+F_3:
+
+| deg D | 4 | 6 | 8 | 10 | 12 |
+|---|---|---|---|---|---|
+| deg D · (density − O integral), exact | −0.362 | −0.561 | −0.701 | −0.784 | −0.847 |
+| same with the limit traces | −0.361 | −0.567 | −0.701 | −0.787 | −0.846 |
+
+The exact values sit on the curve given by the limit traces to within 0.007. Both
+approach −1.150 slowly, because the next term is −(1/N)·Σ_n n·(limit_n − η₂(n)) = 3.65/N
+from the slope of f̂, which is not small at q = 3. The orthogonal integral uses
+∫_{O(m)} Tr Uⁿ = η₂(n). `rmt_trace` gives the four components separately:
+for SO(2m) the mean is η₂(n) up to n = 2m − 2 and 0 after, for O⁻(2m) it is 1, 2 or 0
+by the same split, and the odd sizes follow the same way from their one-point densities. A Haar Monte
+Carlo of O(6) and O(7) checks all of them.
+
 ### Chebyshev's bias
 
 ![The mod 4 prime race against 3,130 zeros of L(s, χ₋₄), and the first lead change at 26861](docs/race.png)
