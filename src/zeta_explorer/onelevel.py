@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import functools
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
 from fractions import Fraction
 
@@ -196,3 +197,23 @@ def exact_traces(E: Curve, N: int, n: int, sign: int | None = None) -> list[Frac
                          for a, t, c in zip(pl.a, pl.kind, col, strict=True))
         out.append(Fraction(-s, q**m * total))
     return out
+
+
+def limit_traces(E: Curve, N: int, n: int) -> list[Fraction]:
+    q, Einf = E.p, twisted_infinity(E, N)
+    out = []
+    for m in range(1, n + 1):
+        s = Fraction(inf_trace(Einf, m))
+        if m % 2 == 0:
+            for d in _divisors(m // 2):
+                pl, qd = places(E, d), q**d
+                for a, t in zip(pl.a, pl.kind, strict=True):
+                    w = Fraction(qd, qd + 1) if t == GOOD else 1
+                    s += d * local_trace(int(a), int(t), qd, m // d) * w
+        out.append(-s / q**m)
+    return out
+
+
+def density_gap(tr: list[Fraction], dim: int, fhat: Callable[[float], float]) -> float:
+    return 2 / dim * sum(fhat(m / dim) * (float(t) - (m % 2 == 0))
+                         for m, t in enumerate(tr, 1))
