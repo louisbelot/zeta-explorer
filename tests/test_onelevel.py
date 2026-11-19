@@ -1,3 +1,4 @@
+import itertools
 from fractions import Fraction
 
 import numpy as np
@@ -12,12 +13,17 @@ from zeta_explorer.onelevel import (
     exact_traces,
     family_traces,
     limit_traces,
+    ms_traces,
     multiplicative,
     power_sums,
     rmt_trace,
+    sym2_degree,
+    sym2_lpoly,
+    sym2_sums,
 )
 
 E2 = Curve(3, (-1, 0, -1), (0, 0, 1), ())
+E3 = Curve(5, (-1, 0, 0, -1), (0, 0, 0, 1), ())
 
 
 def test_power_sums():
@@ -100,6 +106,40 @@ def test_sign_needs_multiplicative_places():
 def test_odd_traces_cancel_when_q_is_3_mod_4():
     assert all(x == 0 for x in exact_traces(legendre(3), 4, 9)[::2])
     assert any(x != 0 for x in exact_traces(legendre(5), 4, 5)[::2])
+
+
+@pytest.mark.parametrize("q", [3, 5, 7])
+def test_legendre_sym2_is_trivial(q):
+    assert sym2_degree(legendre(q)) == 0
+    assert sym2_lpoly(legendre(q)) == (1,)
+    assert sym2_sums(legendre(q), 5) == [0] * 5
+
+
+@pytest.mark.parametrize("E, d", [(E2, 2), (E3, 4)])
+def test_sym2_riemann_hypothesis(E, d):
+    c = sym2_lpoly(E)
+    q = E.p
+    assert len(c) == d + 1
+    eps = 1 if c[d] == q ** (3 * d // 2) * c[0] else -1
+    for k in range(d // 2 + 1):
+        assert c[d - k] == eps * q ** (3 * (d - 2 * k) // 2) * c[k]
+    gamma = 1 / np.roots(np.array(c[::-1], dtype=float))
+    assert np.allclose(np.abs(gamma), q**1.5)
+
+
+@pytest.mark.parametrize("E, n", [(E2, 7), (E3, 6)])
+def test_sym2_newton_continues_past_the_degree(E, n):
+    assert power_sums(sym2_lpoly(E), n) == [-s for s in sym2_sums(E, n)]
+
+
+def test_sym2_rejects_potentially_good_fibers():
+    with pytest.raises(ValueError):
+        sym2_degree(Curve(5, (), (), (0, 1)))
+
+
+@pytest.mark.parametrize("E, N", list(itertools.product([legendre(3), E2], [3, 4])))
+def test_ms_formula_is_the_limit(E, N):
+    assert limit_traces(E, N, 8) == ms_traces(E, N, 8)
 
 
 def test_exact_converges_to_the_limit():

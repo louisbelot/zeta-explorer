@@ -8,7 +8,7 @@ from fractions import Fraction
 
 import numpy as np
 
-from zeta_explorer.funcfield import Curve, LPoly, Twist, trace_inf, traces
+from zeta_explorer.funcfield import Curve, LPoly, Twist, _newton, trace_inf, traces
 from zeta_explorer.gf import Poly, deg, field, minimal_polys, pmul, primes_dividing
 from zeta_explorer.hypermoments import _symbol, lpoly
 
@@ -211,6 +211,72 @@ def limit_traces(E: Curve, N: int, n: int) -> list[Fraction]:
                     w = Fraction(qd, qd + 1) if t == GOOD else 1
                     s += d * local_trace(int(a), int(t), qd, m // d) * w
         out.append(-s / q**m)
+    return out
+
+
+def _sym2_local(a: int, kind: int, qd: int, k: int) -> int:
+    if kind == ADD:
+        raise ValueError("potentially good additive fiber")
+    if kind == MULT:
+        return 1
+    return local_trace(a, GOOD, qd, k) ** 2 - qd**k
+
+
+def _sym2_inf(E: Curve, m: int) -> int:
+    f = E.f_inf
+    if f == 0:
+        return inf_trace(E, m) ** 2 - E.p**m
+    if f == 2 and 3 * deg(E.c4) <= deg(E.disc):
+        raise ValueError("potentially good fiber at infinity")
+    return 1
+
+
+def sym2_sums(E: Curve, n: int) -> list[int]:
+    q, out = E.p, []
+    for m in range(1, n + 1):
+        s = _sym2_inf(E, m)
+        for d in _divisors(m):
+            pl = places(E, d)
+            s += d * sum(_sym2_local(int(a), int(t), q**d, m // d)
+                         for a, t in zip(pl.a, pl.kind, strict=True))
+        out.append(s)
+    return out
+
+
+def sym2_degree(E: Curve) -> int:
+    S = primes_dividing(E.disc, E.p)
+    if len(multiplicative(E)) < len(S):
+        raise ValueError("additive fiber at a finite place")
+    _sym2_inf(E, 1)
+    bad = sum(deg(Q) for Q in S) + (E.f_inf > 0)
+    return 2 * bad - 6
+
+
+def sym2_lpoly(E: Curve) -> tuple[int, ...]:
+    d = sym2_degree(E)
+    return tuple(_newton(sym2_sums(E, d))) if d > 0 else (1,)
+
+
+def ms_traces(E: Curve, N: int, n: int) -> list[Fraction]:
+    q, Einf = E.p, twisted_infinity(E, N)
+    p2 = power_sums(sym2_lpoly(E), n // 2)
+    out = []
+    for m in range(1, n + 1):
+        if m % 2:
+            out.append(Fraction(-inf_trace(Einf, m), q**m))
+            continue
+        h = m // 2
+        D = Fraction(0)
+        for d in _divisors(h):
+            pl, qd = places(E, d), q**d
+            for a, t in zip(pl.a, pl.kind, strict=True):
+                a1 = Fraction(local_trace(int(a), int(t), qd, m // d), q**h)
+                if t == GOOD:
+                    D += d * a1 / (qd + 1)
+                else:
+                    D -= d * (a1 - Fraction(_sym2_local(int(a), int(t), qd, h // d), q**h) + 1)
+        tail = Fraction(_sym2_inf(E, h) - inf_trace(Einf, m), q**m)
+        out.append(1 + Fraction(p2[h - 1], q**m) + D / q**h + tail)
     return out
 
 
