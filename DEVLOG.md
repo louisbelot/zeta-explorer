@@ -2056,3 +2056,76 @@ Design notes:
 
 Next: the one-level density of the Legendre twists with lower-order terms checked
 against exact eigenangles, then cubic twists over F_q(t) with q ≡ 1 mod 3.
+
+## 2026-11-18: Low-lying zeros of the twists with lower-order terms
+
+Built:
+
+- `onelevel.py`. `exact_traces(E, N, n, sign)` is the exact family mean of Tr Θⁿ over
+  squarefree monic D of degree N prime to Δ, optionally restricted to (D/M) = sign
+  with M the multiplicative places. Each place P of degree d | n contributes
+  d·a_{P^k}(E) times the average of χ_D(P)^k, and that average is a coefficient of a
+  rational function: (1 − qu²)/(1 − qu) over (1 + u^d) and the bad places for even k,
+  L(u, (·/P))(1 − qu²)/(1 − u^(2d)) over the bad places twisted by (Q/P) for odd k.
+  `weights` builds both for every place of degree d at once, with the characters
+  (Q/P) read off as χ(Q(α)) at a root α.
+- `limit_traces` (the N → ∞ diagonal with weights |P|/(|P| + 1)) and `ms_traces`
+  (Meisner-Södergren, arXiv:2110.00102 Theorem 1.3, plus a term for the place at
+  infinity).
+- `sym2_sums`, `sym2_degree`, `sym2_lpoly`: L(u, sym² E) over F_q(t) from point
+  counts, for curves whose bad fibers are all I_n or I_n*.
+- `rmt_trace(dim, det, n)`: ∫ Tr Uⁿ over SO and O⁻ in even and odd dimension.
+- `density_gap`, `plot.plot_onelevel`, docs/onelevel.png.
+- `gf.minimal_polys` returns the roots together with their minimal polynomials;
+  `hypermoments.irreducibles` is now a sort of it.
+
+Checks:
+
+- `exact_traces` equals the mean over `family` (L-polynomials from point counts) as
+  exact fractions for the Legendre twists over F_3 (deg D = 3, 4), over F_5 (2, 3)
+  and for y² = x(x − 1)(x − t²) over F_3, and for each root number separately.
+- `char_sum` against brute-force sums of Legendre symbols over every squarefree D.
+- `rmt_trace` against a Haar Monte Carlo of O(6) and O(7) split by determinant.
+  This caught a wrong odd-n value for O⁻(2m) in the first version.
+- L(u, sym² E) = 1 for the Legendre curve over F_3, F_5, F_7 (point sums vanish for
+  m = 1..5), as the conductor count predicts. For λ = t² over F_3 it is
+  1 + 4u + 27u², for λ = t³ over F_5 it is 1 − 74u² + 15625u⁴: functional equation,
+  roots on |u| = q^(−3/2), and Newton power sums equal to the point counts past the
+  degree.
+- `limit_traces == ms_traces` exactly for two curves and both parities of deg D.
+
+Results:
+
+- Over F_3 the limit is 5/18, 0.742, 0.878, 0.972 at n = 2, 4, 6, 8, far from the
+  orthogonal 1 at small n. The exact mean approaches it like q^(−0.90N): at n = 2 the
+  gap is 0.46 at deg D = 2 and 1.7e−12 at deg D = 30.
+- At deg D = 6 the means at n = 8 and 10 are already off (1.32 and 1.73 for root
+  number +1), where the error term q^(n/2 − N) is 1/9 and 1/3, and at n = 12 = deg L
+  they are −3.07 and 3.33 against 0 for SO(12) and 2 for O⁻(12).
+- dev_E(f) for the Fejér f̂ = (1 − 2|u|)₊ is −1.150 over F_3 and −0.626 over F_5.
+  deg D·(density − O integral) goes −0.362, −0.561, −0.701, −0.784, −0.847 for
+  deg D = 4..12 over F_3, within 0.007 of the value from the limit traces at every
+  degree. The convergence to dev is slow because the second-order term is
+  3.65/deg D.
+- (D/M) is the root number over F_3 for every deg D from 1 to 7, and differs from it
+  by (−1)^deg D over F_5.
+- Over F_3 the odd-n means vanish exactly for even deg D: t ↦ 1 − t sends the
+  Legendre curve to its twist by −1, so D(t) ↦ D(1 − t) flips the sign of Tr Θⁿ for
+  odd n when −1 is not a square.
+
+Design notes:
+
+- The exact mean is the twist family's version of yesterday's dual sum: the
+  average over D of χ_D(P) is one coefficient of a rational function, so the
+  family never gets enumerated. The cost is set by the places of degree up to n
+  (n ≤ 12 over F_3 before the field tables get large), not by q^N.
+- Working point by point in P¹(F_{qⁿ}) rather than prime by prime keeps the
+  diagonal simple: χ(D(x)) = 1 exactly when x lies in F_{q^(n/2)}, and the trace
+  over F_{qⁿ} at such x is a_x² − 2q^(n/2) from the trace over F_{q^(n/2)}.
+- For sym², a place with potentially multiplicative reduction contributes 1 in
+  every degree, since sym² of a quadratic twist of the Tate curve is sym² of the
+  Tate curve. That single fact makes Σ_x a_x(sym²) vanish for the Legendre curve.
+
+Next: cubic twists over F_q(t) with q ≡ 1 mod 3 (cubic residue symbols on F_q[t],
+L-polynomials of y² = x³ + BD², unitary-flavoured lower-order terms from
+Meisner-Södergren's Theorem 1.7), then the BSD formula for the rank 1 odd twists.
