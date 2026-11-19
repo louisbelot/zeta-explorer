@@ -2277,3 +2277,47 @@ def plot_florea(first: dict[int, tuple[list[int], list[float], list[float]]],
         _style(ax)
     fig.tight_layout()
     return fig
+
+
+def plot_onelevel(traces: dict[int, tuple[list[float], list[int]]], limit: list[float],
+                  gaps: dict[int, tuple[list[int], list[float]]],
+                  deviation: tuple[list[int], list[float], list[float], float]) -> Figure:
+    import matplotlib.pyplot as plt
+
+    fig, (left, mid, right) = plt.subplots(1, 3, figsize=(15, 4.6), facecolor=SURFACE)
+    n = np.arange(1, len(limit) + 1)
+    for (eps, (tr, rmt)), color, dx in zip(sorted(traces.items(), reverse=True),
+                                           (SERIES, ACCENT), (-0.15, 0.15), strict=True):
+        left.plot(n + dx, rmt, "_", color=color, markersize=13, markeredgewidth=2)
+        left.plot(n + dx, tr, "o", color=color, markersize=6, label=f"root number {eps:+d}")
+    even = n % 2 == 0
+    left.plot(n[even], np.asarray(limit)[even], "x", color=INK, markersize=7,
+              markeredgewidth=1.5, label="Meisner-Södergren limit")
+    left.plot([], [], "_", color=INK_SECONDARY, markersize=13, markeredgewidth=2,
+              label="SO(12), O⁻(12)")
+    left.axhline(0, color=GRID, linewidth=1)
+    left.set_xticks(n)
+    left.set_xlabel("n", color=INK)
+    left.set_ylabel("family mean of Tr Θⁿ", color=INK)
+    left.set_title("Inside and past the support", color=INK, fontsize=12, loc="left")
+    left.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="lower left")
+    for (k, (Ns, err)), color in zip(sorted(gaps.items()), ORDINAL, strict=False):
+        mid.semilogy(Ns, err, "o-", color=color, markersize=4, linewidth=1.2, label=f"n = {k}")
+    mid.set_xlabel("deg D", color=INK)
+    mid.set_ylabel("|exact mean − limit|", color=INK)
+    mid.set_title("Convergence to the limit", color=INK, fontsize=12, loc="left")
+    mid.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right")
+    Ns, exact, diag, dev = deviation
+    right.plot(Ns, exact, "o", color=SERIES, markersize=7, label="exact")
+    right.plot(Ns, diag, "-", color=ACCENT, linewidth=1.3, label="limit traces, finite support")
+    right.axhline(dev, color=INK_SECONDARY, linestyle="--", linewidth=1.2,
+                  label=f"dev_E(f) = {dev:.3f}")
+    right.set_xlabel("deg D", color=INK)
+    right.set_ylabel("deg D · (one-level density − O integral)", color=INK)
+    right.set_title("The 1/N deviation term", color=INK, fontsize=12, loc="left")
+    right.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right")
+    for ax in (left, mid, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig

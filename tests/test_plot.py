@@ -55,6 +55,7 @@ from zeta_explorer.plot import (
     plot_multieval,
     plot_odd_effective,
     plot_odd_excision,
+    plot_onelevel,
     plot_race,
     plot_rank_two,
     plot_rs_error,
@@ -530,3 +531,14 @@ def test_plot_florea_panels(tmp_path):
     assert [line.get_marker() for line in fig.axes[0].lines[1:5]] == ["^", "o", "s", "^"]
     assert fig.axes[1].lines[2].get_markerfacecolor() == SURFACE
     assert fig.axes[2].lines[0].get_ydata().tolist() == [1.05, 1.01]
+
+
+def test_plot_onelevel_panels(tmp_path):
+    traces = {1: ([0.0, 0.28, 0.0, 0.9], [0, 1, 0, 1]), -1: ([0.0, 0.27, 0.0, 0.65], [1, 1, 1, 2])}
+    gaps = {2: ([2, 4, 6], [0.4, 2e-3, 4e-3])}
+    fig = plot_onelevel(traces, [0.0, 0.278, 0.0, 0.742], gaps,
+                        ([2, 4], [0.0, -0.36], [0.0, -0.361], -1.15))
+    fig.savefig(tmp_path / "onelevel.png")
+    assert fig.axes[0].lines[4].get_xdata().tolist() == [2, 4]
+    assert fig.axes[1].lines[0].get_ydata().tolist() == [0.4, 2e-3, 4e-3]
+    assert list(fig.axes[2].lines[2].get_ydata()) == [-1.15, -1.15]
