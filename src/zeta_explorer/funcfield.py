@@ -102,11 +102,20 @@ def ulmer(p: int, d: int) -> Curve:
 
 
 @functools.cache
+def j0_traces(p: int, m: int) -> np.ndarray:
+    F = field(p, m)
+    cubes = np.bincount(F.power(np.arange(F.q), 3), minlength=F.q)
+    return -correlate(F, F.chi.astype(np.int64), cubes)
+
+
+@functools.cache
 def traces(E: Curve, m: int) -> np.ndarray:
     F = field(E.p, m)
     if E == legendre(E.p):
         x = np.arange(F.q)
         return -correlate(F, F.chi[F.mul(x, F.add(x, F.neg(np.ones_like(x))))], F.chi)
+    if not E.a2 and not E.a4:
+        return j0_traces(E.p, m)[F.polyval(E.a6, np.arange(F.q))]
     reps, inv = F.orbits
     A, B, C = (F.polyval(a, reps) for a in (E.a2, E.a4, E.a6))
     return -cubic_sums(F, A, B, C)[inv]

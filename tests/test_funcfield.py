@@ -17,9 +17,11 @@ from zeta_explorer.funcfield import (
     lowest,
     lpoly,
     power_sums,
+    traces,
     twist_set,
     ulmer,
 )
+from zeta_explorer.gf import cubic_sums, field
 
 
 def ulmer_rank(p, d):
@@ -175,3 +177,11 @@ def test_excision_moves_the_model_toward_the_data(fam5):
 def test_compare_needs_even_degree():
     with pytest.raises(ValueError):
         compare(family(legendre(5), 1), 0.1)
+
+
+def test_j0_traces_match_cubic_sums():
+    E = Curve(7, (), (), (1, 0, 1))
+    F = field(7, 2)
+    reps, inv = F.orbits
+    generic = -cubic_sums(F, 0 * reps, 0 * reps, F.polyval(E.a6, reps))[inv]
+    assert np.array_equal(traces(E, 2), generic)
