@@ -304,18 +304,21 @@ def correlate(F: GF, g: np.ndarray, h: np.ndarray) -> np.ndarray:
     return np.rint(np.fft.ifftn(G * np.conj(H)).real).astype(np.int64).reshape(F.q)
 
 
+def evaluate(F: GF, Ds: list[Poly], x: np.ndarray) -> np.ndarray:
+    n = max(len(D) for D in Ds)
+    P = np.stack([F.power(x, j) for j in range(n)])
+    C = np.array([D + (0,) * (n - len(D)) for D in Ds], dtype=np.float64)
+    code = np.zeros((len(Ds), len(x)), dtype=np.int64)
+    for j, pw in enumerate(F.pw):
+        code += np.fmod(C @ F.dig[P, j].astype(np.float64), F.p).astype(np.int64) * pw
+    return code
+
+
 def character_sums(F: GF, Ds: list[Poly], w: np.ndarray) -> np.ndarray:
     reps = F.orbits[0]
-    P = np.stack([F.power(reps, j) for j in range(len(Ds[0]))])
-    digits = [F.dig[P, j].astype(np.float64) for j in range(F.m)]
-    C = np.array(Ds, dtype=np.float64)
     w = np.asarray(w, dtype=np.float64)
     chunk = max(1, 2**22 // len(reps))
     out = np.empty(len(Ds), dtype=np.int64)
     for i in range(0, len(Ds), chunk):
-        rows = C[i:i + chunk]
-        code = np.zeros((len(rows), len(reps)), dtype=np.int64)
-        for d, pw in zip(digits, F.pw, strict=True):
-            code += np.fmod(rows @ d, F.p).astype(np.int64) * pw
-        out[i:i + chunk] = np.rint(F.chi[code] @ w).astype(np.int64)
+        out[i:i + chunk] = np.rint(F.chi[evaluate(F, Ds[i:i + chunk], reps)] @ w).astype(np.int64)
     return out
