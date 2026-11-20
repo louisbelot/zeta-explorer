@@ -6,6 +6,7 @@ from zeta_explorer.cubictwist import (
     cubefree,
     cubic_sums,
     cubic_twist,
+    exact_traces,
     family_size,
     mean_traces,
     orthogonal_family,
@@ -91,11 +92,41 @@ def test_unitary_family_is_a_polynomial_on_the_circle():
         assert logderiv(list(t.c), M + 1)[M] == s
 
 
+@pytest.mark.parametrize("N", [2, 3])
+@pytest.mark.parametrize("E", [IRR, SPLIT])
+def test_exact_traces_orthogonal(N, E):
+    Ds = cubefree(P7, N, E.disc)
+    brute = mean_traces([list(cubic_sums(E, Ds, m)) for m in range(1, 5)], P7)
+    assert exact_traces(E, N, 4) == brute
+
+
+@pytest.mark.parametrize("N", [2, 3])
+def test_exact_traces_unitary(N):
+    E = legendre(P7)
+    Ds = cubefree(P7, N, E.disc)
+    brute = mean_traces([unitary_sums(E, Ds, m) for m in range(1, 5)], P7)
+    assert exact_traces(E, N, 4) == brute
+
+
 def test_both_twists_of_a_j0_curve_share_means():
     Ds = cubefree(P7, 2, SPLIT.disc)
     a = mean_traces([list(cubic_sums(SPLIT, Ds, m)) for m in range(1, 5)], P7)
     b = mean_traces([unitary_sums(SPLIT, Ds, m) for m in range(1, 5)], P7)
     assert a == b
+
+
+def test_scaling_kills_means_for_linear_B():
+    E = Curve(P7, (), (), (0, 1))
+    assert all(x == 0 for x in exact_traces(E, 3, 4))
+    Ds = cubefree(P7, 2, E.disc)
+    assert all(x == 0 for x in mean_traces([list(cubic_sums(E, Ds, m)) for m in (1, 2)], P7))
+
+
+def test_diagonal_is_most_of_the_mean_at_large_N():
+    full = exact_traces(SPLIT, 8, 3)
+    diag = exact_traces(SPLIT, 8, 3, offdiagonal=False)
+    assert diag[0] == diag[1] == 0
+    assert all(abs(float(f - g)) < 2e-3 for f, g in zip(full, diag, strict=True))
 
 
 def test_cubic_twist_needs_j0():

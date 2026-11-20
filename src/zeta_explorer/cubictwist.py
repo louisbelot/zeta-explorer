@@ -7,7 +7,7 @@ from fractions import Fraction
 
 import numpy as np
 
-from zeta_explorer.cubic import OMEGA, Eis, char_sums, logderiv, newton
+from zeta_explorer.cubic import OMEGA, Eis, char_sums, index, logderiv, lpolys, newton
 from zeta_explorer.funcfield import (
     Curve,
     Twist,
@@ -26,6 +26,7 @@ from zeta_explorer.gf import (
     primes_dividing,
 )
 from zeta_explorer.hyperelliptic import irreducible_counts
+from zeta_explorer.onelevel import ADD, inf_trace, local_trace, places
 
 
 def _squarefree(p: int, N: int, primes: list[Poly]) -> dict[int, list[tuple[Poly, frozenset]]]:
@@ -112,6 +113,49 @@ def family_size(E: Curve, N: int) -> int:
     return weight(E.p, N, 0, None, [(deg(R), 0) for R in _bad(E)])
 
 
+@functools.cache
+def _principal(E: Curve, N: int, d: int, P_bad: bool) -> int:
+    if P_bad:
+        return family_size(E, N)
+    return weight(E.p, N, d, None, [(deg(R), 0) for R in _bad(E)])
+
+
+@functools.cache
+def _character_weights(E: Curve, N: int, d: int) -> list[int]:
+    q, pl = E.p, places(E, d)
+    F = field(q, d)
+    alpha = minimal_polys(q, d)[0]
+    idx = index(F)
+    sym = {R: idx[F.polyval(R, alpha)] for R in _bad(E)}
+    out = []
+    for i, L in enumerate(lpolys(q, pl.P)):
+        bad = [(deg(R), int(sym[R][i])) for R in _bad(E) if R != pl.P[i]]
+        out.append(weight(q, N, d, L, bad))
+    return out
+
+
+def _divisors(m: int) -> list[int]:
+    return [d for d in range(1, m + 1) if m % d == 0]
+
+
+def exact_traces(E: Curve, N: int, n: int, offdiagonal: bool = True) -> list[Fraction]:
+    q, total = E.p, family_size(E, N)
+    bad = set(_bad(E))
+    out = []
+    for m in range(1, n + 1):
+        s = inf_trace(E, m) * total
+        for d in _divisors(m):
+            pl, k = places(E, d), m // d
+            if k % 3 and not offdiagonal:
+                continue
+            w = (_character_weights(E, N, d) if k % 3 else
+                 [_principal(E, N, d, P in bad) for P in pl.P])
+            s += d * sum(local_trace(int(a), int(t), q**d, k) * c
+                         for a, t, c in zip(pl.a, pl.kind, w, strict=True) if t != ADD)
+        out.append(Fraction(-s, q**m * total))
+    return out
+
+
 def cubic_twist(E: Curve, D: Poly) -> Curve:
     if E.a2 or E.a4:
         raise ValueError("cubic twists need y^2 = x^3 + B")
@@ -184,3 +228,4 @@ def mean_traces(sums: list[list[int | Eis]], q: int) -> list[Fraction]:
             raise ArithmeticError("family mean is not real")
         out.append(Fraction(-s.a, q**m * len(col)))
     return out
+
