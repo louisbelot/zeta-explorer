@@ -2129,3 +2129,84 @@ Design notes:
 Next: cubic twists over F_q(t) with q ≡ 1 mod 3 (cubic residue symbols on F_q[t],
 L-polynomials of y² = x³ + BD², unitary-flavoured lower-order terms from
 Meisner-Södergren's Theorem 1.7), then the BSD formula for the rank 1 odd twists.
+
+## 2026-11-19: Cubic twists over F_q(t)
+
+Built:
+
+- `cubic.py`. `Eis`, an exact Eisenstein integer a + bω, for anything valued in
+  Z[ω]. `index(F)` gives the cubic class of every element of F_{p^m}, normalized so
+  that x^((q^m − 1)/3) and the residue symbol (A/P)₃ = A^((q^d − 1)/3) mod P map to
+  the same power of ω for every m. `char_sums` sums χ₃(P(x)) over F_{p^m}, `lpolys`
+  turns those into L(u, (·/P)₃) by Newton's identities (cubic reciprocity makes
+  (A/P)₃ = (P/A)₃ for monic A and P since (q − 1)/3 is even), and `jacobi` gives
+  Λ_P = Σ_f χ₃(f² − B(α)) for every prime of degree d from one FFT correlation.
+- `cubictwist.py`. `cubefree` lists Meisner and Södergren's family: D = D₁D₂²,
+  D₁ and D₂ squarefree, coprime and prime to B, deg D₁D₂ = N, 3 | deg D.
+  `orthogonal_family` builds L(Ẽ_D, u) for y² = x³ + BD² from point counts, and
+  `unitary_family` builds L(E ⊗ χ_D, u) over Z[ω] for any E. `hecke_split`
+  writes L(Ẽ_D, u) = H(πu)·H̄(π̄u) with H the L-function of χ₃η(BD²) and π the
+  Jacobi sum −Σ_f χ₃(f² − 1), checked coefficient by coefficient for every twist
+  with N = 2 and both B.
+- `weight(q, N, d, L, bad)`: Σ_D ξ(D) over the family for ξ = (·/P)₃ (or the
+  principal character mod P, or the trivial one for the family size), as the
+  coefficient of a product over primes in two variables, filtered mod 3 over the
+  cube roots of unity, with prime sums from L(u, ξ) by Möbius inversion over degree.
+- `exact_traces(E, N, n)`: the exact family mean of Tr Θⁿ, and the diagonal alone.
+- `funcfield.traces` has a fast path for j = 0 curves: a_x is one table lookup in
+  −Σ_X η(X³ + c), computed by a correlation, where the old route summed cubics for
+  every x. The first exact run at n = 6 over F_7 was still on that step after
+  several minutes; with the lookup the whole N = 3, n = 6 run takes 11 s.
+- `gf.evaluate` evaluates many polynomials at many field elements, shared by the
+  quadratic and cubic character sums. `plot.plot_cubic`, docs/cubic.png.
+
+Checks:
+
+- Cubic reciprocity on pairs of primes of degree up to 3, the symbol against the
+  field index, multiplicativity.
+- L(u, (·/P)₃) against direct sums over monic A for P of degree 3 and 4, and the
+  Riemann hypothesis for it: roots on |u| = 7^(−1/2), plus u = 1 exactly when 3 | d.
+- |Λ_P|² = q^d and −(Λ_P + Λ̄_P) = a_P from point counts, for every P of degree up
+  to 3 and three B; Λ_P = 0 when P | B.
+- `cubefree` against a brute-force scan of monic D; `weight` against Σ_D (D/P)₃
+  over every D for N = 2, 3 and primes of degree 1 to 3; family sizes for N up to 4.
+- L(Ẽ_D, u) from `orthogonal_family` equals `lpoly` on the twisted curve, with the
+  degree from the conductor; for E ⊗ χ_D the power sum one past the degree matches
+  the L-polynomial, the leading coefficient has norm q^(2M), all roots on the circle.
+- `exact_traces` equals the brute-force means as exact fractions, for two choices
+  of B at N = 2, 3 and for the Legendre curve twisted by χ_D.
+
+Results:
+
+- |λ_P| = 1 for every P ∤ B, because Λ_P is χ₃(−B(α))η(−B(α))·J(χ₃, η). Over F_7
+  with B = t² + 1, (m/q^m)·Σ|λ_P|² is 1.000, 0.816, 0.980, 0.980, 0.9996 for
+  m = 1..5, not the 1/2 of Corollary 1.9 in arXiv:2110.00102.
+- With that, the exact means for y² = x³ + (t² + 1)D² over F_7 at N = 12 are 0, 0,
+  0.0481, 0, 0, −0.0048 for n = 1..6. Theorem 1.6 and Conjecture 1.10 say η₂(n),
+  1 at even n. The family is CM: L(Ẽ_D) is a product of two conjugate Hecke
+  L-functions, and the zeros of the 1,430 twists with deg rad D = 4 are flat on
+  [0, π] with no orthogonal bump at either end. Theorem 1.7's 3 | n term gives
+  0.0583 at n = 3 against 0.0481 exact, the gap being the share of D prime to P.
+- Root number +1 for all 1,430 of them, central order 0, 2 or 4 (1271, 152, 7).
+- Both families share a mean formula, because W(P) = Σ_D (D/P)₃ is real
+  (D₁D₂² ↦ D₂D₁² conjugates χ_D). For the Legendre curve twisted by χ_D the
+  means at N = 12 are 0 except 0.0357 at n = 6, the unitary picture.
+- For B = t the means vanish unless 6 | n: t ↦ ct permutes the family and
+  rotates each degree-n term by ψ(c)ⁿ with ψ sextic.
+- The off-diagonal part at n = 6 drops from 0.63 at N = 2 to 7.5e−5 at N = 9.
+
+Design notes:
+
+- Everything in Z[ω] stays exact. Writing values as a + bω with ω² = −1 − ω gives
+  a unique form, so dividing by k in Newton's identities either works exactly or
+  is a bug, and it raises.
+- The mod 3 condition on deg D is what makes the family awkward: deg D = deg D₁ +
+  2 deg D₂ is not the generating variable. Tracking deg D₁ with an extra variable
+  x and averaging over x³ = 1 turns it into three ordinary Euler products. The
+  degree character x^(deg R) is then just another character in the prime sums.
+- The cost is the L-polynomials of the primes of degree n (19,594 over F_7 at
+  n = 6), each from character sums over F_{7^m} with m < n, and then a few hundred
+  Eisenstein operations per prime. N = 12 at n = 6 takes 49 s.
+
+Next: sextic and quartic twists of the CM curves with the Hecke L-functions split
+out coefficient by coefficient, then BSD for the rank 1 odd quadratic twists.
