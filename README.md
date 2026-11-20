@@ -2447,6 +2447,84 @@ for SO(2m) the mean is η₂(n) up to n = 2m − 2 and 0 after, for O⁻(2m) it 
 by the same split, and the odd sizes follow the same way from their one-point densities. A Haar Monte
 Carlo of O(6) and O(7) checks all of them.
 
+### Cubic twists over F_q(t)
+
+![Exact family means of Tr Θⁿ for cubic twists of y² = x³ + t² + 1 and for the Legendre curve twisted by cubic characters over F_7, against the orthogonal value; every eigenangle of the 1,430 cubic twists with deg rad D = 4 against SO(10); and the off-diagonal part of the exact mean dying off as deg rad D grows](docs/cubic.png)
+
+For q ≡ 1 mod 6 there are cubic residue symbols (D/P)₃ on F_q[t], and two families
+of twists come with them. The first twists a curve with j = 0, Ẽ: y² = x³ + B, into
+Ẽ_D: y² = x³ + BD², for D monic, cube-free, prime to B, with deg rad D = N and
+3 | deg D (Meisner and Södergren, [arXiv:2110.00102](https://arxiv.org/abs/2110.00102),
+section 1.3). The second twists any E by the character χ_D = (D/·)₃ over the same D,
+which is Comeau-Lapointe's unitary family. `cubic.py` has the symbols, an exact
+Eisenstein-integer type for values in Z[ω], and L(u, (·/P)₃) from character sums.
+`cubictwist.py` builds both families from point counts and computes their exact
+means without listing D.
+
+The key local fact is a Jacobi sum. For P ∤ B of degree d, with α a root of P,
+Λ_P = Σ_{f ∈ F_{q^d}} χ₃(f² − B(α)) satisfies a_P(Ẽ) = −(Λ_P + Λ̄_P), and twisting
+by D multiplies Λ_P by (D/P)₃². Writing f² = y turns Λ_P into
+χ₃(−B(α))·η(−B(α))·J(χ₃, η), so |Λ_P|² = q^d exactly: the normalized λ_P always has
+absolute value 1. The test suite checks this for every P of degree up to 3 and three
+choices of B, along with −(Λ_P + Λ̄_P) = a_P from point counts. Over F_7 with
+B = t² + 1 the average (m/q^m)·Σ_{deg P = m} |λ_P|² is 1.000, 0.816, 0.980, 0.980,
+0.9996 for m = 1 to 5, which is the prime count, not the 1/2 of Corollary 1.9 there.
+
+That changes what the family looks like. Ẽ has CM by Z[ω], so L(Ẽ_D, u) splits into
+two conjugate L-functions of sextic Hecke characters, and its eigenangles come as
+{θⱼ + φ} ∪ {−θⱼ − φ} with the θⱼ from a unitary family. The orthogonal value η₂(n)
+comes from the diagonal term a_P(E_D)² − 2 averaged over D, which needs E without
+CM: here a*_{P²} = λ_D² + λ̄_D² carries (D/P)₃⁴ = (D/P)₃ and averages to almost
+nothing. So the means go to 0 at n = 2, 4 and the only diagonal left is at 3 | n,
+the (λ_P³ + λ̄_P³) term of Theorem 1.7. Theorem 1.6 and Conjecture 1.10 put η₂(n)
+on top of it, and the exact means say otherwise (left panel):
+
+| n | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| Ẽ_D, N = 3 | 0.00000 | −0.05305 | 0.06912 | 0.03077 | 0.15613 | −0.18941 |
+| Ẽ_D, N = 9 | −0.00000 | 0.00002 | 0.04867 | 0.00022 | 0.00006 | −0.00458 |
+| Ẽ_D, N = 12 | 0.00000 | −0.00000 | 0.04811 | −0.00000 | 0.00000 | −0.00480 |
+| Legendre ⊗ χ_D, N = 12 | 0.00000 | −0.00000 | 0.00000 | 0.00000 | 0.00000 | 0.03567 |
+| O(2N) | 0 | 1 | 0 | 1 | 0 | 1 |
+
+At n = 3 the term (n/3)·Σ_{deg P = 1} (λ_P³ + λ̄_P³)/q^(n/2) of Theorem 1.7 is 0.0583,
+and the exact diagonal is 0.0481: the difference is the share of D prime to each P,
+which is the D̃₂ correction. The first term of Theorem 1.7 needs |λ_P| ≠ 1 and so
+only sees the places dividing B. The zeros agree (middle panel): over the 1,430
+twists with deg rad D = 4 (L of degree 10), the 14,300 eigenangles are flat on
+[0, π] with no bump at either end, unlike SO(10). 159 of the twists vanish at the
+centre, always to even order (152 to order 2, 7 to order 4), because the two
+conjugate factors vanish together, and every root number is +1.
+
+Both families have the same mean formula. A place P of degree d dividing n with
+k = n/d contributes d·(α_P^k + β_P^k) times the average of (D/P)₃^k (or ^(2k)) over
+the family. When 3 | k that is the share of D prime to P; otherwise it is
+W(P) = Σ_D (D/P)₃, and W(P) is an integer because D₁D₂² ↦ D₂D₁² sends χ_D to its
+conjugate and keeps the family. So the Eisenstein parts cancel and the twisted
+family and the CM family of a j = 0 curve have identical means, which the tests
+check by brute force. W(P) is a coefficient of a product over primes R:
+
+Σ_{D₁, D₂} ξ(D₁) ξ̄(D₂) x^(deg D₁) z^(deg D₁D₂) = ∏_R (1 + (x^(deg R) ξ(R) + ξ̄(R)) z^(deg R)),
+
+with ξ = (·/P)₃, filtered to deg D₁ ≡ 2N mod 3 by summing x over the cube roots of
+unity. Its logarithm only needs prime sums of ξ, ξ² and the principal character
+mod P, and those come from L(u, (·/P)₃) by Möbius inversion over degrees. That
+L-polynomial has degree d − 1 and its coefficients are character sums
+Σ_{x ∈ F_{q^m}} χ₃(P(x)) by cubic reciprocity, which holds without a sign here
+since (q − 1)/3 is even. The tests check reciprocity on pairs of primes, the
+coefficients against direct sums over monic A, the Riemann hypothesis for them
+(roots on |u| = q^(−1/2), plus the trivial zero u = 1 when 3 | d), each weight
+against Σ_D (D/P)₃ for every D, and the exact means against both families as exact
+fractions for N = 2, 3 and two choices of B.
+
+The right panel is the off-diagonal part, exact mean minus diagonal. At n = 6 it
+falls from 0.63 at N = 2 to 7.5e−5 at N = 9, faster than q^(−N/2). For B = t the
+means vanish exactly unless 6 | n (at N = 5 they are 0 for n ≤ 5 and −30970/1294139
+at n = 6): t ↦ ct maps the family to itself and multiplies the degree-n terms by
+ψ(c)ⁿ for a sextic character ψ, which is why the figure uses B = t² + 1. Over F_7
+the computation stops at n = 6, where the L-polynomials of the 19,594 primes of
+degree 6 are the cost; N = 12 takes 49 s.
+
 ### Chebyshev's bias
 
 ![The mod 4 prime race against 3,130 zeros of L(s, χ₋₄), and the first lead change at 26861](docs/race.png)
