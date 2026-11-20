@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from zeta_explorer.gf import GF, Poly, field, pdivmod, ppowmod
+from zeta_explorer.gf import GF, Poly, correlate, evaluate, field, minimal_polys, pdivmod, ppowmod
 
 
 @dataclass(frozen=True)
@@ -100,3 +100,60 @@ def symbol(A: Poly, P: Poly, p: int) -> int | None:
     v = ppowmod(r, (p ** (len(P) - 1) - 1) // 3, P, p)
     z = zeta3(p)
     return {(1,): 0, (z,): 1, (z * z % p,): 2}[v]
+
+
+def _orbit_sums(F: GF, Ds: list[Poly], w: np.ndarray) -> list[Eis]:
+    reps = F.orbits[0]
+    idx = index(F)
+    w = np.asarray(w, dtype=np.int64)
+    chunk = max(1, 2**22 // len(reps))
+    out = []
+    for i in range(0, len(Ds), chunk):
+        e = idx[evaluate(F, Ds[i:i + chunk], reps)]
+        n = np.stack([(e == j).astype(np.int64) @ w for j in range(3)], axis=1)
+        out += [classes(row) for row in n]
+    return out
+
+
+def char_sums(p: int, m: int, Ds: list[Poly], w: np.ndarray | None = None) -> list[Eis]:
+    F = field(p, m)
+    size = np.bincount(F.orbits[1])
+    return _orbit_sums(F, Ds, size if w is None else size * np.asarray(w)[F.orbits[0]])
+
+
+def newton(S: list[Eis], n: int) -> list[Eis]:
+    c = [Eis(1)]
+    for k in range(1, n + 1):
+        c.append(sum((S[m - 1] * c[k - m] for m in range(1, k + 1)), Eis(0)).div(k))
+    return c
+
+
+def lpolys(p: int, Ps: list[Poly]) -> list[list[Eis]]:
+    d = len(Ps[0]) - 1
+    S = [char_sums(p, m, Ps) for m in range(1, d)]
+    return [newton([S[m][i] for m in range(d - 1)], d - 1) for i in range(len(Ps))]
+
+
+def logderiv(c: list[Eis], n: int) -> list[Eis]:
+    c = c + [Eis(0)] * n
+    out: list[Eis] = []
+    for m in range(1, n + 1):
+        out.append(c[m] * m - sum((c[k] * out[m - k - 1] for k in range(1, m)), Eis(0)))
+    return out
+
+
+@dataclass(frozen=True)
+class Jacobi:
+    P: list[Poly]
+    lam: list[Eis]
+
+
+def jacobi(p: int, B: Poly, d: int) -> Jacobi:
+    F = field(p, d)
+    alpha, Ps = minimal_polys(p, d)
+    x = np.arange(F.q)
+    sq = np.bincount(F.power(x, 2), minlength=F.q)
+    idx = index(F)
+    corr = [correlate(F, (idx == j).astype(np.int64), sq) for j in range(3)]
+    c = F.neg(F.polyval(B, alpha))
+    return Jacobi(Ps, [classes([corr[j][ci] for j in range(3)]) for ci in c])
