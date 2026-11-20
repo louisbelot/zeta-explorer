@@ -2321,3 +2321,49 @@ def plot_onelevel(traces: dict[int, tuple[list[float], list[int]]], limit: list[
         _style(ax)
     fig.tight_layout()
     return fig
+
+
+def plot_cubic(means: dict[str, list[float]], angles: np.ndarray, so: np.ndarray, dim: int,
+               gaps: dict[int, tuple[list[int], list[float]]], q: int) -> Figure:
+    import matplotlib.pyplot as plt
+
+    fig, (left, mid, right) = plt.subplots(1, 3, figsize=(15, 4.6), facecolor=SURFACE)
+    n = np.arange(1, len(next(iter(means.values()))) + 1)
+    eta = (n % 2 == 0).astype(float)
+    left.plot(n, eta, "_", color=INK_SECONDARY, markersize=16, markeredgewidth=2,
+              label="O(2N): η₂(n), Theorem 1.6")
+    for (name, tr), color, dx in zip(means.items(), (SERIES, ACCENT), (-0.12, 0.12),
+                                     strict=False):
+        left.plot(n + dx, tr, "o", color=color, markersize=6, label=name)
+    left.axhline(0, color=GRID, linewidth=1)
+    left.set_xticks(n)
+    left.set_ylim(-0.25, 1.15)
+    left.set_xlabel("n", color=INK)
+    left.set_ylabel("exact family mean of Tr Θⁿ", color=INK)
+    left.set_title("Cubic twists are not orthogonal", color=INK, fontsize=12, loc="left")
+    left.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="center right")
+    bins = 36
+    mid.hist(angles, bins=bins, range=(0, np.pi), density=True, color=ORDINAL[0],
+             edgecolor=SURFACE, label="cubic twists, all 14,300 zeros")
+    hist, edges = np.histogram(so, bins=bins, range=(0, np.pi), density=True)
+    mid.stairs(hist, edges, color=ACCENT, linewidth=1.4, label=f"SO({dim}) Haar")
+    mid.axhline(1 / np.pi, color=INK, linestyle="--", linewidth=1.2, label="uniform")
+    mid.set_xlim(0, np.pi)
+    mid.set_xlabel("eigenangle θ", color=INK)
+    mid.set_ylabel("density", color=INK)
+    mid.set_title("No repulsion from θ = 0", color=INK, fontsize=12, loc="left")
+    mid.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right")
+    for (k, (Ns, err)), color in zip(sorted(gaps.items()), ORDINAL[1:], strict=False):
+        right.semilogy(Ns, err, "o-", color=color, markersize=4, linewidth=1.2, label=f"n = {k}")
+    Ns = np.array(next(iter(gaps.values()))[0], dtype=float)
+    ref = max(err[0] for _, err in gaps.values()) * float(q) ** (-(Ns - Ns[0]) / 2)
+    right.semilogy(Ns, ref, ":", color=INK_SECONDARY, linewidth=1.2, label=f"slope {q}^(−N/2)")
+    right.set_xlabel("N = deg rad D", color=INK)
+    right.set_ylabel("|exact mean − diagonal|", color=INK)
+    right.set_title("Character sums die off", color=INK, fontsize=12, loc="left")
+    right.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right")
+    for ax in (left, mid, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig

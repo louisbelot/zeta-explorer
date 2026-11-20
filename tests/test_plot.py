@@ -27,6 +27,7 @@ from zeta_explorer.plot import (
     plot_bsd,
     plot_central_values,
     plot_continuation,
+    plot_cubic,
     plot_davenport,
     plot_dedekind,
     plot_delta,
@@ -542,3 +543,14 @@ def test_plot_onelevel_panels(tmp_path):
     assert fig.axes[0].lines[4].get_xdata().tolist() == [2, 4]
     assert fig.axes[1].lines[0].get_ydata().tolist() == [0.4, 2e-3, 4e-3]
     assert list(fig.axes[2].lines[2].get_ydata()) == [-1.15, -1.15]
+
+
+def test_plot_cubic_panels(tmp_path):
+    means = {"cubic twists": [0.0, -0.01, 0.05, 0.0], "E ⊗ χ": [0.0, 0.03, 0.0, 0.2]}
+    rng = np.random.default_rng(0)
+    gaps = {4: ([3, 6, 9], [1e-1, 1e-2, 1e-3]), 5: ([3, 6, 9], [2e-1, 3e-2, 2e-3])}
+    fig = plot_cubic(means, rng.uniform(0, np.pi, 500), rng.uniform(0, np.pi, 500), 10, gaps, 7)
+    fig.savefig(tmp_path / "cubic.png")
+    assert fig.axes[0].lines[0].get_ydata().tolist() == [0, 1, 0, 1]
+    assert fig.axes[0].lines[2].get_ydata().tolist() == [0.0, 0.03, 0.0, 0.2]
+    assert fig.axes[2].lines[1].get_ydata().tolist() == [2e-1, 3e-2, 2e-3]
