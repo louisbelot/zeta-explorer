@@ -2470,9 +2470,13 @@ choices of B, along with −(Λ_P + Λ̄_P) = a_P from point counts. Over F_7 wi
 B = t² + 1 the average (m/q^m)·Σ_{deg P = m} |λ_P|² is 1.000, 0.816, 0.980, 0.980,
 0.9996 for m = 1 to 5, which is the prime count, not the 1/2 of Corollary 1.9 there.
 
-That changes what the family looks like. Ẽ has CM by Z[ω], so L(Ẽ_D, u) splits into
-two conjugate L-functions of sextic Hecke characters, and its eigenangles come as
-{θⱼ + φ} ∪ {−θⱼ − φ} with the θⱼ from a unitary family. The orthogonal value η₂(n)
+That changes what the family looks like. Ẽ has CM by Z[ω], and
+L(Ẽ_D, u) = H(πu)·H̄(π̄u), where H is the L-function of the sextic character
+χ₃η(BD²) and π = −Σ_f χ₃(f² − 1) is a Jacobi sum of norm q (−3 − 2ω over F_7).
+`hecke_split` computes H from character sums, and the tests check the product
+against L(Ẽ_D, u) coefficient by coefficient for every twist with N = 2. So the
+eigenangles come as {θⱼ + φ} ∪ {−θⱼ − φ}, with the θⱼ from a family of
+characters, which is unitary. The orthogonal value η₂(n)
 comes from the diagonal term a_P(E_D)² − 2 averaged over D, which needs E without
 CM: here a*_{P²} = λ_D² + λ̄_D² carries (D/P)₃⁴ = (D/P)₃ and averages to almost
 nothing. So the means go to 0 at n = 2, 4 and the only diagonal left is at 3 | n,

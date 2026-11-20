@@ -8,6 +8,8 @@ from zeta_explorer.cubictwist import (
     cubic_twist,
     exact_traces,
     family_size,
+    hecke_split,
+    j0_frobenius,
     mean_traces,
     orthogonal_family,
     unitary_family,
@@ -132,3 +134,21 @@ def test_diagonal_is_most_of_the_mean_at_large_N():
 def test_cubic_twist_needs_j0():
     with pytest.raises(ValueError):
         cubic_twist(legendre(P7), (1, 1))
+
+
+@pytest.mark.parametrize("p", [7, 13, 19])
+def test_j0_frobenius_has_norm_p(p):
+    assert j0_frobenius(p).norm == p
+
+
+@pytest.mark.parametrize("E", [IRR, SPLIT])
+def test_twists_split_into_conjugate_hecke_l_functions(E):
+    pi = j0_frobenius(P7)
+    for t in orthogonal_family(E, 2):
+        H = hecke_split(E, t.D)
+        a = [h * pi**k for k, h in enumerate(H)]
+        b = [x.conj() for x in a]
+        h = len(H) - 1
+        prod = [sum((a[i] * b[k - i] for i in range(max(0, k - h), min(k, h) + 1)), Eis(0))
+                for k in range(2 * h + 1)]
+        assert prod == [Eis(c) for c in t.L.c]

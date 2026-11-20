@@ -7,7 +7,16 @@ from fractions import Fraction
 
 import numpy as np
 
-from zeta_explorer.cubic import OMEGA, Eis, char_sums, index, logderiv, lpolys, newton
+from zeta_explorer.cubic import (
+    OMEGA,
+    Eis,
+    char_sums,
+    classes,
+    index,
+    logderiv,
+    lpolys,
+    newton,
+)
 from zeta_explorer.funcfield import (
     Curve,
     Twist,
@@ -229,3 +238,22 @@ def mean_traces(sums: list[list[int | Eis]], q: int) -> list[Fraction]:
         out.append(Fraction(-s.a, q**m * len(col)))
     return out
 
+
+
+def j0_frobenius(p: int) -> Eis:
+    idx = index(field(p, 1))[(np.arange(p) ** 2 - 1) % p]
+    return -classes([int((idx == j).sum()) for j in range(3)])
+
+
+def hecke_sums(E: Curve, D: Poly, m: int) -> Eis:
+    F = field(E.p, m)
+    reps, inv = F.orbits
+    size = np.bincount(inv)
+    c = evaluate(F, [pmul(E.a6, pmul(D, D, E.p), E.p)], reps)[0]
+    e, s = index(F)[c], F.chi[c].astype(np.int64) * size
+    return classes([int(s[e == j].sum()) for j in range(3)])
+
+
+def hecke_split(E: Curve, D: Poly) -> list[Eis]:
+    h = cubic_twist(E, D).degree // 2
+    return newton([hecke_sums(E, D, m) for m in range(1, h + 1)], h)
