@@ -2,14 +2,25 @@ from __future__ import annotations
 
 import functools
 import math
+from dataclasses import dataclass
+from fractions import Fraction
 
-from zeta_explorer.cubic import OMEGA, Eis, logderiv, newton
+import numpy as np
+
+from zeta_explorer.cubic import OMEGA, Eis, char_sums, logderiv, newton
 from zeta_explorer.funcfield import (
     Curve,
+    Twist,
+    from_power_sums,
+    j0_traces,
+    trace_inf,
+    traces,
 )
 from zeta_explorer.gf import (
     Poly,
     deg,
+    evaluate,
+    field,
     minimal_polys,
     pmul,
     primes_dividing,
@@ -99,3 +110,77 @@ def _bad(E: Curve) -> tuple[Poly, ...]:
 
 def family_size(E: Curve, N: int) -> int:
     return weight(E.p, N, 0, None, [(deg(R), 0) for R in _bad(E)])
+
+
+def cubic_twist(E: Curve, D: Poly) -> Curve:
+    if E.a2 or E.a4:
+        raise ValueError("cubic twists need y^2 = x^3 + B")
+    return Curve(E.p, (), (), pmul(E.a6, pmul(D, D, E.p), E.p))
+
+
+def cubic_sums(E: Curve, Ds: list[Poly], m: int) -> np.ndarray:
+    F = field(E.p, m)
+    reps, inv = F.orbits
+    size = np.bincount(inv)
+    a = j0_traces(E.p, m)
+    B = F.polyval(E.a6, reps)
+    out = np.empty(len(Ds), dtype=np.int64)
+    chunk = max(1, 2**22 // len(reps))
+    for i in range(0, len(Ds), chunk):
+        Dx = evaluate(F, Ds[i:i + chunk], reps)
+        out[i:i + chunk] = a[F.mul(B, F.mul(Dx, Dx))] @ size
+    return out + np.array([trace_inf(cubic_twist(E, D), m) for D in Ds])
+
+
+def orthogonal_family(E: Curve, N: int) -> list[Twist]:
+    Ds = cubefree(E.p, N, E.disc)
+    M = cubic_twist(E, Ds[0]).degree
+    S: list[list[int]] = [[] for _ in Ds]
+    out: list = [None] * len(Ds)
+    todo, m = list(range(len(Ds))), 0
+    while todo:
+        m += 1
+        for i, s in zip(todo, cubic_sums(E, [Ds[i] for i in todo], m), strict=True):
+            S[i].append(int(s))
+        if m > M // 2:
+            for i in todo:
+                out[i] = from_power_sums(S[i], M, E.p)
+            todo = [i for i in todo if out[i] is None]
+    return [Twist(D, L) for D, L in zip(Ds, out, strict=True)]
+
+
+@dataclass(frozen=True)
+class CharTwist:
+    D: Poly
+    q: int
+    c: tuple[Eis, ...]
+
+    def roots(self) -> np.ndarray:
+        u = np.array([complex(ck) / self.q**k for k, ck in enumerate(self.c)])
+        return 1 / np.roots(u[::-1])
+
+    def traces(self, n: int) -> list[Eis]:
+        return logderiv(list(self.c), n)
+
+
+def unitary_sums(E: Curve, Ds: list[Poly], m: int) -> list[Eis]:
+    inf = trace_inf(E, m)
+    return [s + inf for s in char_sums(E.p, m, Ds, traces(E, m))]
+
+
+def unitary_family(E: Curve, N: int) -> list[CharTwist]:
+    Ds = cubefree(E.p, N, E.disc)
+    M = E.degree + 2 * N
+    S = [unitary_sums(E, Ds, m) for m in range(1, M + 1)]
+    return [CharTwist(D, E.p, tuple(newton([S[m][i] for m in range(M)], M)))
+            for i, D in enumerate(Ds)]
+
+
+def mean_traces(sums: list[list[int | Eis]], q: int) -> list[Fraction]:
+    out = []
+    for m, col in enumerate(sums, 1):
+        s = sum(col, Eis(0))
+        if s.b:
+            raise ArithmeticError("family mean is not real")
+        out.append(Fraction(-s.a, q**m * len(col)))
+    return out
