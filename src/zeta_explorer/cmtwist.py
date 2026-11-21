@@ -302,3 +302,20 @@ def exact_traces(p: int, n: int, B: Poly, N: int, top: int,
                 s = s + z[-k * int(pl.B[i]) % n] * weight(p, n, B, N, pl, i, k) * d
         out.append(Fraction(-(pi**m * s).tr, p**m * total))
     return out
+
+
+def limit_traces(p: int, n: int, B: Poly, N: int, top: int) -> list[Fraction]:
+    z, pi = units(n), frobenius(p, n)
+    lead = int(index(field(p, 1), n)[B[-1]])
+    bad = primes_dividing(B, p)
+    out = []
+    for m in range(1, top + 1):
+        s = Fraction(0)
+        if (deg(B) + N) % n == 0:
+            s += (z[-m * lead % n] * pi**m).tr
+        for d in _divisors(m):
+            if (m // d) % n == 0:
+                good = len(minimal_polys(p, d)[1]) - sum(deg(R) == d for R in bad)
+                s += d * good * (1 - Fraction(1, p**d)) / (1 - Fraction(1, p**(n * d))) * (pi**m).tr
+        out.append(-s / p**m)
+    return out

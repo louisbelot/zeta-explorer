@@ -14,6 +14,7 @@ from zeta_explorer.cmtwist import (
     frobenius,
     hecke,
     jacobi,
+    limit_traces,
     places,
     powerfree,
     split,
@@ -144,6 +145,25 @@ def test_powerfree(p, n, B, N):
 ])
 def test_exact_traces_match_family(p, n, B, N):
     assert exact_traces(p, n, B, N, 4) == family_traces(p, n, B, N, 4)
+
+
+@pytest.mark.parametrize("p, n, top", [(7, 6, 6), (5, 4, 8)])
+def test_limit_is_the_diagonal(p, n, top):
+    B = (1, 0, 1)
+    for N in (11, 12):
+        diag = exact_traces(p, n, B, N, top, offdiagonal=False)
+        lim = limit_traces(p, n, B, N, top)
+        assert all(abs(float(a - b)) < 1e-6 for a, b in zip(diag, lim, strict=True))
+        assert [m for m in range(1, top + 1) if lim[m - 1]] == (
+            list(range(1, top + 1)) if (2 + N) % n == 0 else [m for m in range(1, top + 1)
+                                                            if m % n == 0])
+
+
+def test_infinity_place_survives():
+    p, n, B = 7, 6, (1, 0, 1)
+    pi = frobenius(p, n)
+    lim = limit_traces(p, n, B, 4, 2)
+    assert lim[0] * p == -pi.tr
 
 
 def test_central_orders_even():
