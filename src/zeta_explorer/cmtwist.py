@@ -199,3 +199,106 @@ def family_traces(p: int, n: int, B: Poly, N: int, top: int) -> list[Fraction]:
     Ds = powerfree(p, N, n, B)
     return [Fraction(-int(family_sums(p, n, B, Ds, m).sum()), p**m * len(Ds))
             for m in range(1, top + 1)]
+
+
+def _series(N: int, num: list, dens: list[tuple[int, int]]) -> list:
+    s = list(num[:N + 1]) + [num[0] * 0] * (N + 1 - len(num))
+    for a, e in dens:
+        for i in range(e, N + 1):
+            s[i] = s[i] + s[i - e] * a
+    return s
+
+
+def _times(f: list, g: list, N: int) -> list:
+    out = [f[0] * 0] * (N + 1)
+    for i, fi in enumerate(f[:N + 1]):
+        for j, gj in enumerate(g[:N + 1 - i]):
+            out[i + j] = out[i + j] + fi * gj
+    return out
+
+
+def _one_minus(a, e: int) -> list:
+    return [a * 0 + 1] + [a * 0] * (e - 1) + [-a]
+
+
+@dataclass(frozen=True)
+class Places:
+    P: list[Poly]
+    B: np.ndarray
+    R: dict[Poly, np.ndarray]
+    counts: list[np.ndarray]
+
+
+@functools.cache
+def places(p: int, n: int, B: Poly, d: int) -> Places:
+    alpha, Ps = minimal_polys(p, d)
+    F = field(p, d)
+    idx = index(F, n)
+    sym = {R: idx[F.polyval(R, alpha)] for R in primes_dividing(B, p)}
+    counts = [_class_counts(field(p, r), n, Ps) for r in range(1, d)]
+    return Places(Ps, idx[F.polyval(B, alpha)], sym, counts)
+
+
+def char_lpoly(p: int, n: int, pl: Places, i: int, j: int) -> list:
+    d = len(pl.P[i]) - 1
+    z = units(n)
+    S = [classes(n, [sum(int(c[i][e]) for e in range(n) if e * j % n == t) for t in range(n)])
+         for c in pl.counts]
+    L = newton(S, d - 1) if S else [z[0]]
+    eps = (-1) ** (j * ((p - 1) // n) * d % 2)
+    return [c * eps**k for k, c in enumerate(L)]
+
+
+def _size_series(p: int, n: int, B: Poly, N: int) -> list:
+    R = primes_dividing(B, p)
+    num = [1]
+    for r in R:
+        num = _times(num, _one_minus(1, deg(r)), N)
+    num = _times(num, _one_minus(p, n), N)
+    return _series(N, num, [(p, 1)] + [(1, n * deg(r)) for r in R])
+
+
+def family_size(p: int, n: int, B: Poly, N: int) -> int:
+    return _size_series(p, n, B, N)[N]
+
+
+def weight(p: int, n: int, B: Poly, N: int, pl: Places, i: int, k: int) -> Eis | Gauss:
+    d = len(pl.P[i]) - 1
+    z = units(n)
+    if k % n == 0:
+        num = _times(_size_series(p, n, B, N), _one_minus(1, d), N)
+        return z[0] * _series(N, num, [(1, n * d)])[N]
+    j = -k % n
+    num = char_lpoly(p, n, pl, i, j)
+    for r, e in pl.R.items():
+        num = _times(num, _one_minus(z[e[i] * j % n], deg(r)), N)
+    num = _times(num, _one_minus(z[0] * p, n), N)
+    dens = [(1, n * deg(r)) for r in pl.R] + [(1, n * d)]
+    return _series(N, num, dens)[N]
+
+
+def _divisors(m: int) -> list[int]:
+    return [d for d in range(1, m + 1) if m % d == 0]
+
+
+def exact_traces(p: int, n: int, B: Poly, N: int, top: int,
+                 offdiagonal: bool = True) -> list[Fraction]:
+    total = family_size(p, n, B, N)
+    z, pi = units(n), frobenius(p, n)
+    lead = int(index(field(p, 1), n)[B[-1]])
+    out = []
+    for m in range(1, top + 1):
+        s = z[0] * 0
+        if (deg(B) + N) % n == 0:
+            s = s + z[-m * lead % n] * total
+        for d in _divisors(m):
+            k = m // d
+            if k % n and not offdiagonal:
+                continue
+            pl = places(p, n, B, d)
+            for i in range(len(pl.P)):
+                if pl.B[i] < 0:
+                    continue
+                s = s + z[-k * int(pl.B[i]) % n] * weight(p, n, B, N, pl, i, k) * d
+        out.append(Fraction(-(pi**m * s).tr, p**m * total))
+    return out

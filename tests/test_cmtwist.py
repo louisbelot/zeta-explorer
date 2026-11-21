@@ -6,17 +6,22 @@ import pytest
 from zeta_explorer.cmtwist import (
     Gauss,
     angles,
+    char_lpoly,
     curve,
+    exact_traces,
+    family_size,
+    family_traces,
     frobenius,
     hecke,
     jacobi,
+    places,
     powerfree,
     split,
     units,
 )
 from zeta_explorer.cubic import index, root, zeta3
 from zeta_explorer.funcfield import LPoly, lpoly
-from zeta_explorer.gf import deg, field, monics, pdivmod, pgcd, pmul, primes_dividing
+from zeta_explorer.gf import deg, field, minimal_polys, monics, pdivmod, pgcd, pmul, primes_dividing
 
 CASES = [(7, 6), (13, 6), (5, 4), (13, 4)]
 
@@ -89,6 +94,24 @@ def test_hecke_angles_on_circle():
     assert len(th) == len(H) - 1 and np.all(np.abs(th) <= np.pi)
 
 
+@pytest.mark.parametrize("p, n, d", [(5, 4, 2), (5, 4, 3), (7, 6, 2), (7, 6, 3)])
+def test_char_lpoly(p, n, d):
+    pl = places(p, n, (1,), d)
+    F = field(p, d)
+    alpha = minimal_polys(p, d)[0]
+    idx = index(F, n)
+    z = units(n)
+    for i in range(0, len(pl.P), 7):
+        for j in range(1, n):
+            direct = [z[0] * 0] * d
+            for r in range(d):
+                for A in monics(p, r):
+                    e = idx[F.polyval(A, alpha[i])]
+                    direct[r] = direct[r] + z[e * j % n]
+            got = char_lpoly(p, n, pl, i, j)
+            assert got + [z[0] * 0] * (d - len(got)) == direct
+
+
 def _brute_powerfree(p, N, n, avoid):
     out = []
     for D in monics(p, N):
@@ -112,6 +135,15 @@ def _power(R, n, p):
 def test_powerfree(p, n, B, N):
     got = powerfree(p, N, n, B)
     assert sorted(got) == sorted(_brute_powerfree(p, N, n, B))
+    assert family_size(p, n, B, N) == len(got)
+
+
+@pytest.mark.parametrize("p, n, B, N", [
+    (7, 6, (1, 0, 1), 2), (7, 6, (1, 0, 1), 4), (7, 6, (0, 1), 3), (7, 6, (3, 1), 4),
+    (5, 4, (1, 0, 1), 3), (5, 4, (2, 1), 4), (13, 4, (1, 1), 2), (13, 6, (2, 0, 1), 2),
+])
+def test_exact_traces_match_family(p, n, B, N):
+    assert exact_traces(p, n, B, N, 4) == family_traces(p, n, B, N, 4)
 
 
 def test_central_orders_even():
