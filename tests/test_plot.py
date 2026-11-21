@@ -26,6 +26,7 @@ from zeta_explorer.plot import (
     plot_blfi,
     plot_bsd,
     plot_central_values,
+    plot_cm,
     plot_continuation,
     plot_cubic,
     plot_davenport,
@@ -554,3 +555,14 @@ def test_plot_cubic_panels(tmp_path):
     assert fig.axes[0].lines[0].get_ydata().tolist() == [0, 1, 0, 1]
     assert fig.axes[0].lines[2].get_ydata().tolist() == [0.0, 0.03, 0.0, 0.2]
     assert fig.axes[2].lines[1].get_ydata().tolist() == [2e-1, 3e-2, 2e-3]
+
+
+def test_plot_cm_panels(tmp_path):
+    means = {3: [0.0, 0.0, 0.01], 4: [0.5, -0.04, -0.06]}
+    rng = np.random.default_rng(0)
+    angles = {"sextic": rng.uniform(-np.pi, np.pi, 500), "quartic": rng.uniform(-np.pi, np.pi, 300)}
+    gaps = {2: [0.5, 0.1, 0.0], 3: [0.0, 0.02, 0.01], 4: [1e-3, 0.0, 0.0]}
+    fig = plot_cm(means, means, angles, gaps, 7)
+    fig.savefig(tmp_path / "cm.png")
+    assert fig.axes[0].lines[1].get_ydata().tolist() == [0.0, 0.0, 0.01]
+    assert fig.axes[2].lines[0].get_ydata().tolist() == [0.5, 0.02, 1e-3]

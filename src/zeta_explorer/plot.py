@@ -2367,3 +2367,54 @@ def plot_cubic(means: dict[str, list[float]], angles: np.ndarray, so: np.ndarray
         _style(ax)
     fig.tight_layout()
     return fig
+
+
+def plot_cm(means: dict[int, list[float]], limits: dict[int, list[float]],
+            angles: dict[str, np.ndarray], gaps: dict[int, list[float]], q: int) -> Figure:
+    import matplotlib.pyplot as plt
+
+    fig, (left, mid, right) = plt.subplots(1, 3, figsize=(15, 4.6), facecolor=SURFACE)
+    for (N, tr), color, dx in zip(sorted(means.items()), (SERIES, ACCENT), (-0.12, 0.12),
+                                  strict=False):
+        n = np.arange(1, len(tr) + 1)
+        left.plot(n + dx, limits[N], "_", color=color, markersize=16, markeredgewidth=2)
+        left.plot(n + dx, tr, "o", color=color, markersize=6,
+                  label=f"N = {N}, deg BD = {N + 2}")
+    left.plot([], [], "_", color=INK_SECONDARY, markersize=16, markeredgewidth=2,
+              label="N → ∞ limit")
+    left.axhline(0, color=GRID, linewidth=1)
+    left.set_xticks(n)
+    left.set_xlabel("n", color=INK)
+    left.set_ylabel("exact family mean of Tr Θⁿ", color=INK)
+    left.set_title("Unitary, plus the place at ∞", color=INK, fontsize=12, loc="left")
+    left.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right")
+    bins = 48
+    for (name, th), color in zip(angles.items(), (ORDINAL[0], ACCENT), strict=False):
+        if color == ORDINAL[0]:
+            mid.hist(th, bins=bins, range=(-np.pi, np.pi), density=True, color=color,
+                     edgecolor=SURFACE, label=name)
+        else:
+            hist, edges = np.histogram(th, bins=bins, range=(-np.pi, np.pi), density=True)
+            mid.stairs(hist, edges, color=color, linewidth=1.4, label=name)
+    mid.axhline(1 / (2 * np.pi), color=INK, linestyle="--", linewidth=1.2, label="uniform")
+    mid.set_xlim(-np.pi, np.pi)
+    mid.set_ylim(0, 0.27)
+    mid.set_xlabel("angle of a zero of H(πu)", color=INK)
+    mid.set_ylabel("density", color=INK)
+    mid.set_title("Hecke zeros are nearly flat", color=INK, fontsize=12, loc="left")
+    mid.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right")
+    Ns = np.array(sorted(gaps), dtype=float)
+    worst = np.array([max(gaps[N]) for N in sorted(gaps)])
+    right.semilogy(Ns, worst, "o-", color=SERIES, markersize=4, linewidth=1.2,
+                   label="max over n ≤ 6")
+    right.semilogy(Ns, worst[0] * float(q) ** (-(Ns - Ns[0])), ":", color=INK_SECONDARY,
+                   linewidth=1.2, label=f"slope {q}^(−N)")
+    right.set_xlabel("N = deg D", color=INK)
+    right.set_ylabel("|exact mean − limit|", color=INK)
+    right.set_title("Character sums die off", color=INK, fontsize=12, loc="left")
+    right.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right")
+    for ax in (left, mid, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig
