@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import functools
 from dataclasses import dataclass
+from fractions import Fraction
 
 import numpy as np
 
 from zeta_explorer.cubic import Eis, index, newton
-from zeta_explorer.funcfield import Curve
-from zeta_explorer.gf import Poly, deg, evaluate, field
+from zeta_explorer.funcfield import Curve, j0_traces, j1728_traces, trace_inf
+from zeta_explorer.gf import Poly, deg, evaluate, field, minimal_polys, pmul, primes_dividing
 
 
 @dataclass(frozen=True)
@@ -155,3 +156,46 @@ def angles(H: list[Eis | Gauss], pi: Eis | Gauss, q: int) -> np.ndarray:
         return np.zeros(0)
     c = np.array([complex(Hk * pi**k) / q**k for k, Hk in enumerate(H)])
     return np.angle(1 / np.roots(c[::-1]))
+
+
+def powerfree(p: int, N: int, n: int, avoid: Poly) -> list[Poly]:
+    bad = set(primes_dividing(avoid, p))
+    primes = [P for d in range(1, N + 1) for P in sorted(minimal_polys(p, d)[1]) if P not in bad]
+    out = []
+
+    def grow(f: Poly, start: int):
+        if deg(f) == N:
+            out.append(f)
+            return
+        for i in range(start, len(primes)):
+            P = primes[i]
+            if deg(f) + deg(P) > N:
+                break
+            g = f
+            for _ in range(n - 1):
+                g = pmul(g, P, p)
+                if deg(g) > N:
+                    break
+                grow(g, i + 1)
+
+    grow((1,), 0)
+    return out
+
+
+def family_sums(p: int, n: int, B: Poly, Ds: list[Poly], m: int) -> np.ndarray:
+    F = field(p, m)
+    reps, inv = F.orbits
+    size = np.bincount(inv)
+    table = (j0_traces if n == 6 else j1728_traces)(p, m)
+    cs = [pmul(B, D, p) for D in Ds]
+    out = np.empty(len(cs), dtype=np.int64)
+    chunk = max(1, 2**22 // len(reps))
+    for i in range(0, len(cs), chunk):
+        out[i:i + chunk] = table[evaluate(F, cs[i:i + chunk], reps)] @ size
+    return out + np.array([trace_inf(curve(n, p, c), m) for c in cs])
+
+
+def family_traces(p: int, n: int, B: Poly, N: int, top: int) -> list[Fraction]:
+    Ds = powerfree(p, N, n, B)
+    return [Fraction(-int(family_sums(p, n, B, Ds, m).sum()), p**m * len(Ds))
+            for m in range(1, top + 1)]

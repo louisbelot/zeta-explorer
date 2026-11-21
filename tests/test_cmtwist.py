@@ -1,3 +1,4 @@
+import collections
 
 import numpy as np
 import pytest
@@ -9,12 +10,13 @@ from zeta_explorer.cmtwist import (
     frobenius,
     hecke,
     jacobi,
+    powerfree,
     split,
     units,
 )
 from zeta_explorer.cubic import index, root, zeta3
-from zeta_explorer.funcfield import lpoly
-from zeta_explorer.gf import field
+from zeta_explorer.funcfield import LPoly, lpoly
+from zeta_explorer.gf import deg, field, monics, pdivmod, pgcd, pmul, primes_dividing
 
 CASES = [(7, 6), (13, 6), (5, 4), (13, 4)]
 
@@ -85,3 +87,36 @@ def test_hecke_angles_on_circle():
     H = hecke(p, n, [(3, 2, 0, 1)])[0]
     th = angles(H, frobenius(p, n), p)
     assert len(th) == len(H) - 1 and np.all(np.abs(th) <= np.pi)
+
+
+def _brute_powerfree(p, N, n, avoid):
+    out = []
+    for D in monics(p, N):
+        if deg(pgcd(D, avoid, p)):
+            continue
+        Pn = [_power(R, n, p) for R in primes_dividing(D, p)]
+        if all(pdivmod(D, f, p)[1] for f in Pn):
+            out.append(D)
+    return out
+
+
+def _power(R, n, p):
+    out = (1,)
+    for _ in range(n):
+        out = pmul(out, R, p)
+    return out
+
+
+@pytest.mark.parametrize("p, n, B, N", [(5, 4, (1, 0, 1), 3), (5, 4, (2, 1), 4), (7, 6, (0, 1), 3),
+                                        (7, 6, (1, 0, 1), 4)])
+def test_powerfree(p, n, B, N):
+    got = powerfree(p, N, n, B)
+    assert sorted(got) == sorted(_brute_powerfree(p, N, n, B))
+
+
+def test_central_orders_even():
+    p, n, B = 7, 6, (1, 0, 1)
+    cs = [pmul(B, D, p) for D in powerfree(p, 3, n, B)]
+    pi = frobenius(p, n)
+    orders = collections.Counter(LPoly(p, tuple(split(H, pi)), 1).order(1) for H in hecke(p, n, cs))
+    assert all(k % 2 == 0 for k in orders)
