@@ -13,6 +13,7 @@ from zeta_explorer.funcfield import (
     compare,
     family,
     from_power_sums,
+    j1728_traces,
     legendre,
     lowest,
     lpoly,
@@ -185,3 +186,20 @@ def test_j0_traces_match_cubic_sums():
     reps, inv = F.orbits
     generic = -cubic_sums(F, 0 * reps, 0 * reps, F.polyval(E.a6, reps))[inv]
     assert np.array_equal(traces(E, 2), generic)
+
+
+@pytest.mark.parametrize("p", [5, 13])
+def test_j1728_traces(p):
+    F = field(p, 2)
+    t = j1728_traces(p, 2)
+    x = np.arange(F.q)
+    for c in (1, 2, F.q - 1):
+        assert t[c] == -int(F.chi[F.add(F.power(x, 3), F.mul(c, x))].sum())
+
+
+def test_j1728_fast_path_matches_cubic_sums():
+    E = Curve(5, (), (1, 0, 1), ())
+    F = field(5, 2)
+    x = np.arange(F.q)
+    generic = -cubic_sums(F, np.zeros_like(x), F.polyval(E.a4, x), np.zeros_like(x))
+    assert traces(E, 2).tolist() == generic.tolist()

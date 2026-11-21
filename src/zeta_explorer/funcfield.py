@@ -109,6 +109,14 @@ def j0_traces(p: int, m: int) -> np.ndarray:
 
 
 @functools.cache
+def j1728_traces(p: int, m: int) -> np.ndarray:
+    F = field(p, m)
+    x = np.arange(F.q)
+    roots = np.bincount(F.power(x, 2), weights=F.chi, minlength=F.q).astype(np.int64)
+    return -correlate(F, F.chi.astype(np.int64), roots)
+
+
+@functools.cache
 def traces(E: Curve, m: int) -> np.ndarray:
     F = field(E.p, m)
     if E == legendre(E.p):
@@ -116,6 +124,8 @@ def traces(E: Curve, m: int) -> np.ndarray:
         return -correlate(F, F.chi[F.mul(x, F.add(x, F.neg(np.ones_like(x))))], F.chi)
     if not E.a2 and not E.a4:
         return j0_traces(E.p, m)[F.polyval(E.a6, np.arange(F.q))]
+    if not E.a2 and not E.a6:
+        return j1728_traces(E.p, m)[F.polyval(E.a4, np.arange(F.q))]
     reps, inv = F.orbits
     A, B, C = (F.polyval(a, reps) for a in (E.a2, E.a4, E.a6))
     return -cubic_sums(F, A, B, C)[inv]
