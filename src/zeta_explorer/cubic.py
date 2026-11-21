@@ -79,18 +79,30 @@ def zeta3(p: int) -> int:
     return min(z for z in range(2, p) if pow(z, 3, p) == 1)
 
 
+def root(p: int, n: int) -> int:
+    if (p - 1) % n:
+        raise ValueError(f"order {n} characters need p = 1 mod {n}")
+    if n == 3:
+        return zeta3(p)
+    if n == 6:
+        return -zeta3(p) ** 2 % p
+    if n == 4:
+        return min(z for z in range(2, p) if z * z % p == p - 1)
+    raise ValueError("order must be 3, 4 or 6")
+
+
 @functools.cache
-def _index(p: int, m: int) -> np.ndarray:
+def _index(p: int, m: int, n: int) -> np.ndarray:
     F = field(p, m)
-    c = int(F.exp[(F.q - 1) // 3])
-    s = 1 if c == zeta3(p) else 2
+    z, c = root(p, n), int(F.exp[(F.q - 1) // n])
+    s = next(e for e in range(n) if pow(z, e, p) == c)
     out = np.full(F.q, -1, dtype=np.int64)
-    out[F.exp] = (s * np.arange(F.q - 1)) % 3
+    out[F.exp] = (s * np.arange(F.q - 1)) % n
     return out
 
 
-def index(F: GF) -> np.ndarray:
-    return _index(F.p, F.m)
+def index(F: GF, n: int = 3) -> np.ndarray:
+    return _index(F.p, F.m, n)
 
 
 def symbol(A: Poly, P: Poly, p: int) -> int | None:
@@ -121,10 +133,11 @@ def char_sums(p: int, m: int, Ds: list[Poly], w: np.ndarray | None = None) -> li
     return _orbit_sums(F, Ds, size if w is None else size * np.asarray(w)[F.orbits[0]])
 
 
-def newton(S: list[Eis], n: int) -> list[Eis]:
-    c = [Eis(1)]
+def newton(S: list, n: int) -> list:
+    one = type(S[0])(1) if S else Eis(1)
+    c = [one]
     for k in range(1, n + 1):
-        c.append(sum((S[m - 1] * c[k - m] for m in range(1, k + 1)), Eis(0)).div(k))
+        c.append(sum((S[m - 1] * c[k - m] for m in range(1, k + 1)), one * 0).div(k))
     return c
 
 
@@ -134,11 +147,12 @@ def lpolys(p: int, Ps: list[Poly]) -> list[list[Eis]]:
     return [newton([S[m][i] for m in range(d - 1)], d - 1) for i in range(len(Ps))]
 
 
-def logderiv(c: list[Eis], n: int) -> list[Eis]:
-    c = c + [Eis(0)] * n
-    out: list[Eis] = []
+def logderiv(c: list, n: int) -> list:
+    zero = c[0] * 0
+    c = c + [zero] * n
+    out: list = []
     for m in range(1, n + 1):
-        out.append(c[m] * m - sum((c[k] * out[m - k - 1] for k in range(1, m)), Eis(0)))
+        out.append(c[m] * m - sum((c[k] * out[m - k - 1] for k in range(1, m)), zero))
     return out
 
 
