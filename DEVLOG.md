@@ -2210,3 +2210,70 @@ Design notes:
 
 Next: sextic and quartic twists of the CM curves with the Hecke L-functions split
 out coefficient by coefficient, then BSD for the rank 1 odd quadratic twists.
+
+## 2026-11-21: Sextic and quartic twists over F_q(t)
+
+Built:
+
+- `cmtwist.py`. `Gauss`, an exact Gaussian integer, beside `Eis`. `jacobi` and
+  `frobenius` give J(χ₃, η) and J(χ₄, η) over F_{p^m} and the Frobenius π of
+  y² = x³ + 1 or y² = x³ + x in the normalization of the residue symbols.
+  `hecke_sums` and `hecke` build H(u) = ∏_P (1 − χ̄_P(c)u^(deg P))^(−1) from
+  character sums over F_{p^m}, with the place at infinity when n | deg c, and
+  `split` multiplies H(πu)·H̄(π̄u) back into an integer L-polynomial.
+- `powerfree` lists the full twist family (D monic, n-th-power-free, prime to B);
+  `family_traces` gives brute-force means of Tr Θⁿ from point counts.
+- `exact_traces` computes the same means from one Euler product per place:
+  Σ_D ψ(D)u^(deg D) = L(u, ψ)·∏_{R | B}(1 − ψ(R)u^(deg R))·(1 − qu^n)/∏_{R | BP}(1 − u^(n deg R)),
+  with L(u, (·/P)_n^j) from `char_lpoly` by n-th power reciprocity, including its
+  sign (−1)^(j((q − 1)/n) deg A deg P). `limit_traces` is the deg D → ∞ limit in
+  closed form.
+- `cubic.index` and `cubic.root` take the order (3, 4 or 6), with χ₆² = χ₃ in the
+  existing cubic normalization; `newton` and `logderiv` work over either ring.
+- `funcfield.j1728_traces`: a_x for y² = x³ + cx from one correlation, used by
+  `traces` and so by `lpoly` for every j = 1728 curve.
+- `plot.plot_cm`, docs/cm.png.
+
+Checks:
+
+- Hasse-Davenport: frobenius over F_{p^m} equals π^m for m ≤ 3, and |J|² = p^m,
+  over F_7, F_13 (sextic) and F_5, F_13 (quartic).
+- π + π̄ against point counts of y² = x³ + 1 and y² = x³ + x.
+- H(πu)H̄(π̄u) equals `lpoly` of the twisted curve for ten curves, among them
+  c with repeated factors and c of degree 6 or 4 (good reduction at infinity).
+- L(u, (·/P)_n^j) against direct sums over monic A of degree below d, every j.
+- `powerfree` against a scan of monic D; `family_size` against its length.
+- `exact_traces` equals `family_traces` as fractions in eight cases.
+- The diagonal at deg D = 11, 12 matches `limit_traces` to 1e−6, and is nonzero
+  exactly where expected.
+
+Results:
+
+- Over F_7 with B = t² + 1 the exact means for n = 1..6 are 0, 0, 0, −0.00001, 0,
+  0.01459 at deg D = 9 and 0.57143, −0.04082, −0.05831, 0.03915, −0.01404, 0.01702
+  at deg D = 10, both equal to the closed-form limit to five places (143/9804 at
+  n = 6). When 6 | deg BD the place at infinity is good with the same Frobenius
+  for every twist, and that shared factor stays in the mean forever: 4/7 at n = 1.
+- max over n ≤ 6 of |exact − limit| goes from 0.94 at deg D = 2 to 6.8e−11 at
+  deg D = 14, roughly q^(−N).
+- Quartic over F_5, B = t² + 1: means at deg D = 12 vanish except 0.05385 (n = 4)
+  and 0.05829 (n = 8); at deg D = 10 the mean of Tr Θ is −0.4 = −tr(1 + 2i)/5.
+- Central orders are even, since L(E, 1/q) = |H(π/q)|²: 15,036 / 1,399 / 29 at
+  orders 0 / 2 / 4 among the 16,464 sextic twists with deg D = 5 over F_7, and
+  8,283 / 1,604 / 65 among the 9,952 quartic twists with deg D = 6 over F_5.
+
+Design notes:
+
+- One π for the whole family is what makes this clean. The local Jacobi sum at a
+  degree d place is a Jacobi sum over F_{q^d}, and Hasse-Davenport turns it into
+  a power of the one over F_q. So the family only varies through the residue
+  symbol χ̄_P(BD), and every mean reduces to character sums of D mod P.
+- Taking every sixth-power-free D (not just squarefree D) makes the Euler product
+  simpler: 1 + ψ + ... + ψ⁵ telescopes to (1 − ψ⁶u^(6d))/(1 − ψu^d), and ψ⁶ is
+  principal, so the numerator is a zeta function in u⁶.
+- The infinity term is a fixed character value χ̄(lead B), which a test pins to
+  −tr(π)/q at n = 1.
+
+Next: BSD for the rank 1 odd quadratic twists, with generators from the elliptic
+surface and Shioda heights, or the second moment of the Legendre twists against
+Bui, Florea, Keating and Roditty-Gershon.

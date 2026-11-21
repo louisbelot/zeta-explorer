@@ -2529,6 +2529,84 @@ at n = 6): t ↦ ct maps the family to itself and multiplies the degree-n terms 
 the computation stops at n = 6, where the L-polynomials of the 19,594 primes of
 degree 6 are the cost; N = 12 takes 49 s.
 
+### Sextic and quartic twists
+
+![Exact family means of Tr Θⁿ for sextic twists of y² = x³ + t² + 1 over F_7 at deg D = 9 and 10, with their N → ∞ limits; the angles of the zeros of the Hecke factor H over a sextic and a quartic family; and the distance from the limit shrinking like 7^(−N)](docs/cm.png)
+
+A curve y² = x³ + c has CM by Z[ω], and for q ≡ 1 mod 6 its twists over F_q(t) are
+the sextic twists y² = x³ + BD, with D monic, sixth-power-free and prime to B. For
+q ≡ 1 mod 4 the curve y² = x³ + cx has CM by Z[i] and the quartic twists
+y² = x³ + ADx play the same role. `cmtwist.py` builds both families, splits every
+L-function into two Hecke L-functions, and computes exact family means of Tr Θⁿ for
+any deg D without listing D. Values in Z[i] use a small exact `Gauss` type next to
+the existing `Eis`; sextic values live in Z[ω] already, since ζ₆ = 1 + ω.
+
+Counting points over F_Q splits into Jacobi sums. For y² = x³ + c,
+a = −(Λ + Λ̄) with Λ = χ̄₆(c)·J(χ₃, η), where χ₃ = χ₆². For y² = x³ + cx the same
+count gives Λ = χ₄(−1)·χ̄₄(c)·J(χ₄, η). The Hasse-Davenport relation says
+−J over F_{q^d} equals (−J over F_q)^d, so at a place P of degree d the Frobenius is
+α_P = χ̄_P(c)·π^d with a single π for the whole family: π = −J(χ₃, η) = −3 − 2ω
+over F_7, and π = −χ₄(−1)J(χ₄, η) = 1 + 2i over F_5. Hence
+
+L(E_c, u) = H(πu)·H̄(π̄u),   H(u) = ∏_P (1 − χ̄_P(c) u^(deg P))^(−1),
+
+with the place at infinity included, at the value χ̄(lead c), exactly when 6 | deg c
+(or 4 | deg c). The tests check Hasse-Davenport for m ≤ 3 in four (q, order) pairs,
+π + π̄ against point counts, and the product against L(E_c, u) from point counts
+coefficient by coefficient for ten curves over F_5, F_7, F_13 and F_17, including
+repeated factors and good reduction at infinity.
+
+For the means, a place P of degree d with k = n/d contributes d·2 Re(π^n
+χ̄_P(B)^k W) to the family sum of the traces, with W = Σ_D χ̄_P(D)^k. For a character
+ψ mod P of order dividing 6, the Euler product over sixth-power-free D is
+
+Σ_D ψ(D) u^(deg D) = L(u, ψ)·∏_{R | B} (1 − ψ(R) u^(deg R))·(1 − q u⁶) / ∏_{R | BP} (1 − u^(6 deg R)),
+
+and the principal case swaps L(u, ψ) for (1 − u^d)/(1 − qu). L(u, ψ) has degree
+d − 1 and comes from character sums Σ_{x ∈ F_{q^m}} χ₆(P(x)) by sixth-power
+reciprocity. Unlike the cubic case this carries a sign, (−1)^(((q − 1)/6)·deg A·deg P),
+and over F_7 the exponent (q − 1)/6 = 1 is odd. The tests check L(u, ψ) against
+direct sums over monic A, the family against a brute-force scan of monic D, and the
+exact means against brute-force means from point counts (no Hecke characters
+involved) as exact fractions for eight choices of q, order, B and deg D.
+
+As deg D → ∞ only two kinds of term survive: the principal ones, where 6 | k, and
+the place at infinity. The first gives the share of D prime to P,
+(1 − q^(−d))/(1 − q^(−6d)); the second appears only when 6 | deg BD, and then it is
+the same for every twist, because every member has good reduction at infinity with
+Frobenius χ̄(lead B)·π. `limit_traces` writes the limit in closed form. For
+B = t² + 1 over F_7 (left panel):
+
+| n | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| deg D = 9, exact | 0.00000 | 0.00000 | 0.00000 | −0.00001 | 0.00000 | 0.01459 |
+| deg D = 9, limit | 0 | 0 | 0 | 0 | 0 | 143/9804 = 0.01459 |
+| deg D = 10, exact | 0.57143 | −0.04082 | −0.05831 | 0.03915 | −0.01404 | 0.01702 |
+| deg D = 10, limit | 4/7 | −0.04082 | −0.05831 | 0.03915 | −0.01404 | 0.01702 |
+| U(N) | 0 | 0 | 0 | 0 | 0 | 0 |
+
+At deg D = 10 the family has 276,693,984 twists and the mean of Tr Θ is 4/7 = −tr(π)/q.
+The unitary value 0 is the q → ∞ limit of Katz and Sarnak; at fixed q the means
+converge in deg D to these arithmetic numbers instead, of size q^(−n/2) from the
+shared factor at infinity and q^(1 − n/2) from the principal terms. The distance
+to the limit (right panel, the max over n ≤ 6) falls from 0.94 at deg D = 2 to
+6.8e−11 at deg D = 14, close to q^(−N). The quartic family over F_5 behaves the same
+way: with B = t² + 1 the means at deg D = 12 are 0 except 0.05385 at n = 4 and
+0.05829 at n = 8, and at deg D = 10, where 4 | deg BD, the mean of Tr Θ is
+−tr(π)/5 = −0.4.
+
+The zeros of H (middle panel) spread over the whole circle with no point of
+repulsion, as a unitary family should. With deg H = 6 the bins still wobble, between
+0.66 and 1.31 times 1/(2π) over F_7 (48 bins) and 0.50 and 1.40 over F_5. The central order
+is always even: L(E, 1/q) = |H(π/q)|² ≥ 0, so the two factors vanish together and
+every root number is +1. Over F_7 with deg D = 5 the 16,464 sextic twists vanish to
+order 0, 2 and 4 in 15,036, 1,399 and 29 cases; over F_5 with deg D = 6 the 9,952
+quartic twists split 8,283, 1,604 and 65.
+
+The cost is the L-polynomials of the primes of degree up to n. Over F_7 the sextic
+means to n = 6 take 6 s for those and then about 3 s per deg D; the quartic means
+over F_5 to n = 8 take a minute, mostly for the 48,750 primes of degree 8.
+
 ### Chebyshev's bias
 
 ![The mod 4 prime race against 3,130 zeros of L(s, χ₋₄), and the first lead change at 26861](docs/race.png)
