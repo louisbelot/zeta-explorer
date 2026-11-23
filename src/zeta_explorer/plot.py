@@ -2452,3 +2452,39 @@ def plot_siegel(needed: dict[str, np.ndarray],
         _style(ax)
     fig.tight_layout()
     return fig
+
+
+def plot_bmor(ell: np.ndarray, dev: np.ndarray, T: np.ndarray, single: np.ndarray,
+              single_ell: np.ndarray, label: str) -> Figure:
+    import matplotlib.pyplot as plt
+
+    fig, (left, right) = plt.subplots(1, 2, figsize=(12, 4.6), facecolor=SURFACE)
+    x = np.linspace(1.567, ell.max(), 200)
+    theorem = 0.22737 * x + 2 * np.log1p(x) - 0.5
+    conjecture = x / np.log(2 + x)
+    left.scatter(ell, np.abs(dev), s=2, color=SERIES, alpha=0.25, linewidths=0,
+                 label="|N(T, χ) − main term|, all certified counts")
+    left.plot(x, theorem, color=INK, linewidth=1.4, label="Theorem 1.1 bound")
+    left.plot(x, conjecture, color=ACCENT, linewidth=1.4, label="Conjecture 1.4 bound")
+    left.set_xlabel("ℓ = log(q(T + 2)/2π)", color=INK)
+    left.set_ylabel("deviation", color=INK)
+    left.set_title("Every count sits inside both bounds", color=INK, fontsize=12, loc="left")
+    left.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper left",
+                markerscale=4)
+    right.step(T, single, where="post", color=SERIES, linewidth=1.2, label=label)
+    c = single_ell / np.log(2 + single_ell)
+    right.plot(T, c, color=ACCENT, linewidth=1.2, label="± Conjecture 1.4")
+    right.plot(T, -c, color=ACCENT, linewidth=1.2)
+    right.axhline(0, color=GRID, linewidth=1)
+    right.set_xlabel("T", color=INK)
+    right.set_ylabel("N(T, χ) − main term", color=INK)
+    right.set_ylim(-1.2 * c.max(), 1.45 * c.max())
+    right.set_title("The character closest to the conjectured bound", color=INK, fontsize=12,
+                    loc="left")
+    right.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper center",
+                 ncol=2)
+    for ax in (left, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig

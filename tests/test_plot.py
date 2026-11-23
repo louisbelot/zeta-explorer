@@ -24,6 +24,7 @@ from zeta_explorer.plot import (
     plot_barrier,
     plot_bias_densities,
     plot_blfi,
+    plot_bmor,
     plot_bsd,
     plot_central_values,
     plot_cm,
@@ -578,3 +579,13 @@ def test_plot_siegel_panels(tmp_path):
     assert fig.axes[1].lines[0].get_ydata().tolist() == [0.5, 3.0, 9.0]
     assert list(fig.axes[1].lines[1].get_ydata()) == [8.0, 8.0]
     assert len(fig.axes[0].patches) == 2 * 59
+
+
+def test_plot_bmor_panels(tmp_path):
+    ell = np.array([2.0, 3.0, 4.0])
+    dev = np.array([0.5, -1.0, 0.25])
+    T = np.array([1.0, 2.0, 3.0])
+    fig = plot_bmor(ell, dev, T, dev, ell, "chi")
+    fig.savefig(tmp_path / "bmor.png")
+    assert fig.axes[0].collections[0].get_offsets()[:, 1].tolist() == [0.5, 1.0, 0.25]
+    assert fig.axes[1].lines[0].get_ydata().tolist() == [0.5, -1.0, 0.25]
