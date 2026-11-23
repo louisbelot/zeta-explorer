@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import mpmath
 import numpy as np
 
-from zeta_explorer.characters import kronecker
+from zeta_explorer.characters import factor, kronecker
 from zeta_explorer.explicit import primes
 
 CONVEXITY = {2: "2.97655", 4: "5.13781", 8: "9.49562"}
@@ -173,3 +173,36 @@ def scan(
         live = live[~done]
     margin[live] = S[live] - target[live] + TOL
     return Scan(d, k, c, needed, margin, len(ps))
+
+
+def character_table(d: int) -> np.ndarray:
+    q = abs(d)
+    n = np.arange(q, dtype=np.int64)
+    t = np.ones(q, dtype=np.int8)
+    for p, e in factor(q):
+        if p == 2:
+            if e == 3:
+                t *= np.where(np.isin(n % 8, (1, 7)), 1, -1).astype(np.int8)
+            if (d >> e) % 4 == 3:
+                t *= np.where(n % 4 == 1, 1, -1).astype(np.int8)
+            t *= (n % 2).astype(np.int8)
+        else:
+            t *= legendre_table(p)[n % p]
+    return t
+
+
+def scan_one(
+    d: int, k: Constants, ps: np.ndarray, w: np.ndarray, c: float = 0.2, chunk: int = 1 << 15
+) -> tuple[int, float]:
+    tab = character_table(d)
+    target = float(bound(abs(d), k, c)) + TOL
+    S, lo = 0.0, 0
+    while lo < len(ps):
+        hi = min(lo + chunk, len(ps))
+        chi = tab[ps[lo:hi] % abs(d)]
+        part = S + np.cumsum(w[np.arange(lo, hi), chi + 1])
+        i = int(np.searchsorted(part, target, side="right"))
+        if i < hi - lo:
+            return lo + i + 1, float(part[i]) - target + TOL
+        S, lo, chunk = float(part[-1]), hi, 2 * chunk
+    return 0, S - target + TOL
