@@ -165,16 +165,22 @@ def c0(eps: float) -> float:
 
 
 def s_integral_bound(L: SelfDual, t1: float, t2: float, eps: float = 0.5) -> float:
+    return turing_bound(L.q, L.mu, t1, t2, eps)
+
+
+def turing_bound(
+    q: float, mu: tuple[float, ...], t1: float, t2: float, eps: float = 0.5
+) -> float:
     if not 0 < eps <= 0.5:
         raise ValueError("eps must lie in (0, 1/2]")
-    x2 = min(t1 * t1 - (2 + eps + m) ** 2 for m in L.mu)
+    x2 = min(t1 * t1 - (2 + eps + m) ** 2 for m in mu)
     if x2 <= 25 or t2 < t1:
         raise ValueError("t1 is too small for these gamma shifts, or t2 < t1")
-    r = len(L.mu)
+    r = len(mu)
     a = _a_eps(eps)
 
     def log_q(s: complex) -> float:
-        return math.log(L.q) + sum(math.log(abs(s + m) / (2 * math.pi)) for m in L.mu)
+        return math.log(q) + sum(math.log(abs(s + m) / (2 * math.pi)) for m in mu)
 
     total = (
         (1 / 16 + eps * (1 + eps) / 4) * log_q(complex(3 + eps, t2))
