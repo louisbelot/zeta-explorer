@@ -3043,6 +3043,56 @@ v = siegel.verify(10**6)                           # 207 s
 v.ok, v.counts()                                   # True, [604807, 3090, 28]
 ```
 
+### Certified zeros of Dirichlet L-functions
+
+![Deviation of every certified zero count from the main term against the bound of Bennett, Martin, O'Bryant and Rechnitzer and their conjectured bound, and the count for the real character mod 7](docs/lzeros.png)
+
+`lcertified.py` proves, character by character, that every zero of L(s, χ) with
+|γ| ≤ T is on the critical line and simple, in the style of Platt's verification of
+GRH. It runs for all 2,115 primitive characters with 3 ≤ q ≤ 150 (one from each
+conjugate pair) up to T(q) = min(2πe⁶/q − 2, 60), which is the range ℓ ≤ 6 of
+Bennett, Martin, O'Bryant and Rechnitzer (arXiv:2005.02989) with T capped at 60 for
+q ≤ 40. In total that is 89,264 zeros, in 446 s on 15 processes.
+
+There are two halves. The lower bound: Hardy's function
+Z_χ(t) = e^(iθ(t)) L(1/2 + it, χ) is real, Arb evaluates it in ball arithmetic, and a
+sign change between two grid points whose balls exclude 0 proves a zero between
+them. Running t over [−T, T] picks up the zeros of χ̄ as well, since
+|Z_χ(−t)| = |Z_χ̄(t)|. The upper bound is Turing's method with Booker's explicit
+bound on the integral of S(t) (the same bound `selfdual.py` uses, now exposed as
+`turing_bound(q, mu, t1, t2)`), applied to χ and χ̄ on a window [T, T + 10]. With
+N(T) = (T/π) log(q/π) + (2/π) Im log Γ(1/4 + a/2 + iT/2) + S(T, χ) + S(T, χ̄), if
+m zeros were missed below T then the area between the found count and the smooth
+term drops by m(t₂ − t₁), and it cannot drop below minus the bound. Every character
+passes with fewer than 0.982 zeros possibly missing, so none are. The grid starts at
+8 points per mean gap and doubles whenever Turing's check fails.
+
+Their Theorem 1.1 says |N(T, χ) − (T/π) log(qT/2πe) + χ(−1)/4| ≤ 0.22737ℓ +
+2 log(1 + ℓ) − 0.5 with ℓ = log(q(T + 2)/2π), and N(T, χ) = 0 when ℓ ≤ 1.567. On a
+grid of T in steps of 0.1 (462,179 pairs of χ and T away from any isolating
+interval) the largest ratio to that bound is 0.605, for χ₋₃ at T = 11.4. Their
+Conjecture 1.4 replaces the bound with ℓ/log(2 + ℓ); the closest any count comes is
+0.929 of it, for the real character mod 7 at T = 11.1. Both extremes are real
+characters of tiny modulus, where zeros come in ± pairs and N jumps by 2. The
+N = 0 clause is sharp at q = 3: ℓ ≤ 1.567 means T ≤ 8.036, and the first zero of
+L(s, χ₋₃) is at 8.0397.
+
+The checks: the first zeros of L(s, χ₋₄) and L(s, χ₋₃) bisect to 6.020948904697597
+and 8.039737155681 within 1e−11; counts up to T = 20 match the floating-point
+argument principle of `lfunction.count_zeros_box` for five characters; Conrey labels
+agree with `characters.conrey` value by value; the main term stays within
+(2 − a)/(50T) of the smooth term, which is their Proposition 3.2; and deleting two
+zeros from a certificate raises its missing count by exactly 2.
+
+```python
+from flint import dirichlet_char
+
+from zeta_explorer import lcertified
+
+cert = lcertified.certify(dirichlet_char(4, 3), 30.0)
+cert.complete, cert.count(30.0)        # True, 20
+```
+
 ### Davenport-Heilbronn: when the functional equation isn't enough
 
 ![Davenport-Heilbronn zeros on and off the critical line](docs/davenport.png)
