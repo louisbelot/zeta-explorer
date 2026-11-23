@@ -2277,3 +2277,83 @@ Design notes:
 Next: BSD for the rank 1 odd quadratic twists, with generators from the elliptic
 surface and Shioda heights, or the second moment of the Legendre twists against
 Bui, Florea, Keating and Roditty-Gershon.
+
+## 2026-11-23: No Siegel zeros below 10^6, and certified Dirichlet zeros
+
+Built:
+
+- `siegel.py`. `constants(r)` recomputes φ and E of Lu, Zaman and Zhao
+  (arXiv:2602.03626, Theorem 6.3 and Corollary 6.4) from the arcs θ_k, the Jensen
+  integrals A and B, the convexity constants C₂, C₄, C₈ and the J₀ bound 1.912.
+  `bound(q, k, c)` is the right side of their criterion with β = 1 − c/log q.
+- `fundamental(X)` sieves all fundamental discriminants with |d| ≤ X. `scan` runs
+  the prime sum for many d at once, one Legendre table per prime, switching to
+  Euler's criterion when few d are left. `character_table` builds χ_d on residues
+  mod |d| as a product of local characters (Legendre symbols, χ₋₄, χ₈), and
+  `scan_one` sums one d over millions of primes in doubling chunks.
+- `resum` redoes a partial sum in Arb. `positive_on` is a direct check that
+  L(σ, χ_d) > 0 on an interval: Arb point values plus |L′(σ)| ≤ φ(q)/(eσ).
+- `verify(X)` chains three passes (λ = 1.6, 1.3, 3.5) and the direct check.
+- `lcertified.py`. `isolate` finds sign changes of Hardy's Z_χ in Arb balls on
+  [−T, T], `certify` adds Turing's method with Booker's bound for χ and χ̄ on
+  [T, T + 10], and `Certificate.count` gives the certified N(T, χ).
+- `selfdual.turing_bound(q, mu, t1, t2)`, the Booker bound without a SelfDual.
+- `plot.plot_siegel`, `plot.plot_bmor`, docs/siegel.png and docs/lzeros.png.
+
+Checks:
+
+- φ and E at λ = 1.6, 1.3, 1.2, 1.1 round up to the paper's Table 1 exactly
+  (0.226748 / 1.161302 at λ = 1.6), and φ → 1/4 as r → 0.
+- `fundamental(10^6)` has 607,925 entries, 6/π² of 10^6 to 0.04%, and matches
+  `is_fundamental` below 3000. Vectorized Kronecker symbols, both paths, and the
+  residue tables match `characters.kronecker`; the tables are multiplicative and
+  sum to 0.
+- The prime weights summed at σ = 2 equal −ζ′/ζ − L′/L from mpmath. For six d the
+  full sum at σ = 1 + r stays below 1/r + φ log q + E, which is Theorem 2.1 with no
+  real zero.
+- The five tightest clearings of pass 1 and three of pass 3 re-summed in Arb at
+  128 bits: all above the bound, float within 1e−13 of the ball.
+- L(1, χ_d) from Arb equals 2πh/(w√|d|) for five imaginary fields.
+- Certified first zeros of L(s, χ₋₄) and L(s, χ₋₃) within 1e−11 of 6.020948904697597
+  and 8.039737155681; counts equal the float argument principle for five
+  characters; dropping two zeros raises Turing's missing count by exactly 2.
+
+Results:
+
+- No real zero in [1 − 1/(5 log q), 1] for any quadratic character of conductor
+  3 ≤ q ≤ 10^6. Pass 1 clears 604,807 discriminants (median 1,743 primes), pass 2
+  3,090 (median 275,149, at most 4,861,102 for d = 41), pass 3 the last 28, all
+  with |d| ≤ 232 (d = −3 needs 1,080,519 primes). 207 s in total.
+- Small r stalls on small |d|: for d = −163 at λ = 1.3 the full sum is 15.2 against
+  a bound of 9.73, but five million primes only reach 8.90 because the tail decays
+  like N^(−r)/r. At λ = 3.5 it clears after 72,327 primes. Large |d| go the other
+  way: d = −991027 clears at λ = 1.3 after 3.6 million primes and never at 3.5.
+- All 2,115 primitive characters with q ≤ 150 (up to conjugation) have every zero
+  with |γ| ≤ min(2πe⁶/q − 2, 60) on the line and simple: 89,264 zeros, Turing
+  missing count at most 0.982, 446 s on 15 processes.
+- Against Bennett, Martin, O'Bryant and Rechnitzer: the largest ratio to their
+  Theorem 1.1 bound is 0.605 (χ₋₃, T = 11.4), to their conjectured ℓ/log(2 + ℓ)
+  0.929 (the real character mod 7, T = 11.1), and N = 0 in all 278 sampled cases
+  with ℓ ≤ 1.567. At q = 3 that clause runs to T = 8.036 and the first zero is at
+  8.0397.
+
+Design notes:
+
+- The prime-sum criterion only works because every term is nonnegative: χ(p) is
+  ±1 or 0, so each prime contributes 2 log p/(p^σ − 1), log p/(p^σ − 1) or
+  2 log p/(p^(2σ) − 1). That makes partial sums monotone and early stopping sound,
+  and it is also why vectorizing over d is easy: the weight table has three rows.
+- Two layouts for two regimes. Most d clear in a few thousand primes, so pass 1
+  loops over primes with the whole d array; the survivors need millions of
+  primes, so later passes loop over d with a table of χ_d mod |d| and one gather
+  over the prime array.
+- Arb's ball evaluation of L(s, χ) near s = 1 goes through Hurwitz zeta and its
+  pole, so a ball touching 1 returns nan. The direct check uses exact points and a
+  derivative bound instead.
+- The Turing check counts both signs of γ at once, which is how BMOR define
+  N(T, χ). Its main term has no root-number constant, so non-real characters need
+  no special case.
+
+Next: the two-level density of the odd twists from the ratios conjecture, or the
+second moment of the Legendre twists against Bui, Florea, Keating and
+Roditty-Gershon.
