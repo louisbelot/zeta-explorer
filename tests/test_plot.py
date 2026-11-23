@@ -62,6 +62,7 @@ from zeta_explorer.plot import (
     plot_rank_two,
     plot_rs_error,
     plot_selmer,
+    plot_siegel,
     plot_skewes,
     plot_spacing,
     plot_spiral,
@@ -566,3 +567,14 @@ def test_plot_cm_panels(tmp_path):
     fig.savefig(tmp_path / "cm.png")
     assert fig.axes[0].lines[1].get_ydata().tolist() == [0.0, 0.0, 0.01]
     assert fig.axes[2].lines[0].get_ydata().tolist() == [0.5, 0.02, 1e-3]
+
+
+def test_plot_siegel_panels(tmp_path):
+    needed = {"pass 1": np.array([80, 900, 5000]), "pass 2": np.array([2e5, 4e6])}
+    n = np.array([1, 10, 100])
+    curves = {"a": (n, np.array([0.5, 3.0, 9.0]), 8.0), "b": (n, np.array([0.4, 1.0, 2.0]), 9.5)}
+    fig = plot_siegel(needed, curves)
+    fig.savefig(tmp_path / "siegel.png")
+    assert fig.axes[1].lines[0].get_ydata().tolist() == [0.5, 3.0, 9.0]
+    assert list(fig.axes[1].lines[1].get_ydata()) == [8.0, 8.0]
+    assert len(fig.axes[0].patches) == 2 * 59

@@ -2418,3 +2418,37 @@ def plot_cm(means: dict[int, list[float]], limits: dict[int, list[float]],
         _style(ax)
     fig.tight_layout()
     return fig
+
+
+def plot_siegel(needed: dict[str, np.ndarray],
+                curves: dict[str, tuple[np.ndarray, np.ndarray, float]]) -> Figure:
+    import matplotlib.pyplot as plt
+
+    fig, (left, right) = plt.subplots(1, 2, figsize=(12, 4.6), facecolor=SURFACE)
+    lo = min(int(n.min()) for n in needed.values())
+    top = max(int(n.max()) for n in needed.values())
+    edges = np.logspace(np.log10(lo) - 0.05, np.log10(top) + 0.05, 60)
+    for (name, n), color in zip(needed.items(), (SERIES, ACCENT, ORDINAL[4]), strict=False):
+        left.hist(n, bins=edges, color=color, edgecolor=SURFACE, label=f"{name} ({len(n):,})")
+    left.set_xscale("log")
+    left.set_yscale("log")
+    left.set_xlabel("primes needed to clear d", color=INK)
+    left.set_ylabel("discriminants", color=INK)
+    left.set_title("Most d clear within a few thousand primes", color=INK, fontsize=12,
+                   loc="left")
+    left.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper right")
+    for (name, (n, S, b)), color in zip(curves.items(), (ORDINAL[1], ORDINAL[4], ACCENT),
+                                         strict=False):
+        right.semilogx(n, S, color=color, linewidth=1.4, label=name)
+        right.axhline(b, color=color, linestyle="--", linewidth=1)
+    right.plot([], [], "--", color=INK_SECONDARY, linewidth=1, label="bound for that d")
+    right.set_xlabel("number of primes N", color=INK)
+    right.set_ylabel("partial sum over p ≤ p_N", color=INK)
+    right.set_title("At λ = 1.3, d clears when its sum crosses its bound", color=INK,
+                    fontsize=12, loc="left")
+    right.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="lower right")
+    for ax in (left, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig
