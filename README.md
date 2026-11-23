@@ -2972,6 +2972,77 @@ dedekind.zeta_minus_one_siegel(5)      # Fraction(1, 30)
 dedekind.form_counts(-4, 10)[1:]       # [4 4 0 4 8 0 0 4 4 8]
 ```
 
+### No Siegel zeros below 10^6
+
+![Primes needed to clear each fundamental discriminant up to 10^6, and the partial sums of three discriminants against their bounds](docs/siegel.png)
+
+A Siegel zero would be a real zero β of L(s, χ_d) very close to 1. Nobody can rule
+them out in general, but for any finite range of d it is a computation. Lu, Zaman
+and Zhao (arXiv:2602.03626) check that L(σ, χ) ≠ 0 for σ ≥ 1 − 1/(5 log q) for every
+quadratic character of modulus q ≤ 10^10, and `siegel.py` runs their method for every
+fundamental discriminant with 3 ≤ |d| ≤ 10^6: 607,925 of them, 303,957 positive.
+
+The method is a positivity argument. ζ(s)L(s, χ) is the Dedekind zeta function of
+Q(√d), so at σ = 1 + r the sum Σ Λ(n)(1 + χ(n))/n^σ = −ζ′/ζ(σ) − L′/L(σ, χ) has
+nonnegative terms. Their Theorem 2.1 bounds it from above, and a real zero β adds a
+negative term −1/(σ − β) that gets large when β is close to 1:
+
+    Σ Λ(n)(1 + χ(n))/n^σ ≤ 1/r − 1/(σ − β) + (σ − β)/(r + 7/8)² + φ log q + E.
+
+If β ≥ 1 − c/log q, the right side is at most an explicit B(q). So once a partial
+sum over primes exceeds B(q), there is no such β. The sum over prime powers has a
+closed form, log p/(p^σ − 1) + χ(p) log p/(p^σ − χ(p)) per prime, and every term is
+nonnegative, so partial sums only grow and stopping early is valid. φ and E come
+from Jensen's formula on circles around 1 + r together with convexity bounds for
+|L| at σ = 1/2, 3/4 and 7/8. `constants(r)` recomputes both from the paper's
+section 6 and reproduces its Table 1: φ = 0.226748 and E = 1.161302 at λ = 1.6,
+which the paper prints rounded up as 0.22675 and 1.1614, and the same at
+λ = 1.3, 1.2 and 1.1 (r = λ/(10 log 10)).
+
+Three passes clear everything:
+
+| pass | r | primes | discriminants cleared | median primes needed | most needed |
+|---|---|---|---|---|---|
+| 1 | 0.0695 (λ = 1.6) | 60,000 | 604,807 | 1,743 | 59,991 |
+| 2 | 0.0565 (λ = 1.3) | 5,000,000 | 3,090 | 275,149 | 4,861,102 (d = 41) |
+| 3 | 0.152 (λ = 3.5) | 5,000,000 | 28 | 396 | 1,080,519 (d = −3) |
+
+The whole run takes 207 s. Pass 1 is vectorized over discriminants: one Legendre
+table per prime, or Euler's criterion once few d are left. Passes 2 and 3 go the
+other way, one discriminant at a time, with χ_d tabulated on residues mod |d| as a
+product of local characters and looked up for five million primes at once.
+
+The third pass is the interesting one. The 28 survivors of pass 2 are all tiny,
+|d| ≤ 232, and the paper never meets them because it hands q ≤ 4·10^5 to Platt's
+GRH computations. For d = −163 the full sum at λ = 1.3 is 15.2 against a bound of
+9.73, so the criterion holds, but the partial sums converge like N^(−r)/r and five
+million primes only reach 8.90. A larger r makes B(q) smaller and the tail shorter
+at the same time, and at r = 0.152 all 28 clear, −163 after 72,327 primes. The
+trade goes the other way for large |d|: the φ log q term grows, and d = −991027
+clears at r = 0.0565 after 3.6 million primes but not at all at r = 0.152.
+
+Each clearing needs the partial sum to beat B(q) by 1e−7 in double precision, well
+above the worst-case rounding of five million positive terms (n·u·S < 1e−8). The
+five tightest clearings of pass 1 and the three tightest of pass 3 (d = −3 after
+1.08 million primes among them) were re-summed in Arb at 128 bits: every ball lies
+above B(q), and the float sums agree with the balls to 1e−13. φ and E themselves
+are computed with mpmath at 30 digits. Separately,
+the 28 small discriminants are checked by direct evaluation: L(σ, χ_d) at points of
+[1 − 1/(5 log q), 1] in Arb, with the gaps covered by |L′(σ)| ≤ φ(q)/(eσ) from
+partial summation. (Arb's ball evaluation is useless here, since it goes through
+Hurwitz zeta and blows up near the pole at s = 1.) Both methods agree that none of
+them has a zero in that range.
+
+```python
+import math
+
+from zeta_explorer import siegel
+
+k = siegel.constants(1.6 / (10 * math.log(10)))   # phi 0.226748, E 1.161302
+v = siegel.verify(10**6)                           # 207 s
+v.ok, v.counts()                                   # True, [604807, 3090, 28]
+```
+
 ### Davenport-Heilbronn: when the functional equation isn't enough
 
 ![Davenport-Heilbronn zeros on and off the critical line](docs/davenport.png)
