@@ -5,8 +5,9 @@ from dataclasses import dataclass
 
 import mpmath
 import numpy as np
+from flint import acb, arb, ctx, dirichlet_char
 
-from zeta_explorer.characters import factor, kronecker
+from zeta_explorer.characters import factor, kronecker, totient
 from zeta_explorer.explicit import primes
 
 CONVEXITY = {2: "2.97655", 4: "5.13781", 8: "9.49562"}
@@ -206,3 +207,108 @@ def scan_one(
             return lo + i + 1, float(part[i]) - target + TOL
         S, lo, chunk = float(part[-1]), hi, 2 * chunk
     return 0, S - target + TOL
+
+
+def resum(d: int, r: float, n: int, bits: int = 128) -> arb:
+    old = ctx.prec
+    ctx.prec = bits
+    try:
+        sigma = 1 + arb(r)
+        S = arb(0)
+        for p in nth_primes(n):
+            chi = int(kronecker_column(np.array([d]), int(p))[0])
+            lp = arb(int(p)).log()
+            x = arb(int(p)) ** sigma
+            S += lp / (x - 1) + (chi * lp / (x - chi) if chi else 0)
+        return S
+    finally:
+        ctx.prec = old
+
+
+def flint_character(d: int) -> dirichlet_char:
+    q = abs(d)
+    n = np.arange(1, q + 1, dtype=np.int64)
+    tab = character_table(d)
+    units = np.flatnonzero(tab)
+    for m in n[n * n % q == 1]:
+        chi = dirichlet_char(q, int(m))
+        if not chi.is_primitive():
+            continue
+        if all((-1 if chi.chi_exponent(int(x)) else 1) == tab[x] for x in units):
+            return chi
+    raise ValueError(f"no primitive real character for {d}")
+
+
+def positive_on(d: int, lo: float, hi: float, bits: int = 64, depth: int = 30) -> bool:
+    if lo <= 0:
+        raise ValueError("lo must be positive")
+    chi = flint_character(d)
+    old = ctx.prec
+    ctx.prec = bits
+    try:
+        M = arb(totient(abs(d))) / (arb.const_e() * arb(lo))
+        stack = [(lo, hi, 0)]
+        while stack:
+            a, b, k = stack.pop()
+            m = (a + b) / 2
+            v = chi.l(acb(m)).real
+            if v > M * (arb(m) - arb(a)) and v > M * (arb(b) - arb(m)):
+                continue
+            if v < 0 or k == depth:
+                return False
+            stack += [(a, m, k + 1), (m, b, k + 1)]
+        return True
+    finally:
+        ctx.prec = old
+
+
+PASSES = ((1.6, 60_000), (1.3, 5_000_000), (3.5, 5_000_000))
+
+
+@dataclass
+class Verification:
+    X: int
+    c: float
+    d: np.ndarray
+    stage: np.ndarray
+    needed: np.ndarray
+    margin: np.ndarray
+
+    @property
+    def ok(self) -> bool:
+        return bool((self.stage > 0).all())
+
+    def counts(self) -> list[int]:
+        return [int((self.stage == i).sum()) for i in range(1, self.stage.max() + 1)]
+
+
+def verify(
+    X: int, c: float = 0.2, passes: tuple[tuple[float, int], ...] = PASSES
+) -> Verification:
+    d = fundamental(X)
+    d = d[np.abs(d) >= 3]
+    stage = np.zeros(d.size, dtype=np.int64)
+    needed = np.zeros(d.size, dtype=np.int64)
+    margin = np.zeros(d.size)
+    ps = nth_primes(max(n for _, n in passes))
+    live = np.arange(d.size)
+    for j, (lam, n) in enumerate(passes, start=1):
+        k = constants(lam / (10 * math.log(10)))
+        if j == 1:
+            res = scan(d[live], k, n, c, ps)
+            got, gap = res.needed, res.margin
+        else:
+            w = weights(ps[:n], 1 + k.r)
+            pairs = [scan_one(int(x), k, ps[:n], w, c) for x in d[live]]
+            got = np.array([a for a, _ in pairs], dtype=np.int64)
+            gap = np.array([b for _, b in pairs])
+        hit = got > 0
+        stage[live[hit]] = j
+        needed[live[hit]] = got[hit]
+        margin[live[hit]] = gap[hit]
+        live = live[~hit]
+    for i in live:
+        q = abs(int(d[i]))
+        if positive_on(int(d[i]), 1 - c / math.log(q), 1.0):
+            stage[i] = len(passes) + 1
+    return Verification(X, c, d, stage, needed, margin)

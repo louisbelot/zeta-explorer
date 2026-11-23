@@ -1,19 +1,25 @@
 import math
 
+import mpmath
 import numpy as np
 import pytest
 
-from zeta_explorer.characters import is_fundamental, kronecker
+from zeta_explorer.characters import is_fundamental, kronecker, totient
 from zeta_explorer.siegel import (
+    TOL,
     bound,
     character_table,
     constants,
+    flint_character,
     full_sum,
     fundamental,
     kronecker_column,
     nth_primes,
+    positive_on,
+    resum,
     scan,
     scan_one,
+    verify,
     weights,
 )
 
@@ -126,10 +132,56 @@ def test_scan_matches_scan_one():
         assert m == pytest.approx(s.margin[i], abs=1e-9)
 
 
+def test_clearing_is_certified_in_arb():
+    k = constants(r_of(1.6))
+    d = fundamental(20000)
+    d = d[np.abs(d) > 5000]
+    s = scan(d, k, 30000)
+    cleared = np.flatnonzero(s.needed)
+    for i in cleared[np.argsort(s.margin[cleared])[:3]]:
+        S = resum(int(d[i]), k.r, int(s.needed[i]))
+        target = float(bound(abs(int(d[i])), k)) + TOL
+        assert S > target
+        assert float(S.mid()) - target + TOL == pytest.approx(s.margin[i], abs=1e-9)
+
+
 def test_small_discriminants_fail_the_criterion():
     k = constants(r_of(1.6))
     s = scan(np.array([-3, -4, 5, -163]), k, 60000)
     assert (s.needed == 0).all()
+
+
+def test_flint_character():
+    for d in (-3, 5, -8, 8, -163, 12, -24):
+        chi = flint_character(d)
+        assert chi.modulus() == abs(d) and chi.is_real() and chi.conductor() == abs(d)
+
+
+def test_l1_class_number_formula():
+    for d, h, w in ((-163, 1, 2), (-3, 1, 6), (-4, 1, 4), (-23, 3, 2), (-232, 2, 2)):
+        v = flint_character(d).l(1)
+        assert float(v.real.mid()) == pytest.approx(2 * math.pi * h / (w * math.sqrt(-d)))
+
+
+@pytest.mark.parametrize("d", [-3, 5, -163, 232])
+def test_derivative_bound(d):
+    vals = [kronecker(d, a) for a in range(abs(d))]
+    for s in np.linspace(0.3, 0.98, 12):
+        assert abs(mpmath.dirichlet(float(s), vals, 1)) <= totient(abs(d)) / (math.e * s)
+
+
+def test_positive_on_small():
+    for d in (-3, -4, 5, -7, 8, -163, -232):
+        assert positive_on(d, 1 - 0.2 / math.log(abs(d)), 1.0)
+    assert positive_on(-3, 0.05, 1.0)
+
+
+def test_verify_small():
+    v = verify(1000, passes=((1.6, 60_000), (1.3, 2_000_000)))
+    assert v.ok
+    direct = set(v.d[v.stage == 3].tolist())
+    assert {-3, -4, 5, -163} <= direct
+    assert v.counts()[0] > 0.8 * v.d.size
 
 
 def test_larger_r_suits_small_q():
