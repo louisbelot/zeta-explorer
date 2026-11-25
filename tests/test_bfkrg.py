@@ -7,6 +7,7 @@ import pytest
 from zeta_explorer.bfkrg import (
     check_curve,
     chi_M,
+    derivative_mean,
     h2,
     local,
     moments,
@@ -152,3 +153,14 @@ def test_second_moment_gap_shrinks(fams):
         gaps.append(abs(exact - r.second))
     assert gaps[1] < gaps[0]
     assert gaps[1] < 0.04 * r.second
+
+
+def test_derivative_moment_matches_the_recipe(fams):
+    M = multiplicative(E5)
+    gaps = []
+    for n in (3, 5):
+        fam = fams[n]
+        r = recipe(E5, 2 * n + 1, root_number(fam, M), 8)
+        gaps.append(abs(derivative_mean(fam) - r.derivative))
+    assert gaps[1] < gaps[0] / 20
+    assert gaps[1] < 1e-3

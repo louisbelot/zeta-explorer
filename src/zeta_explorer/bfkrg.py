@@ -122,9 +122,9 @@ def h2(E: Curve, x, y, d_max: int, twisted: bool = False) -> complex:
     return out * np.exp(s)
 
 
-def _value_and_slope(E: Curve, d_max: int, twisted: bool) -> tuple[float, float]:
+def _value_and_slope(E: Curve, y: int, d_max: int, twisted: bool) -> tuple[float, float]:
     h = 1e-30
-    v = h2(E, 1 + 1j * h, 1, d_max, twisted)
+    v = h2(E, 1 + 1j * h, y, d_max, twisted)
     return v.real, v.imag / h
 
 
@@ -134,6 +134,7 @@ class Recipe:
     eps0: int
     first: float
     second: float
+    derivative: float
     C1: float
     CM: float
 
@@ -148,11 +149,14 @@ class Recipe:
 
 def recipe(E: Curve, N: int, eps0: int, d_max: int) -> Recipe:
     check_curve(E)
-    first = (h2(E, 1, 0, d_max) + eps0 * h2(E, 1, 0, d_max, twisted=True)).real
-    C1, D1 = _value_and_slope(E, d_max, False)
-    CM, DM = _value_and_slope(E, d_max, True)
+    A1, B1 = _value_and_slope(E, 0, d_max, False)
+    AM, BM = _value_and_slope(E, 0, d_max, True)
+    first = A1 + eps0 * AM
+    derivative = np.log(E.p) * (N * (A1 - eps0 * AM) / 2 - (B1 - eps0 * BM))
+    C1, D1 = _value_and_slope(E, 1, d_max, False)
+    CM, DM = _value_and_slope(E, 1, d_max, True)
     second = (N + 1) * C1 - 2 * D1 + eps0 * ((N + 1) * CM - 2 * DM)
-    return Recipe(N, eps0, float(first), float(second), float(C1), float(CM))
+    return Recipe(N, eps0, float(first), float(second), float(derivative), float(C1), float(CM))
 
 
 def shifted(E: Curve, N: int, eps0: int, a: float, b: float, d_max: int) -> float:
@@ -171,3 +175,12 @@ def moments(fam: list[Twist]) -> tuple[Fraction, Fraction]:
     v = [t.L.central for t in fam]
     n = len(v)
     return sum(v, Fraction(0)) / n, sum((c * c for c in v), Fraction(0)) / n
+
+
+def derivative_mean(fam: list[Twist]) -> float:
+    q = fam[0].L.q
+    total = Fraction(0)
+    for t in fam:
+        if t.L.eps == -1:
+            total += sum((Fraction(k * c, q**k) for k, c in enumerate(t.L.c)), Fraction(0))
+    return float(-np.log(q) * total / len(fam))
