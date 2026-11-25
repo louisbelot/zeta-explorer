@@ -97,6 +97,10 @@ def legendre(p: int) -> Curve:
     return Curve(p, (-1, -1), (0, 1), ())
 
 
+def twisted_legendre(p: int) -> Curve:
+    return legendre(p).twist((0, 1))
+
+
 def ulmer(p: int, d: int) -> Curve:
     return Curve(p, (pow(4, -1, p),), (), (0,) * d + (-1,))
 
@@ -122,6 +126,8 @@ def traces(E: Curve, m: int) -> np.ndarray:
     if E == legendre(E.p):
         x = np.arange(F.q)
         return -correlate(F, F.chi[F.mul(x, F.add(x, F.neg(np.ones_like(x))))], F.chi)
+    if E == twisted_legendre(E.p):
+        return F.chi * traces(legendre(E.p), m)
     if not E.a2 and not E.a4:
         return j0_traces(E.p, m)[F.polyval(E.a6, np.arange(F.q))]
     if not E.a2 and not E.a6:

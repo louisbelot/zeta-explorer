@@ -20,6 +20,7 @@ from zeta_explorer.funcfield import (
     power_sums,
     traces,
     twist_set,
+    twisted_legendre,
     ulmer,
 )
 from zeta_explorer.gf import cubic_sums, field
@@ -203,3 +204,11 @@ def test_j1728_fast_path_matches_cubic_sums():
     x = np.arange(F.q)
     generic = -cubic_sums(F, np.zeros_like(x), F.polyval(E.a4, x), np.zeros_like(x))
     assert traces(E, 2).tolist() == generic.tolist()
+
+
+def test_twisted_legendre_fast_path_matches_cubic_sums():
+    E = twisted_legendre(5)
+    F = field(5, 2)
+    reps, inv = F.orbits
+    A, B, C = (F.polyval(a, reps) for a in (E.a2, E.a4, E.a6))
+    assert np.array_equal(traces(E, 2), -cubic_sums(F, A, B, C)[inv])
