@@ -9,8 +9,11 @@ from zeta_explorer.bfkrg import (
     chi_M,
     h2,
     local,
+    moments,
     raw2,
+    recipe,
     root_number,
+    shifted,
     sym2,
 )
 from zeta_explorer.funcfield import Curve, family, legendre, twisted_legendre
@@ -95,6 +98,12 @@ def test_sym2_of_the_twist_is_trivial():
     assert sym2(E5) == (1,)
 
 
+def test_limit_matches_small_shifts():
+    r = recipe(E5, 11, -1, 5)
+    for a, b in [(1e-6, 2e-6), (1e-6, -1.5e-6)]:
+        assert shifted(E5, 11, -1, a, b, 5) == pytest.approx(r.second, abs=1e-4)
+
+
 def test_curve_checks():
     check_curve(E5)
     check_curve(legendre(5))
@@ -120,3 +129,26 @@ def test_root_number_is_minus_chi_at_one(fams):
         assert root_number(fam, M) == -1
         odd = [t for t in fam if t.L.eps == -1]
         assert odd and all(t.L.central == 0 for t in odd)
+
+
+def test_first_moment_matches_the_recipe(fams):
+    M = multiplicative(E5)
+    gaps = []
+    for n in (3, 5):
+        fam = fams[n]
+        r = recipe(E5, 2 * n + 1, root_number(fam, M), 8)
+        gaps.append(abs(float(moments(fam)[0]) - r.first))
+    assert gaps[1] < gaps[0] / 3
+    assert gaps[1] < 0.02
+
+
+def test_second_moment_gap_shrinks(fams):
+    M = multiplicative(E5)
+    gaps = []
+    for n in (3, 5):
+        fam = fams[n]
+        r = recipe(E5, 2 * n + 1, root_number(fam, M), 8)
+        exact = float(moments(fam)[1])
+        gaps.append(abs(exact - r.second))
+    assert gaps[1] < gaps[0]
+    assert gaps[1] < 0.04 * r.second

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from fractions import Fraction
 
 import numpy as np
 
@@ -119,3 +120,54 @@ def h2(E: Curve, x, y, d_max: int, twisted: bool = False) -> complex:
             r = r * _sym2_inv(L.lam, L.kind, w**d / Q, Q)
         s += np.log(r).sum()
     return out * np.exp(s)
+
+
+def _value_and_slope(E: Curve, d_max: int, twisted: bool) -> tuple[float, float]:
+    h = 1e-30
+    v = h2(E, 1 + 1j * h, 1, d_max, twisted)
+    return v.real, v.imag / h
+
+
+@dataclass(frozen=True)
+class Recipe:
+    N: int
+    eps0: int
+    first: float
+    second: float
+    C1: float
+    CM: float
+
+    @property
+    def slope(self) -> float:
+        return self.C1 + self.eps0 * self.CM
+
+    @property
+    def c2L3(self) -> float:
+        return 2 * self.slope
+
+
+def recipe(E: Curve, N: int, eps0: int, d_max: int) -> Recipe:
+    check_curve(E)
+    first = (h2(E, 1, 0, d_max) + eps0 * h2(E, 1, 0, d_max, twisted=True)).real
+    C1, D1 = _value_and_slope(E, d_max, False)
+    CM, DM = _value_and_slope(E, d_max, True)
+    second = (N + 1) * C1 - 2 * D1 + eps0 * ((N + 1) * CM - 2 * DM)
+    return Recipe(N, eps0, float(first), float(second), float(C1), float(CM))
+
+
+def shifted(E: Curve, N: int, eps0: int, a: float, b: float, d_max: int) -> float:
+    q = E.p
+    x, y = q**-a, q**-b
+
+    def A(u, v, twisted):
+        return h2(E, u, v, d_max, twisted) / (1 - u * v)
+
+    total = A(x, y, False) + x**N * y**N * A(1 / x, 1 / y, False)
+    total += eps0 * (x**N * A(1 / x, y, True) + y**N * A(x, 1 / y, True))
+    return float(np.real(total))
+
+
+def moments(fam: list[Twist]) -> tuple[Fraction, Fraction]:
+    v = [t.L.central for t in fam]
+    n = len(v)
+    return sum(v, Fraction(0)) / n, sum((c * c for c in v), Fraction(0)) / n
