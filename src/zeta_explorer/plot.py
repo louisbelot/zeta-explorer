@@ -2488,3 +2488,39 @@ def plot_bmor(ell: np.ndarray, dev: np.ndarray, T: np.ndarray, single: np.ndarra
         _style(ax)
     fig.tight_layout()
     return fig
+
+
+def plot_bfkrg(rows: list[tuple[int, int, float, float, float, float]], q: int,
+               c2L3: float) -> Figure:
+    import matplotlib.pyplot as plt
+
+    fig, (left, right) = plt.subplots(1, 2, figsize=(12, 4.6), facecolor=SURFACE)
+    mine = sorted(r for r in rows if r[0] == q)
+    g = np.array([r[1] for r in mine])
+    left.plot(g, [r[5] for r in mine], color=SERIES, linewidth=1.6, label="recipe")
+    left.plot(g, c2L3 * g, "--", color=INK_SECONDARY, linewidth=1.2,
+              label="c₂L(Sym²E, 1)³ g, as stated")
+    left.plot(g, [r[4] for r in mine], "o", color=ACCENT, markersize=7, label="exact mean")
+    left.set_xticks(g)
+    left.set_xlabel("g  (deg D = 2g + 1)", color=INK)
+    left.set_ylabel("mean of L(E ⊗ χ_D, 1/2)²", color=INK)
+    left.set_title(f"Second moment over F_{q}", color=INK, fontsize=12, loc="left")
+    left.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="upper left")
+    colors = dict(zip(sorted({r[0] for r in rows}), (SERIES, ACCENT, ORDINAL[4]), strict=False))
+    for p, color in colors.items():
+        sub = sorted(r for r in rows if r[0] == p)
+        gs = [r[1] for r in sub]
+        right.semilogy(gs, [abs(r[2] - r[3]) for r in sub], "o-", color=color, linewidth=1.2,
+                       label=f"first, q = {p}")
+        right.semilogy(gs, [abs(r[4] - r[5]) for r in sub], "s--", color=color, linewidth=1.2,
+                       markerfacecolor="none", label=f"second, q = {p}")
+    right.set_xticks(g)
+    right.set_xlabel("g", color=INK)
+    right.set_ylabel("|exact − recipe|", color=INK)
+    right.set_title("Gap to the recipe", color=INK, fontsize=12, loc="left")
+    right.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="lower left", ncol=2)
+    for ax in (left, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig

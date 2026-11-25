@@ -22,6 +22,7 @@ from zeta_explorer.plot import (
     phase_colors,
     plot_afe,
     plot_barrier,
+    plot_bfkrg,
     plot_bias_densities,
     plot_blfi,
     plot_bmor,
@@ -589,3 +590,11 @@ def test_plot_bmor_panels(tmp_path):
     fig.savefig(tmp_path / "bmor.png")
     assert fig.axes[0].collections[0].get_offsets()[:, 1].tolist() == [0.5, 1.0, 0.25]
     assert fig.axes[1].lines[0].get_ydata().tolist() == [0.5, -1.0, 0.25]
+
+
+def test_plot_bfkrg_panels(tmp_path):
+    rows = [(5, 0, 0.5, 0.6, 0.8, 1.5), (5, 1, 0.7, 0.66, 2.0, 2.1), (13, 1, 0.8, 0.85, 4.4, 4.7)]
+    fig = plot_bfkrg(rows, 5, 0.3)
+    fig.savefig(tmp_path / "bfkrg.png")
+    assert fig.axes[0].lines[2].get_ydata().tolist() == [0.8, 2.0]
+    assert fig.axes[1].lines[1].get_ydata() == pytest.approx([0.7, 0.1])
