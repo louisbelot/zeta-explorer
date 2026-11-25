@@ -593,8 +593,9 @@ def test_plot_bmor_panels(tmp_path):
 
 
 def test_plot_bfkrg_panels(tmp_path):
-    rows = [(5, 0, 0.5, 0.6, 0.8, 1.5), (5, 1, 0.7, 0.66, 2.0, 2.1), (13, 1, 0.8, 0.85, 4.4, 4.7)]
-    fig = plot_bfkrg(rows, 5, 0.3)
+    exact = {"first": [0.5, 0.7], "second": [0.8, 2.0], "derivative": [1.0, 6.0]}
+    predicted = {"first": [0.6, 0.66], "second": [1.5, 2.1], "derivative": [3.0, 6.5]}
+    fig = plot_bfkrg([0, 1], exact, predicted, 0.3, 5)
     fig.savefig(tmp_path / "bfkrg.png")
     assert fig.axes[0].lines[2].get_ydata().tolist() == [0.8, 2.0]
-    assert fig.axes[1].lines[1].get_ydata() == pytest.approx([0.7, 0.1])
+    assert fig.axes[1].lines[2].get_ydata() == pytest.approx([2.0, 0.5])
