@@ -2357,3 +2357,52 @@ Design notes:
 Next: the two-level density of the odd twists from the ratios conjecture, or the
 second moment of the Legendre twists against Bui, Florea, Keating and
 Roditty-Gershon.
+
+## 2026-11-25: The second moment of the odd-degree twists
+
+- `funcfield.twisted_legendre`: y² = x(x − t)(x − t²), with a fast trace path
+  (χ(t) times the Legendre traces). Its twists by odd-degree D are additive at ∞,
+  so the L-polynomial is exactly the Dirichlet series over monic f that Bui,
+  Florea, Keating and Roditty-Gershon (arXiv:1902.00568) work with. The plain
+  Legendre twists are multiplicative at ∞ for odd deg D and don't fit.
+- `bfkrg.py`: the CFKRS recipe for the first moment, the second moment and the
+  mean of L′(1/2) over the odd twists. `h2` is the diagonal Euler product with the
+  pole at xy = 1 removed, normalized by the Sym² factors so it converges like
+  q^(−d); `recipe` takes the limit of the four shifted terms in closed form,
+  (N + 1)H₁ − 2∂ₓH₁ + ε₀((N + 1)H_M − 2∂ₓH_M), with complex-step derivatives.
+  `root_number` checks ε_D = ε₀χ_D(M) on every twist.
+- `plot.plot_bfkrg`, docs/bfkrg.png.
+
+Checks:
+
+- Coefficients of the raw Euler product up to x³y³ equal a brute-force sum over
+  pairs of monic f, h over F_5 (both N₀ = 1 and N₀ = t − 1) to 1e−9.
+- Dividing out and multiplying back the Sym² factors returns the raw product to
+  1e−9 at (0.3, 0.2); the closed-form limit matches R(α, β) at shifts of 1e−6.
+- ε_D = −χ(D(1)) on all 45,220 twists over F_5 with deg D ≤ 7.
+
+Results:
+
+- Over F_5, g = 0..3 (3, 71, 1,739 and 43,407 twists): first-moment gap
+  0.129, 0.049, 3.3e−3, 1.1e−4; second-moment gap 0.62, 0.15, 0.099, 0.016
+  (0.46% at g = 3); L′ gap 1.59, 0.091, 6.8e−4, 3.1e−3.
+- The recipe's slope is 4(H₁ + ε₀H_M) = 0.651 per unit g over F_5, which is
+  2 c₂(M) L(Sym²E, 1)³ in the paper's notation. Theorem 1.2 as stated has
+  c₂(M) L(Sym²E, 1)³ g, half that; the end of their Section 6 has X = 2g − 100 log g
+  in place of g. The stated term is 0.98 at g = 3, the exact mean 3.446.
+- At g = 1 the recipe is above the exact second moment by 7%, 3.2% and 2.9% for
+  q = 13, 17, 29. As q → ∞ it tends to 1 and N + 1, half the O⁻(7) moments
+  (Monte Carlo 2.02 and 16.4).
+
+Design notes:
+
+- A(x, y) at y = 0 is the first-moment series, so the first moment and L′ come
+  out of the same `h2` with no separate code.
+- The derivative is a complex step at h = 1e−30. Every local factor is rational
+  in x, and the log-sum over places keeps the imaginary part from cancelling.
+- g = 3 over F_5 takes 534 s, almost all in `gf.character_sums` at F_{5^8}.
+  g = 4 would need F_{5^10} and about 600 times as long, so the exact data stop
+  at g = 3 unless the enumeration gets a new idea.
+
+Next: the two-level density of the odd twists from the ratios conjecture, or BSD
+for the rank 1 odd twists with heights from Shioda's formula.
