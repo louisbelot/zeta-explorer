@@ -2202,6 +2202,96 @@ slowly for high k. Ratios to SO(4):
 The high moments are carried by rare twists with det(I − A) near its maximum of 16,
 so they converge last and are noisy at these family sizes.
 
+### The second moment, against Bui, Florea, Keating and Roditty-Gershon
+
+![Exact second moments of the odd-degree twists over F_5 against the recipe and the stated main term, and the gap to the recipe for the first moment, the second moment and L′](docs/bfkrg.png)
+
+Bui, Florea, Keating and Roditty-Gershon
+([arXiv:1902.00568](https://arxiv.org/abs/1902.00568)) average over monic squarefree
+D of degree 2g + 1 coprime to Δ, with q ≡ 1 mod 4. Their Theorem 1.1 gets the first
+moment of L(E ⊗ χ_D, 1/2) with an error of q^(−g+εg), and Theorem 1.2 states the
+second moment as c₂(M) L(Sym²E, 1)³ g + O(g^(1/2+ε)), with c₂(M) built from an Euler
+product in their (3.8), (3.9) and (6.2).
+
+The Legendre twists don't fit that setup directly. With deg D odd the place at ∞
+ramifies in χ_D, the I₂* fiber of the Legendre curve at ∞ turns into I₂, and the sum
+over monic f in the paper is then missing an Euler factor at ∞. So the curve here is
+the Legendre curve twisted once more by t, y² = x(x − t)(x − t²)
+(`funcfield.twisted_legendre`). It has I₂* at 0, I₂ at 1 and I₂ at ∞, every twist by
+an odd-degree D is additive at ∞, and L(E ⊗ χ_D, u) is the paper's polynomial
+exactly, of degree N = 4g + 3. Its traces are χ(t) times the Legendre traces, so
+`funcfield.family` stays fast. Over F_5 every twist has root number
+ε_D = −χ(D(1)), which is the paper's ε_{2g+1} ε(E) χ_D(M) with M = t − 1, and the
+twists with ε_D = −1 vanish at the center because N is odd.
+
+`bfkrg.py` evaluates the CFKRS recipe for this family. With x = q^(−α) and
+y = q^(−β), the diagonal of the shifted second moment is
+
+A(N₀; x, y) = Σ_{N₀fh = □} λ(f) λ(h) x^(deg f) y^(deg h) |fh|^(−1/2) Π_{P | fh, P ∤ Δ} (1 + 1/|P|)^(−1),
+
+with N₀ = 1 or M, and the functional equation L(1/2 + α) = ε q^(−Nα) L(1/2 − α)
+gives four terms:
+
+R(α, β) = A(1; x, y) + ε₀ x^N A(M; 1/x, y) + ε₀ y^N A(M; x, 1/y) + (xy)^N A(1; 1/x, 1/y).
+
+Each A has a simple pole at xy = 1, so write A = H / (1 − xy). The pairs cancel
+the poles and at α = β = 0
+
+R = (N + 1) H₁ − 2 ∂ₓH₁ + ε₀ ((N + 1) H_M − 2 ∂ₓH_M),
+
+everything at x = y = 1. H is an Euler product whose factor at a good place comes
+from the even (or odd) part of 1 / ((1 − λX + X²)(1 − λY + Y²)). It converges only
+conditionally at (1, 1), so `h2` divides each local factor by the Sym² factors at
+x², y² and xy, multiplies the exact polynomial L(Sym²E) back in (it is 1 here, as
+for the Legendre curve), and the rest converges like q^(−d). Places of degree up to
+9 fix the recipe to about 10^(−6) over F_5. The x-derivative is a complex step, x = 1 + 10^(−30) i,
+which is exact to rounding because every factor is rational in x.
+
+The leading coefficient of R in N is H₁ + ε₀H_M = 0.16281 over F_5, so the recipe
+grows by 4 × 0.16281 = 0.651 per unit of g. In the paper's notation that is
+2 c₂(M) L(Sym²E, 1)³ g, twice the main term in the statement of Theorem 1.2: the
+last display of their Section 6 is c₂(M) L(Sym²E, 1)³ X with X = 2g − 100 log g, so
+the factor of 2 goes missing between that display and the theorem. The exact data settle it. The
+stated term gives 0.98 at g = 3 against an exact mean of 3.446.
+
+Everything is checked three ways before it meets the data. The Euler product's
+coefficients up to degree 3 in each variable equal a brute-force sum over pairs
+of monic f, h over F_5 to 10^(−9). The Sym² bookkeeping gives the raw product
+back to 10^(−9) at (0.3, 0.2). The closed-form limit agrees with R(α, β) at
+α, β = ±10^(−6) to 10^(−4). The same machinery gives the first moment, H₁ + ε₀H_M at
+y = 0, and the mean of L′(1/2) over the twists with ε_D = −1, which is
+log q (N B/2 − B′) with B = H₁ − ε₀H_M at y = 0.
+
+Exact means over F_5, every twist enumerated:
+
+| g | twists | L(1/2) | recipe | L(1/2)² | recipe | L′(1/2), odd | recipe |
+|---|---|---|---|---|---|---|---|
+| 0 | 3 | 0.53333 | 0.66280 | 0.8533 | 1.4768 | 1.7167 | 3.3101 |
+| 1 | 71 | 0.71211 | 0.66280 | 1.9759 | 2.1281 | 6.6010 | 6.5103 |
+| 2 | 1,739 | 0.65951 | 0.66280 | 2.8782 | 2.7793 | 9.7099 | 9.7105 |
+| 3 | 43,407 | 0.66291 | 0.66280 | 3.4462 | 3.4305 | 12.9077 | 12.9108 |
+
+The first-moment gap falls by 2.6, 15 and 30 from one g to the next, the q^(−g)
+of Theorem 1.1. The second-moment gap falls more slowly, 0.62, 0.15, 0.099 and
+0.016, and at g = 3 it is 0.46% of the mean. The exact step from g = 2 to 3 is
+0.568 against the recipe's 0.651. The L′ gap is 7×10^(−4) at g = 2 and 3×10^(−3)
+at g = 3, still 0.024% of the mean, so it doesn't shrink monotonically. g = 3 took
+534 s, and g = 4 would be about 600 times that.
+
+At g = 1 and larger q:
+
+| q | twists | L(1/2) | recipe | L(1/2)² | recipe | L′(1/2), odd | recipe |
+|---|---|---|---|---|---|---|---|
+| 13 | 1,751 | 0.8379 | 0.8568 | 4.382 | 4.689 | 9.567 | 9.535 |
+| 17 | 4,127 | 0.8925 | 0.8887 | 5.174 | 5.343 | 10.435 | 10.393 |
+| 29 | 22,007 | 0.9271 | 0.9333 | 6.108 | 6.290 | 12.130 | 12.123 |
+
+The recipe sits above the exact second moment by 3 to 7% at g = 1. As q → ∞ at a
+fixed N every H tends to 1 and H_M to 0, so the recipe tends to 1 and N + 1 = 8.
+Those are half of E det(I − A) and E det(I − A)² over O⁻(7), the half of the
+orthogonal group with the forced eigenvalue −1 (a Monte Carlo over 10⁵ Haar
+matrices gives 2.02 and 16.4). Half because only the ε_D = +1 twists contribute.
+
 ### The hyperelliptic ensemble
 
 ![Exact first moment of L(1/2, χ_D) against Andrade-Keating by genus, moments against USp(2g) as q grows, and the lowest eigenangle over F_13 at genus 2](docs/hyperelliptic.png)
