@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 authors = [{ name = "Louis Belot" }]
-keywords = ["riemann-zeta", "riemann-hypothesis", "number-theory", "visualization", "riemann-siegel", "explicit-formula", "random-matrix-theory", "nufft", "odlyzko-schonhage", "band-limited-interpolation", "dirichlet-l-functions", "katz-sarnak", "approximate-functional-equation", "ratios-conjecture", "fredholm-determinant", "elliptic-curves", "quadratic-twists", "function-fields", "cubic-twists", "cubic-residue-symbol", "symmetric-square", "chebyshev-bias", "prime-races", "moments", "li-criterion", "jensen-polynomials", "extreme-values", "davenport-heilbronn", "de-bruijn-newman", "interval-arithmetic", "siegel-zeros", "grh-verification", "arb", "ramanujan-tau", "sato-tate", "dedekind-zeta", "class-number", "mertens-conjecture", "lattice-reduction", "skewes-number"]
+keywords = ["riemann-zeta", "riemann-hypothesis", "number-theory", "visualization", "riemann-siegel", "explicit-formula", "random-matrix-theory", "nufft", "odlyzko-schonhage", "band-limited-interpolation", "dirichlet-l-functions", "katz-sarnak", "approximate-functional-equation", "ratios-conjecture", "fredholm-determinant", "elliptic-curves", "quadratic-twists", "function-fields", "neron-tate-height", "mordell-weil", "brauer-siegel", "cubic-twists", "cubic-residue-symbol", "symmetric-square", "chebyshev-bias", "prime-races", "moments", "li-criterion", "jensen-polynomials", "extreme-values", "davenport-heilbronn", "de-bruijn-newman", "interval-arithmetic", "siegel-zeros", "grh-verification", "arb", "ramanujan-tau", "sato-tate", "dedekind-zeta", "class-number", "mertens-conjecture", "lattice-reduction", "skewes-number"]
 dependencies = [
     "numpy>=1.24",
     "mpmath>=1.4",
