@@ -2057,6 +2057,128 @@ share of central zeros is too high in most families with either kind of floor. A
 N = 4 nothing changes much: none of the models pass, and the stall noted above is not
 about the 2-adic factor.
 
+### Rank 1: generators, Néron-Tate heights and Sha
+
+For a twist of analytic rank 1 the regulator is the height of a generator, so BSD
+only hands back |Sha| · Reg. `heights.py` finds the generator and computes its
+height, and then |Sha| comes out on its own:
+
+|Sha| = L*(E_D) · q^(χ−1) · |tors|² / (τ · ⟨P, P⟩),
+
+with L*(E_D) = g(1/q) where L(E_D, T) = (1 − qT) g(T), and χ = deg Δ_min / 12. This
+is the normalization of Ulmer ([arXiv:1806.01961](https://arxiv.org/abs/1806.01961),
+section 2.1): the height pairing is the canonical height divided by log q, and the
+log q from the derivative cancels against it.
+
+**Heights.** Shioda's formula gives
+
+⟨P, P⟩ = 2χ + 2(P·O) − Σ_v deg(v) · contr_v(P),
+
+where (P·O) counts the poles of x (each double pole at a place of degree d adds d,
+and at ∞ the pole is measured against t^(2χ)), and contr_v is ½ at the non-identity
+component of an I₂ fiber, 1 at any non-identity component of I₀*, and 1 or 3/2 at
+the near or far components of I₂*. The code doesn't look up components. It computes
+the local Néron height through the duplication formula,
+
+λ_v(P) = (λ_v(2P) − v(2y(P)) + v(Δ)/4) / 4,
+
+which is exact here because every component group in the family is killed by 2, so
+2P always lands on the identity component where λ_v(2P) = ½ max(0, −v(x(2P))) +
+v(Δ)/12. Only x is needed: v(2y) = v(f(x))/2. Then contr_v = max(0, −v(x)) + v(Δ)/6
+− 2λ_v. That the result always lands in Shioda's table is a test, not an assumption.
+
+**Search.** Every point has its 2-descent image δ(P) = (x − e₁, x − e₂) mod squares
+in the 2-Selmer group, which `bsd.py` already computes; `heights.selmer_classes`
+turns the dimension into the actual classes (a GF(2) kernel). In a class (d₁, d₂),
+x = λ² d₁ u² / w² with u, w monic, and a point with (P·O) ≤ B has deg w ≤ B and
+deg(λ² d₁ u²) ≤ 2χ + 2B. The search runs over (λ, u, w), throws out almost every
+candidate by checking that d₂(x − e₂) and d₁d₂(x − e₃) are not non-squares at 24
+points of F_(q^m) (vectorized over all u at once), and confirms the survivors with an
+exact square root in F_q[t].
+
+**Proof that it is a generator.** The rank is at most the analytic rank (Tate), so
+E_D(K) = Z·G ⊕ E[2], and a point P found in a class outside δ(E[2]) is mG + T with
+m odd. If m ≥ 3 then some G + T′ in the same class has height ⟨P, P⟩/9 or less. Any
+point with (Q·O) > B has height at least 2χ + 2(B + 1) − Σ deg(v) max contr_v, so
+once ⟨P, P⟩/9 is below that, G + T′ would have shown up in the exhaustive search of
+that class with a smaller height. The search stops at the first P of minimal height
+in its class for which this holds.
+
+Results:
+
+| q | deg D | rank 1 twists | generator proven | ⟨P, P⟩ | \|Sha\| |
+|---|---|---|---|---|---|
+| 5, 7, 11, 13 | 1 | all | all | 1/2 | 1 |
+| 5 | 2 | 8 | 8 | 3/2 to 8 | 1 |
+| 3 | 3 | 5 | 5 | 5/2 to 17/2 | 1 |
+| 3 | 4 | 16 | 11 with (P·O) ≤ 4 | 2 to 12 | 1 |
+| 5 | 3 | 37 | 23 with (P·O) ≤ 3 | 1 to 17/2 | 1 |
+| 7, 5 | 3, 4 | the 11 with dim Sel₂ = 5 | 11 | 2 to 9/2 | 4 |
+
+- At deg D = 1 the surface is rational with fibers I₀* + 3 I₂. Its trivial lattice is
+  D₄ ⊕ A₁³ of rank 7 and determinant 32, so the Mordell-Weil lattice has rank 1 and
+  determinant |tors|²/32 = 1/2 (Oguiso and Shioda's table). Every rank 1 twist over
+  F_5, F_7, F_11 and F_13 has a generator of height exactly 1/2, and L = 1 − qT gives
+  |Sha| = 1, as it must for a rational surface. A factor of 2 in the height
+  normalization would have made |Sha| = 2 here.
+- |Sha| is a perfect square every time, and its 2-part matches the descent: 1 when
+  dim Sel₂ = 3, and exactly 4 for all 11 rank 1 twists with dim Sel₂ = 5, which
+  is the first nontrivial Sha this repo has seen from both sides.
+- Per generator: the local contributions from duplication are in Shioda's table and
+  are positive exactly when P reduces to the singular point; ⟨2P, 2P⟩ = 4⟨P, P⟩,
+  ⟨4P, 4P⟩ = 16⟨P, P⟩, and translating by each 2-torsion point keeps the height;
+  δ(P + T) = δ(P)δ(T) and δ(2P) = 1.
+- On three twists over F_3 the filtered search returns exactly the points a brute
+  force over every A of degree ≤ 2χ + 2 and every w of degree ≤ 1 finds.
+
+The search gets expensive fast. Its cost is about q^(χ + 2B), and the generators get
+big: BSD predicts |Sha| · ⟨P, P⟩ up to 57/2 over F_5 at deg D = 3, which would need
+(P·O) around 14. Over F_7 at deg D = 2 the fourth twist ran for more than half an
+hour at (P·O) ≤ 4 without a proof. That growth is the next section.
+
+### Brauer-Siegel for the twists
+
+![Brauer-Siegel ratios of the Legendre twists by degree over F_3, F_5 and F_7, their distribution at the largest degree, and the heights of the rank 1 generators found by search](docs/brauer.png)
+
+Hindry and Pacheco measure how big |Sha| · Reg is against the height H = q^χ:
+
+BS(E) = log(|Sha| · Reg) / log H.
+
+They show 0 ≤ liminf BS ≤ limsup BS = 1 as H grows, over all non-constant curves
+(assuming Sha finite), and conjecture that the liminf is 0 along the quadratic twists
+of one curve; Griffon ([arXiv:1706.07728](https://arxiv.org/abs/1706.07728)) proved
+lim BS = 1 for the Legendre family E_d: y² = x(x + 1)(x + t^d). BSD gives |Sha| · Reg
+from the L-function for every twist, whatever the rank:
+
+|Sha| · Reg = L*(E_D) · q^(χ−1) · |tors|² / τ,
+
+which is `brauer.ratio`. In rank 0 it is |Sha| from `bsd.arith`, and in rank 1 it is
+|Sha| · ⟨P, P⟩ from the search above; the tests check both.
+
+| q | deg D | χ | twists | mean BS | max BS | share of rank 0 with \|Sha\| = 1 |
+|---|---|---|---|---|---|---|
+| 3 | 5 | 3 | 93 | 0.549 | 1.300 | 0.600 |
+| 3 | 7 | 4 | 823 | 0.599 | 1.381 | 0.401 |
+| 3 | 9 | 5 | 7,385 | 0.626 | 1.424 | 0.298 |
+| 5 | 4 | 3 | 345 | 0.447 | 1.017 | 0.452 |
+| 5 | 6 | 4 | 8,677 | 0.514 | 1.223 | 0.271 |
+| 7 | 4 | 3 | 1,573 | 0.435 | 0.992 | 0.352 |
+
+- The minimum is 0 at every degree past the first: there are always rank 0 twists
+  with |Sha| = 1, and then BS is exactly 0. Their share falls slowly (1.0, 0.60, 0.40,
+  0.30 over F_3 at deg D = 3, 5, 7, 9), which is the direction the Hindry-Pacheco conjecture
+  needs and says nothing yet about the limit.
+- At deg D = 1, χ = 1 and the rank 1 twists have Reg = 1/2, so BS = −log 2 / log q is
+  negative; the bound liminf ≥ 0 is asymptotic. Over F_7 at deg D = 3 one rank 1 twist
+  has |Sha| · Reg = 3/4.
+- The mean climbs slowly toward 1. Writing
+  BS = 1 − 1/χ + (log L* + log 16 − log τ) / log H shows why: τ = 4^ω · 8 or 4^ω · 16
+  grows with the number ω of prime factors of D, and the mean of log τ / log H is still
+  0.87 over F_3 at deg D = 9 and 0.85 over F_5 at deg D = 6 (it was 1.75 and 1.27 at
+  deg D = 3).
+- The ratio is quantized at small heights (|Sha| is a square, the Tamagawa product a
+  power of 2), which is the staircase in the middle panel.
+
 ### 2-Selmer groups and the odd part of Sha
 
 ![2-Selmer ranks of the Legendre twists against random residue symbols and the Heath-Brown, Swinnerton-Dyer and Kane equilibrium, and the share of twists with 3 or 5 dividing |Sha| against BKLPR](docs/selmer.png)
