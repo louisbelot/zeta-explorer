@@ -8,6 +8,7 @@ from PIL import Image
 
 from zeta_explorer.bias import race
 from zeta_explorer.bklpr import OddSha
+from zeta_explorer.brauer import Slice
 from zeta_explorer.bsd import Excision, Group
 from zeta_explorer.dedekind import zeros as field_zeros
 from zeta_explorer.delta import sato_tate, zeros
@@ -26,6 +27,7 @@ from zeta_explorer.plot import (
     plot_bias_densities,
     plot_blfi,
     plot_bmor,
+    plot_brauer,
     plot_bsd,
     plot_central_values,
     plot_cm,
@@ -599,3 +601,16 @@ def test_plot_bfkrg_panels(tmp_path):
     fig.savefig(tmp_path / "bfkrg.png")
     assert fig.axes[0].lines[2].get_ydata().tolist() == [0.8, 2.0]
     assert fig.axes[1].lines[2].get_ydata() == pytest.approx([2.0, 0.5])
+
+
+def test_plot_brauer_panels(tmp_path):
+    def sl(n, bs):
+        bs = np.array(bs)
+        return Slice(3, n, n, bs, 3.0 ** (n * bs), np.zeros(len(bs)), bs, bs)
+
+    fig = plot_brauer([sl(1, [0.0, 0.5]), sl(2, [0.2, 0.6, 1.0])], [(3, 1, 0.5), (3, 2, 4.0)])
+    fig.savefig(tmp_path / "brauer.png")
+    assert fig.axes[0].lines[0].get_ydata().tolist() == pytest.approx([0.25, 0.6])
+    assert fig.axes[0].lines[1].get_ydata().tolist() == [0.0, 0.2]
+    assert fig.axes[2].lines[0].get_ydata() == pytest.approx(np.log([0.5, 4.0]))
+

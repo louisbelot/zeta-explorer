@@ -62,6 +62,7 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
     from zeta_explorer.bklpr import OddSha
+    from zeta_explorer.brauer import Slice
     from zeta_explorer.bsd import Excision
     from zeta_explorer.selmer import Law
     from zeta_explorer.symfamily import Family as SymFamily
@@ -2515,6 +2516,52 @@ def plot_bfkrg(g: list[int], exact: dict[str, list[float]], predicted: dict[str,
     right.set_title("Gap to the recipe", color=INK, fontsize=12, loc="left")
     right.legend(frameon=False, fontsize=9, labelcolor=INK_SECONDARY, loc="lower left")
     for ax in (left, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig
+
+
+def plot_brauer(slices: list[Slice], gens: list[tuple[int, int, float]]) -> Figure:
+    import matplotlib.pyplot as plt
+
+    fig, (left, mid, right) = plt.subplots(1, 3, figsize=(16, 4.8), facecolor=SURFACE)
+    qs = sorted({S.q for S in slices})
+    colors = dict(zip(qs, (SERIES, ACCENT, ORDINAL[4], INK_SECONDARY), strict=False))
+    for q in qs:
+        row = sorted((S for S in slices if S.q == q), key=lambda S: S.n)
+        x = np.array([S.log_h for S in row])
+        lo, hi = (np.array([np.quantile(S.bs, a) for S in row]) for a in (0.1, 0.9))
+        left.fill_between(x, lo, hi, color=colors[q], alpha=0.15, linewidth=0)
+        left.plot(x, [S.bs.mean() for S in row], "o-", color=colors[q], linewidth=1.6,
+                  label=f"q = {q}, mean and 10-90%")
+        left.plot(x, [S.bs.min() for S in row], "v", color=colors[q], markersize=5)
+    left.plot([], [], "v", color=INK_SECONDARY, markersize=5, label="minimum")
+    left.axhline(1, color=INK_SECONDARY, linestyle=":", linewidth=1.2)
+    left.set_xlabel("log H = (deg Δ_min / 12) log q", color=INK)
+    left.set_ylabel("BS = log(|Sha| Reg) / log H", color=INK)
+    left.set_title("Brauer-Siegel ratio of the twists", color=INK, fontsize=12, loc="left")
+    left.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="lower right")
+    for q in qs:
+        S = max((S for S in slices if S.q == q), key=lambda S: S.n)
+        mid.hist(S.bs, bins=40, density=True, histtype="step", color=colors[q], linewidth=1.5,
+                 label=f"q = {q}, deg D = {S.n} ({len(S.bs):,} twists)")
+    mid.set_xlabel("BS", color=INK)
+    mid.set_ylabel("density", color=INK)
+    mid.set_title("At the largest degree", color=INK, fontsize=12, loc="left")
+    mid.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper left")
+    for q in sorted({g[0] for g in gens}):
+        pts = np.array([(chi * np.log(q), np.log(h)) for p, chi, h in gens if p == q])
+        jitter = (np.arange(len(pts)) % 5 - 2) * 0.03
+        right.plot(pts[:, 0] + jitter, pts[:, 1], "o", color=colors.get(q, INK), alpha=0.7,
+                   markersize=5, label=f"q = {q}")
+    grid = np.linspace(0, right.get_xlim()[1], 2)
+    right.plot(grid, grid, "--", color=INK_SECONDARY, linewidth=1.0, label="Reg = H")
+    right.set_xlabel("log H", color=INK)
+    right.set_ylabel("log ⟨P, P⟩ of the generator", color=INK)
+    right.set_title("Rank 1 generators found by search", color=INK, fontsize=12, loc="left")
+    right.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper left")
+    for ax in (left, mid, right):
         ax.set_facecolor(SURFACE)
         _style(ax)
     fig.tight_layout()
