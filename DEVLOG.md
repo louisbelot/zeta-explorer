@@ -2430,7 +2430,7 @@ Checks:
 - The vectorized search returns exactly the brute-force point set on two twists over
   F_3 at (P·O) ≤ 1, and the generator is minimal across every non-torsion class, not
   only the one searched.
-- |Sha| = 1 for all 37 proven generators with dim Sel₂ = 3, and |Sha| = 4 for all 11
+- |Sha| = 1 for all 61 proven generators with dim Sel₂ = 3, and |Sha| = 4 for all 11
   rank 1 twists with dim Sel₂ = 5 (one over F_7 at deg D = 3, ten over F_5 at deg 4).
 - BS in rank 0 equals log |Sha| / log H with |Sha| from `bsd.arith`; in rank 1 it
   equals log(|Sha| ⟨P, P⟩) / log H from the search.
