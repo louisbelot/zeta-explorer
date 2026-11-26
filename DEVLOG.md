@@ -2406,3 +2406,63 @@ Design notes:
 
 Next: the two-level density of the odd twists from the ratios conjecture, or BSD
 for the rank 1 odd twists with heights from Shioda's formula.
+
+## 2026-11-26: Rank 1 generators, Néron-Tate heights, Brauer-Siegel
+
+- `heights.py`: the twists y² = x(x − D)(x − tD) as a `Model` with exact x-only
+  arithmetic (doubling, translation by 2-torsion), the local Néron height at every bad
+  place through the duplication formula, Shioda's height ⟨P, P⟩ = 2χ + 2(P·O) −
+  Σ contr_v, the explicit 2-Selmer classes (a GF(2) kernel of the matrix `bsd.py`
+  already builds), a search for points class by class, and `rank_one`, which proves
+  the minimal point is a generator and reads |Sha| off BSD.
+- `brauer.py`: |Sha| · Reg = L* q^(χ−1) |tors|² / τ for every twist and the ratio
+  BS = log(|Sha| Reg) / log H, scanned over whole families.
+- `plot.plot_brauer`, docs/brauer.png.
+
+Checks:
+
+- Rational surface (deg D = 1, fibers I₀* + 3 I₂, trivial lattice D₄ ⊕ A₁³): every
+  rank 1 twist over F_5, F_7, F_11, F_13 has generator height 1/2 = 16/32, as Oguiso and
+  Shioda's table gives, and |Sha| = 1.
+- The duplication-formula contributions are always in Shioda's table and positive
+  exactly when P reduces to the singular point. ⟨2P⟩ = 4⟨P⟩, ⟨4P⟩ = 16⟨P⟩, and
+  translation by E[2] keeps the height. δ(P + T) = δ(P)δ(T), δ(2P) = 1.
+- The vectorized search returns exactly the brute-force point set on two twists over
+  F_3 at (P·O) ≤ 1, and the generator is minimal across every non-torsion class, not
+  only the one searched.
+- |Sha| = 1 for all 37 proven generators with dim Sel₂ = 3, and |Sha| = 4 for all 11
+  rank 1 twists with dim Sel₂ = 5 (one over F_7 at deg D = 3, ten over F_5 at deg 4).
+- BS in rank 0 equals log |Sha| / log H with |Sha| from `bsd.arith`; in rank 1 it
+  equals log(|Sha| ⟨P, P⟩) / log H from the search.
+
+Results:
+
+- Proven generators: all rank 1 twists at deg D = 1 (q = 5 to 13), deg 2 over F_5
+  (8 of 8), deg 3 over F_3 (5 of 5); 11 of 16 at deg 4 over F_3 with (P·O) ≤ 4 and
+  23 of 37 at deg 3 over F_5 with (P·O) ≤ 3. Heights run from 1/2 to 12.
+- BS over F_3, F_5, F_7 up to 7,385 and 8,677 twists per degree: mean 0.626 over F_3
+  at deg D = 9 and 0.514 over F_5 at deg 6, minimum exactly 0 at every degree past
+  the first (rank 0, |Sha| = 1), share of such twists among rank 0 falling 1.0, 0.60,
+  0.40, 0.30 over F_3 at deg 3, 5, 7, 9. Below zero only at deg 1 (Reg = 1/2) and
+  one twist over F_7 at deg 3 with |Sha| · Reg = 3/4.
+
+Design notes:
+
+- Every component group here is killed by 2 (I₂, I₀*, I₂*), so 2P always lies on
+  the identity component and one step of duplication gives the exact local height.
+  The model refuses fiber types outside that table instead of guessing.
+- The generator proof uses parity: a point in a class outside δ(E[2]) is mG + T
+  with m odd, so only m ≥ 3 has to be excluded, by height ⟨P⟩/9 against the lower
+  bound 2χ + 2(B + 1) − Σ max contr_v for points outside the search box. With m = 2
+  allowed the bound was ⟨P⟩/4 and many more twists needed a bigger box.
+- One class per coset is enough: G + T′ for the right T′ sits in the same class as P.
+- The filter evaluates both square conditions at 24 Frobenius-orbit representatives
+  of F_(q^m), so a survivor that isn't a point is rare and the exact square root in
+  F_q[t] only runs a handful of times per class.
+- Cost is about q^(χ + 2B) and BSD predicts heights up to 57/2 at deg 3 over F_5,
+  so brute force ends around there. The Brauer-Siegel data say the same thing from
+  the other side: Reg grows like a positive power of H.
+
+Next: a conic parametrization of the first quadric of each 2-covering, which would
+make the search cost about q^(P·O) instead of q^(2(P·O)), or the two-level density
+of the odd twists from the ratios conjecture.
