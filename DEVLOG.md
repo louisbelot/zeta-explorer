@@ -2466,3 +2466,54 @@ Design notes:
 Next: a conic parametrization of the first quadric of each 2-covering, which would
 make the search cost about q^(P·O) instead of q^(2(P·O)), or the two-level density
 of the odd twists from the ratios conjecture.
+
+## 2026-11-27: Rank 2 and 3 twists, Mordell-Weil lattices
+
+- `mordellweil.py`: the group law on the twists (y from an exact square root, the chord
+  rule on polynomials), the height pairing ⟨P, Q⟩ = (⟨P + Q⟩ − ⟨P⟩ − ⟨Q⟩)/2, exact Gram
+  determinants, a search over one Selmer class per coset of δ(E[2]), greedy successive
+  minima, Lagrange-style reduction, and `solve`, which proves the basis and reads |Sha|
+  off BSD for ranks 1 to 3.
+- `plot.plot_lattices`, docs/lattices.png.
+
+Checks:
+
+- `add` reduces correctly: at every good fiber t = t₀ where both points and their sum
+  are integral, x(P + Q)(t₀) equals the chord rule on E_(t₀)(F_q), over more than 20
+  fibers in the test families. Adding a 2-torsion point gives exactly
+  `Model.translate`.
+- Parallelogram law ⟨P + Q⟩ + ⟨P − Q⟩ = 2⟨P⟩ + 2⟨Q⟩ on every rank 2 basis, and
+  |⟨P, Q + T⟩| = |⟨P, Q⟩| for each T in E[2].
+- Reg · |Sha| equals `brauer.ratio(t).sha_reg` for every solved twist.
+- `solve` on the rank 1 twists over F_5 at deg 2 gives the same generator heights and
+  |Sha| = 1 as `rank_one`.
+- `reduce` takes a basis skewed by two steps back to the same reduced Gram matrix.
+
+Results:
+
+- 88 of the 101 rank 2 and rank 3 twists in eight families proven (q = 7, 11, 13 at
+  χ = 2; q = 3, 5 at χ = 3; q = 3 at χ = 4), every one with |Sha| = 1 exactly and
+  dim Sel₂ = rank + 2. 86 by the index bound, 2 by successive minima, 70 at
+  (P·O) ≤ 1.
+- Four rank 3 lattices: Reg 3/4 over F_7 (a scaled A₂ next to a line), 13/8 twice
+  over F_13, 66 over F_3 at deg D = 6.
+- Reduced rank 2 shapes all sit in the fundamental domain; six hexagonal, two square.
+- Rank 2 regulators run from 5/4 on the K3 surfaces to 71 at χ = 4.
+- Unproven: 6 over F_5 at deg D = 4 and 7 over F_3 at deg D = 6, past (P·O) = 3.
+
+Design notes:
+
+- The y sign of each lifted point is whatever the square root returns, so `add` gives
+  P + Q or P − Q. Determinants and the parallelogram law don't care, and `reduce`
+  tries both signs.
+- Two proofs of saturation. The successive minima argument needs every point up to the
+  r-th minimum inside the box; the index bound n² ≤ γ_r^r Reg / λ^r (Siksek) only needs
+  a lower bound λ for all heights, plus 2-saturation from the Selmer classes to rule
+  out n = 2. The second is what makes the search cheap: bound 1 instead of 2 for the
+  slow F_13 twists, 54 s to under a second each.
+- Rank 4 is refused on purpose: there the successive minima can span an index 2
+  sublattice (D₄), so the minima rule would need an extra check.
+
+Next: the conic parametrization of the 2-coverings to push the box further (the six
+unproven twists over F_5 at deg 4 and the seven over F_3 at deg 6 need (P·O) ≥ 4), or
+the two-level density of the odd twists from the ratios conjecture.
