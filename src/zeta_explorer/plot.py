@@ -2564,3 +2564,44 @@ def plot_brauer(slices: list[Slice], gens: list[tuple[int, int, float]]) -> Figu
         _style(ax)
     fig.tight_layout()
     return fig
+
+
+def plot_lattices(sols: list[tuple[int, int, int, float, complex | None]]) -> Figure:
+    import matplotlib.pyplot as plt
+
+    fig, (left, right) = plt.subplots(1, 2, figsize=(13.5, 5), facecolor=SURFACE,
+                                      gridspec_kw={"width_ratios": [1, 1.7]})
+    qs = sorted({s[0] for s in sols})
+    colors = dict(zip(qs, (SERIES, ACCENT, ORDINAL[4], INK_SECONDARY, "#2f9e6e"), strict=False))
+    th = np.linspace(np.pi / 3, np.pi / 2, 100)
+    left.plot(np.cos(th), np.sin(th), color=INK_SECONDARY, linewidth=1.2)
+    left.plot([0.5, 0.5], [np.sqrt(3) / 2, 1.9], color=INK_SECONDARY, linewidth=1.2)
+    left.plot([0, 0], [1, 1.9], color=INK_SECONDARY, linewidth=1.2)
+    for q in qs:
+        tau = np.array([s[4] for s in sols if s[0] == q and s[4] is not None])
+        if len(tau):
+            left.plot(tau.real, tau.imag, "o", color=colors[q], alpha=0.6, markersize=7)
+    left.set_xlim(-0.05, 0.55)
+    left.set_ylim(0.8, 1.9)
+    left.set_aspect("equal")
+    left.set_xlabel("|⟨P, Q⟩| / ⟨P, P⟩", color=INK)
+    left.set_ylabel("√Reg / ⟨P, P⟩", color=INK)
+    left.set_title("Shapes of the rank 2 lattices", color=INK, fontsize=12, loc="left")
+    marks = {2: "o", 3: "s"}
+    for q in qs:
+        for r in (2, 3):
+            pts = np.array([(chi * np.log(q), np.log(reg)) for p, chi, rk, reg, _ in sols
+                            if p == q and rk == r])
+            if len(pts):
+                right.plot(pts[:, 0], pts[:, 1], marks[r], color=colors[q], alpha=0.6,
+                           markersize=6, label=f"q = {q}, rank {r}")
+    right.set_xlabel("log H", color=INK)
+    right.set_ylabel("log Reg", color=INK)
+    right.set_title("Regulators of the proven bases", color=INK, fontsize=12, loc="left")
+    right.legend(frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY, loc="upper left",
+                 bbox_to_anchor=(1.01, 1))
+    for ax in (left, right):
+        ax.set_facecolor(SURFACE)
+        _style(ax)
+    fig.tight_layout()
+    return fig

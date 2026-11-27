@@ -50,6 +50,7 @@ from zeta_explorer.plot import (
     plot_l_z,
     plot_l_zeros,
     plot_landscape,
+    plot_lattices,
     plot_lehmer,
     plot_li,
     plot_log_z,
@@ -614,3 +615,14 @@ def test_plot_brauer_panels(tmp_path):
     assert fig.axes[0].lines[1].get_ydata().tolist() == [0.0, 0.2]
     assert fig.axes[2].lines[0].get_ydata() == pytest.approx(np.log([0.5, 4.0]))
 
+
+def test_plot_lattices_panels(tmp_path):
+    sols = [(7, 2, 2, 3.0, complex(0.5, 1.2)), (7, 2, 3, 0.75, None),
+            (3, 3, 2, 4.0, complex(0.0, 1.5))]
+    fig = plot_lattices(sols)
+    fig.savefig(tmp_path / "lattices.png")
+    shapes = [ln for ln in fig.axes[0].lines if ln.get_marker() == "o"]
+    assert len(fig.axes[0].lines) == 5
+    assert [ln.get_xdata().tolist() for ln in shapes] == [[0.0], [0.5]]
+    assert fig.axes[1].lines[0].get_ydata() == pytest.approx([np.log(4.0)])
+    assert len(fig.axes[1].lines) == 3

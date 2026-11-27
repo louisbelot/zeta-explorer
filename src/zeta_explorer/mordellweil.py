@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from fractions import Fraction
 
 from zeta_explorer.bsd import selmer_rank, torsion
-from zeta_explorer.funcfield import Twist
+from zeta_explorer.funcfield import Twist, family, legendre
 from zeta_explorer.gf import Poly, deg, padd, pmul, pscale, psub
 from zeta_explorer.heights import (
     Klass,
@@ -199,3 +199,11 @@ def solve(t: Twist, max_bound: int = 3) -> MordellWeil | None:
     sha = ls * Fraction(q) ** (M.chi - 1) * tors**2 / (tam * B.regulator)
     return MordellWeil(D, q, M.chi, t.rank, tam, tors, selmer_rank(M.e, q), ls, B, sha)
 
+
+def shape(B: Basis) -> complex:
+    (a, b), (_, d) = B.gram
+    return complex(abs(b) / a, math.sqrt(a * d - b * b) / a)
+
+
+def scan(q: int, n: int, max_bound: int = 3) -> list[tuple[Twist, MordellWeil | None]]:
+    return [(t, solve(t, max_bound)) for t in family(legendre(q), n) if 2 <= t.rank <= 3]
