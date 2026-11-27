@@ -2179,6 +2179,94 @@ which is `brauer.ratio`. In rank 0 it is |Sha| from `bsd.arith`, and in rank 1 i
 - The ratio is quantized at small heights (|Sha| is a square, the Tamagawa product a
   power of 2), which is the staircase in the middle panel.
 
+### Rank 2 and 3: Mordell-Weil bases, regulators and Sha
+
+![Shapes of the rank 2 Mordell-Weil lattices in the fundamental domain, and the regulators of every proven basis against log H](docs/lattices.png)
+
+In rank 2 and up, |Sha| · Reg from the L-function no longer splits by itself:
+Reg = det⟨P_i, P_j⟩ needs a basis of E_D(K)/tors and the pairing between different
+points. `mordellweil.py` adds both.
+
+**Group law.** `heights.py` only kept x = A/w². The y-coordinate comes back as
+y = C/w³ with C the exact square root of (A − e₁w²)(A − e₂w²)(A − e₃w²) in F_q[t],
+and the chord rule x₃ = λ² − a₂ − x₁ − x₂ runs on polynomials. Each C is fixed up to
+sign, so `add` returns P + Q or P − Q; nothing downstream cares, since the
+determinant does not see the sign of ⟨P, Q⟩. The pairing is
+⟨P, Q⟩ = (⟨P + Q⟩ − ⟨P⟩ − ⟨Q⟩)/2 with Shioda's height from before, so every entry of
+the Gram matrix is an exact fraction.
+
+**Search.** Heights don't change under translation by E[2], so it is enough to search
+one Selmer class per coset of δ(E[2]): 3 classes in rank 2 instead of 12. All points
+with (P·O) ≤ B are collected, sorted by height, and taken greedily whenever the Gram
+determinant stays positive.
+
+**Proof that they are a basis.** Let λ be a lower bound for the height of every
+non-torsion point: the smallest height found, or the bound 2χ + 2(B + 1) − Σ max
+contr_v for points outside the box, whichever is smaller. A point in a class of
+δ(E[2]) is 2R + T with height 4⟨R⟩, so it is covered too. Two arguments close it.
+
+- Successive minima. If the r-th chosen height is below the outside bound, every point
+  up to that height was found, and the chosen points realize the successive minima.
+  Minkowski's second theorem and Hadamard's inequality bound the index of the lattice
+  they span by γ_r^(r/2): 2/√3 in rank 2 and √2 in rank 3, both below 2. So they are a
+  basis. In rank 4 the bound is 2 and the D₄ lattice breaks it, which is why `basis`
+  refuses rank 4.
+- Index bound (Siksek's argument). If the chosen points span a sublattice of index n,
+  the true regulator is Reg/n², and Hermite's constant gives λ^r ≤ γ_r^r Reg/n², so
+  n² ≤ γ_r^r Reg / λ^r. If the classes δ(P_i) are independent modulo δ(E[2]), n is
+  odd, and n² < 9 already forces n = 1. In rank 1 this is exactly the ⟨P⟩/9 rule of
+  the previous section.
+
+The index bound does almost all the work. With the minima rule alone, the four slowest
+twists over F_13 needed (P·O) ≤ 2 and 54 s each; the index bound proves them at
+(P·O) ≤ 1, and all 12 twists of that family take 1.7 s.
+
+Once r independent points exist, the rank is at least r, and it is at most the
+analytic rank by Tate. Equality means Sha is finite and BSD holds (Tate, Milne), so
+
+|Sha| = L*(E_D) · q^(χ−1) · |tors|² / (τ · Reg)
+
+is a theorem here, and it has to come out as a perfect square.
+
+Every rank 2 and rank 3 Legendre twist in eight families, with the search box capped
+at (P·O) ≤ 3 (≤ 4 for the two twists over F_3 at deg D = 4):
+
+| q | deg D | χ | rank 2 twists | proven | rank 3 twists | proven | Reg | \|Sha\| |
+|---|---|---|---|---|---|---|---|---|
+| 7 | 2 | 2 | 2 | 2 | 0 | | 3/2 to 7 | 1 |
+| 7 | 3 | 2 | 16 | 16 | 1 | 1 | 3/4 to 6 | 1 |
+| 11 | 2 | 2 | 6 | 6 | 0 | | 7/4 to 7 | 1 |
+| 13 | 2 | 2 | 10 | 10 | 2 | 2 | 13/8 to 12 | 1 |
+| 3 | 4 | 3 | 2 | 2 | 0 | | 17/2 to 28 | 1 |
+| 3 | 5 | 3 | 8 | 8 | 0 | | 4 to 20 | 1 |
+| 5 | 4 | 3 | 34 | 28 | 0 | | 3 to 41 | 1 |
+| 3 | 6 | 4 | 19 | 12 | 1 | 1 | 47/4 to 71 | 1 |
+
+- |Sha| = 1 for all 88 proven bases, an exact integer every time. In each of these
+  twists dim Sel₂ = rank + 2, so the descent already said Sha[2] = 0, and the odd part
+  is trivial too. A height normalization off by any factor, or a basis of index 3,
+  would have shown up here as a non-square.
+- 86 proofs come from the index bound and 2 from the successive minima. 70 bases sit
+  at (P·O) ≤ 1.
+- After reduction every rank 2 lattice lands in the fundamental domain |x| ≤ 1/2,
+  |τ| ≥ 1, as the left panel shows. Six are hexagonal (τ = e^(iπ/3), a scaled A₂) and
+  two are square.
+- The rank 3 lattice over F_7 at D = t³ + 2t² + 2t + 1 has Gram matrix
+  [[1, 0, 1/2], [0, 1, 0], [1/2, 0, 1]], a scaled A₂ next to a line, with Reg = 3/4.
+  The two over F_13 have Reg = 13/8, and the one over F_3 at deg D = 6 has Reg = 66.
+- Regulators grow with H = q^χ, from about 1 on the K3 surfaces (χ = 2) to 71 at
+  χ = 4, which is the Brauer-Siegel growth of the previous section, now with Sha and
+  Reg separated.
+- Not proven: 6 twists over F_5 at deg D = 4 and 7 over F_3 at deg D = 6 need a box
+  past (P·O) = 3, where the cost of the search (about q^(χ + 2B)) runs to minutes per
+  twist.
+
+The tests check the group law against the chord rule on the reduction to good fibers
+E_(t₀)(F_q), the parallelogram law ⟨P + Q⟩ + ⟨P − Q⟩ = 2⟨P⟩ + 2⟨Q⟩, that adding a
+2-torsion point matches `Model.translate`, that the pairing ignores torsion, that
+Reg · |Sha| equals `brauer.ratio`, and that `solve` gives back the rank 1 generators
+of `heights.py`.
+
 ### 2-Selmer groups and the odd part of Sha
 
 ![2-Selmer ranks of the Legendre twists against random residue symbols and the Heath-Brown, Swinnerton-Dyer and Kane equilibrium, and the share of twists with 3 or 5 dividing |Sha| against BKLPR](docs/selmer.png)
